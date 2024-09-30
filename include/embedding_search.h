@@ -15,6 +15,7 @@ public:
     EmbeddingSearch();
 
     bool load_safetensors(const std::string& filename);
+    bool load_safetensors2(const std::string& filename);
     std::vector<size_t> similarity_search(const std::vector<float>& query, size_t k);
 };
 
