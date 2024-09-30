@@ -1,4 +1,5 @@
 #include "embedding_search.h"
+#include "util.h"
 #define SAFETENSORS_CPP_IMPLEMENTATION
 #include "safetensors.hh"
 #include <fstream>
@@ -13,7 +14,7 @@ using json = nlohmann::json;
 
 EmbeddingSearch::EmbeddingSearch() : vector_size(0) {}
 
-bool EmbeddingSearch::load_safetensors(const std::string& filename)
+bool EmbeddingSearch::load_safetensors(const std::string &filename)
 {
     std::ifstream file(filename, std::ios::binary);
     if (!file)
@@ -22,33 +23,20 @@ bool EmbeddingSearch::load_safetensors(const std::string& filename)
         return false;
     }
 
-    uint64_t headerLength;
-    file.read(reinterpret_cast<char*>(&headerLength), sizeof(headerLength));
-    std::cout << "cp3" << std::endl;
-    std::cout << "Header Length: " << headerLength << std::endl;
+    std::cout << "in1" << std::endl;
 
+    auto stringJson = readUTF8StringFromFile(filename, 8);
 
-    file.seekg(1);
-    std::vector<char> buffer(headerLength);
-    if(!file.read(buffer.data(), headerLength)) {
-        throw std::runtime_error("Error reading file");
-    }
+    std::cout << "in2" << std::endl;
 
-    std::string stringJson = std::string(buffer.begin(), buffer.end());
     json safetensorsHeader = json::parse(stringJson);
 
-    std::cout << "stringJson:\n" << stringJson << std::endl;
+    std::cout << "Json Header:\n"
+              << safetensorsHeader.dump() << std::endl;
+    // exit(0);
 
-    std::cout << "Json Header:\n" << safetensorsHeader.dump() << std::endl;
-    exit(0);
-
-
-    // Read header (assuming a simple format)
-    uint64_t num_vectors, vector_dim;
-    file.read(reinterpret_cast<char *>(&num_vectors), sizeof(num_vectors));
-    file.read(reinterpret_cast<char *>(&vector_dim), sizeof(vector_dim));
-
-    std::cout << "num_vectors: " << num_vectors << "\tvector_dim: " << vector_dim << std::endl;
+    uint64_t num_vectors = safetensorsHeader.at("shard_0").at("shape").at(0).get<int>();
+    uint64_t vector_dim = safetensorsHeader.at("shard_0").at("shape").at(1).get<int>();
 
     vector_size = vector_dim;
     embeddings.resize(num_vectors, std::vector<float>(vector_dim));
@@ -61,7 +49,6 @@ bool EmbeddingSearch::load_safetensors(const std::string& filename)
 
     std::cout << "Loaded " << num_vectors << " embeddings of dimension " << vector_dim << std::endl;
     return true;
-
 }
 
 std::vector<size_t> EmbeddingSearch::similarity_search(const std::vector<float> &query, size_t k)

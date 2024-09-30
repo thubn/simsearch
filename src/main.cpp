@@ -12,6 +12,7 @@ int main() {
         return 1;
     }
 
+    //TODO: Random Vector mit richtigen Dimensionen generieren
     // Example query vector
     std::vector<float> query = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};  // Adjust size to match your embeddings
 

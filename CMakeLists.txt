@@ -11,9 +11,14 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Create a library from the source files
 add_library(embedding_search_lib src/embedding_search.cpp)
+add_library(util_lib src/util.cpp)
 
 # Link nlohmann_json to the library
-target_link_libraries(embedding_search_lib PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(embedding_search_lib
+    PRIVATE 
+        nlohmann_json::nlohmann_json
+        util_lib
+)
 
 add_executable(${PROJECT_NAME} src/main.cpp)
 # Link the library and any other dependencies

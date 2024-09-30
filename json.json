@@ -1,0 +1,21 @@
+{
+    "num_shard": {
+        "dtype": "I64",
+        "shape": [],
+        "data_offsets": [
+            0,
+            8
+        ]
+    },
+    "shard_0": {
+        "dtype": "F32",
+        "shape": [
+            1048575,
+            768
+        ],
+        "data_offsets": [
+            8,
+            3221222408
+        ]
+    }
+}
