@@ -5,8 +5,10 @@
 int main() {
     EmbeddingSearch searcher;
 
+    std::cout << "Hi World" << std::endl;
+
     // Load embeddings
-    if (!searcher.load_safetensors("data/embeddings.safetensors")) {
+    if (!searcher.load_safetensors("../data/embeddings.safetensors")) {
         return 1;
     }
 
