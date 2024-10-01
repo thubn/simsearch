@@ -14,6 +14,14 @@ using json = nlohmann::json;
 
 EmbeddingSearch::EmbeddingSearch() : vector_size(0) {}
 
+const std::vector<std::vector<float>>& EmbeddingSearch::getEmbeddings(){
+    return embeddings;
+}
+
+const size_t& EmbeddingSearch::getVectorSize(){
+    return vector_size;
+}
+
 bool EmbeddingSearch::load_safetensors(const std::string &filename)
 {
     std::ifstream file(filename, std::ios::binary);

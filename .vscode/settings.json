@@ -55,7 +55,13 @@
         "text_encoding": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "any": "cpp"
+        "any": "cpp",
+        "codecvt": "cpp",
+        "forward_list": "cpp",
+        "ratio": "cpp",
+        "iomanip": "cpp",
+        "ranges": "cpp",
+        "valarray": "cpp"
     },
     "makefile.makefilePath": "build/Makefile"
 }
