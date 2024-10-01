@@ -52,3 +52,15 @@ std::string readUTF8StringFromFile(const std::string& filename, std::streampos s
 
     return result;
 }
+
+int countLines(const std::string& filename) {
+    std::ifstream file(filename);
+    std::string line;
+    int lineCount = 0;
+
+    while (std::getline(file, line)) {
+        lineCount++;
+    }
+
+    return lineCount;
+}

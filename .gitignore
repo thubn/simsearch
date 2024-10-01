@@ -2,3 +2,5 @@ bin/
 data/
 obj/
 build/
+json.json
+json2.json

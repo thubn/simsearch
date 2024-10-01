@@ -19,6 +19,10 @@ const std::vector<std::vector<float>> &EmbeddingSearch::getEmbeddings()
     return embeddings;
 }
 
+const std::vector<std::string> &EmbeddingSearch::getSentences(){
+    return sentences;
+}
+
 const size_t &EmbeddingSearch::getVectorSize()
 {
     return vector_size;
@@ -55,7 +59,7 @@ bool EmbeddingSearch::load_safetensors(const std::string &filename)
     file.read(reinterpret_cast<char *>(&num_shards), sizeof(num_shards));
 
     vector_size = vector_dim;
-    embeddings.resize(num_vectors, std::vector<float>(vector_dim));
+    embeddings.resize(num_vectors, std::vector<float>(vector_size));
 
     // change read position to the position of embedding/vector data
     file.seekg(8 + headerLength + data_offset);
@@ -65,9 +69,65 @@ bool EmbeddingSearch::load_safetensors(const std::string &filename)
     {
         file.read(reinterpret_cast<char *>(vec.data()), vector_dim * sizeof(float));
     }
+    file.close();
 
     std::cout << "Loaded " << num_vectors << " embeddings of dimension " << vector_dim << std::endl;
     return true;
+}
+
+bool EmbeddingSearch::load_json(const std::string &filename)
+{
+    std::ifstream file(filename);
+    if (!file)
+    {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return false;
+    }
+    std::string line;
+    int lineNumber = 0;
+    int num_vectors = countLines(filename);
+
+    std::cout << "Num Lines: :" << num_vectors << std::endl;
+
+    std::getline(file, line);
+    json j = json::parse(line);
+
+    std::cout << "Dimensions: " << j.at("all-MiniLM-L6-v2").size() << std::endl;
+    vector_size = j.at("all-MiniLM-L6-v2").size();
+
+    embeddings.resize(num_vectors, std::vector<float>(vector_size));
+    sentences.resize(num_vectors);
+
+    file.clear();
+    file.seekg(0);
+    while (std::getline(file, line)) {
+        try {
+            json j = json::parse(line);
+            //std::cout << "Line " << lineNumber << ": " << j.dump() << std::endl;
+            embeddings[lineNumber] = j.at("all-MiniLM-L6-v2").get<std::vector<float>>();
+            sentences[lineNumber] = j.at("body").get<std::string>();
+        } catch (json::parse_error& e) {
+            std::cerr << "Parse error on line " << lineNumber << ": " << e.what() << std::endl;
+        }
+        lineNumber++;
+        //exit(0);
+    }
+    file.close();
+    std::cout << "Loaded " << num_vectors << " embeddings of dimension " << vector_size << std::endl;
+    return true;
+
+    /*
+    std::ifstream f(filename);
+    if (!f)
+    {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return false;
+    }
+
+    json data = json::parse(f);
+    std::cout << "json first file: " << data.at(0).dump() << std::endl;
+    */
+    exit(0);
 }
 
 std::vector<std::pair<float, size_t>> EmbeddingSearch::similarity_search(const std::vector<float> &query, size_t k)
@@ -90,7 +150,7 @@ std::vector<std::pair<float, size_t>> EmbeddingSearch::similarity_search(const s
                       [](const auto &a, const auto &b)
                       { return a.first > b.first; });
 
-    //std::vector<size_t> result;
+    // std::vector<size_t> result;
     std::vector<std::pair<float, size_t>> result;
     result.reserve(k);
     for (size_t i = 0; i < k && i < similarities.size(); ++i)
