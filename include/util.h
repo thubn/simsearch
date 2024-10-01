@@ -14,6 +14,6 @@
  * @return std::string The UTF-8 encoded string read from the file.
  * @throws std::runtime_error if the file cannot be opened or if an invalid UTF-8 sequence is encountered.
  */
-std::string readUTF8StringFromFile(const std::string& filename, std::streampos startByte);
+std::string readUTF8StringFromFile(const std::string& filename, std::streampos startByte, uint64_t& headerLength);
 
 #endif // UTF8_STRING_READER_H

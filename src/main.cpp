@@ -1,6 +1,7 @@
 #include "embedding_search.h"
 #include <iostream>
 #include <vector>
+#include <random>
 
 int main()
 {
@@ -15,21 +16,28 @@ int main()
     }
 
     std::cout << "vector_size: " << searcher.getVectorSize() << "\nEmbeddings: " << searcher.getEmbeddings().size() << std::endl;
-    exit(0);
+    std::cout << "first vector: " << searcher.getEmbeddings()[0][0] << std::endl;
+    std::cout << "second vector: " << searcher.getEmbeddings()[1][0] << std::endl;
 
-    // TODO: Random Vector mit richtigen Dimensionen generieren
-    //  Example query vector
-    std::vector<float> query = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f}; // Adjust size to match your embeddings
+    // Generate random index
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, searcher.getEmbeddings().size());
+    auto random_index = distrib(gen);
+    std::cout << "random index: " << random_index << std::endl;
+
+    // Example query vector
+    std::vector<float> query = searcher.getEmbeddings()[random_index]; // Adjust size to match your embeddings
 
     // Perform similarity search
-    size_t k = 5; // Number of similar vectors to retrieve
-    std::vector<size_t> results = searcher.similarity_search(query, k);
+    size_t k = 100; // Number of similar vectors to retrieve
+    std::vector<std::pair<float, size_t>> results = searcher.similarity_search(query, k);
 
     // Print results
     std::cout << "Top " << k << " similar vectors:" << std::endl;
-    for (size_t idx : results)
+    for (std::pair<float, size_t> idx : results)
     {
-        std::cout << "Index: " << idx << std::endl;
+        std::cout << "Index: " << idx.second << "\tScore: " << idx.first << std::endl;
     }
 
     return 0;

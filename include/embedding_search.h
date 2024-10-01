@@ -19,7 +19,7 @@ public:
 
     bool load_safetensors(const std::string& filename);
     bool load_safetensors2(const std::string& filename);
-    std::vector<size_t> similarity_search(const std::vector<float>& query, size_t k);
+    std::vector<std::pair<float, size_t>> similarity_search(const std::vector<float>& query, size_t k);
 };
 
 #endif // EMBEDDING_SEARCH_H

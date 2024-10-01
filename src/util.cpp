@@ -4,20 +4,14 @@
 #include <cstdint>
 #include <iostream>
 
-std::string readUTF8StringFromFile(const std::string& filename, std::streampos startByte) {
+std::string readUTF8StringFromFile(const std::string& filename, std::streampos startByte, uint64_t& headerLength) {
     std::ifstream file(filename, std::ios::binary);
     
     if (!file.is_open()) {
         throw std::runtime_error("Unable to open file");
     }
 
-    std::cout << "in3" << std::endl;
-
-    uint64_t headerLength;
     file.read(reinterpret_cast<char*>(&headerLength), sizeof(headerLength));
-    std::cout << "in4" << std::endl;
-
-    std::cout << "header length: " << headerLength << std::endl;
 
     file.seekg(startByte);
 

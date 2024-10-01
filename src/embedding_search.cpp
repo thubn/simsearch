@@ -14,11 +14,13 @@ using json = nlohmann::json;
 
 EmbeddingSearch::EmbeddingSearch() : vector_size(0) {}
 
-const std::vector<std::vector<float>>& EmbeddingSearch::getEmbeddings(){
+const std::vector<std::vector<float>> &EmbeddingSearch::getEmbeddings()
+{
     return embeddings;
 }
 
-const size_t& EmbeddingSearch::getVectorSize(){
+const size_t &EmbeddingSearch::getVectorSize()
+{
     return vector_size;
 }
 
@@ -31,23 +33,32 @@ bool EmbeddingSearch::load_safetensors(const std::string &filename)
         return false;
     }
 
-    std::cout << "in1" << std::endl;
-
-    auto stringJson = readUTF8StringFromFile(filename, 8);
-
-    std::cout << "in2" << std::endl;
+    // get Header length
+    uint64_t headerLength;
+    auto stringJson = readUTF8StringFromFile(filename, 8, headerLength);
+    std::cout << "header length: " << headerLength << std::endl;
 
     json safetensorsHeader = json::parse(stringJson);
 
     std::cout << "Json Header:\n"
               << safetensorsHeader.dump() << std::endl;
-    // exit(0);
 
+    // get details of safetensors file
     uint64_t num_vectors = safetensorsHeader.at("shard_0").at("shape").at(0).get<int>();
     uint64_t vector_dim = safetensorsHeader.at("shard_0").at("shape").at(1).get<int>();
+    uint64_t data_offset = safetensorsHeader.at("shard_0").at("data_offsets").at(0).get<int>();
+    uint64_t num_shard_offset = safetensorsHeader.at("num_shard").at("data_offsets").at(0).get<int>();
+
+    // get number of shards in safetensors file (unused)
+    file.seekg(8 + headerLength + num_shard_offset);
+    int64_t num_shards;
+    file.read(reinterpret_cast<char *>(&num_shards), sizeof(num_shards));
 
     vector_size = vector_dim;
     embeddings.resize(num_vectors, std::vector<float>(vector_dim));
+
+    // change read position to the position of embedding/vector data
+    file.seekg(8 + headerLength + data_offset);
 
     // Read embedding data
     for (auto &vec : embeddings)
@@ -59,7 +70,7 @@ bool EmbeddingSearch::load_safetensors(const std::string &filename)
     return true;
 }
 
-std::vector<size_t> EmbeddingSearch::similarity_search(const std::vector<float> &query, size_t k)
+std::vector<std::pair<float, size_t>> EmbeddingSearch::similarity_search(const std::vector<float> &query, size_t k)
 {
     if (query.size() != vector_size)
     {
@@ -79,11 +90,12 @@ std::vector<size_t> EmbeddingSearch::similarity_search(const std::vector<float> 
                       [](const auto &a, const auto &b)
                       { return a.first > b.first; });
 
-    std::vector<size_t> result;
+    //std::vector<size_t> result;
+    std::vector<std::pair<float, size_t>> result;
     result.reserve(k);
     for (size_t i = 0; i < k && i < similarities.size(); ++i)
     {
-        result.push_back(similarities[i].second);
+        result.push_back(similarities[i]);
     }
 
     return result;
