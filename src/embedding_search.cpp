@@ -19,7 +19,13 @@ const std::vector<std::vector<float>> &EmbeddingSearch::getEmbeddings()
     return embeddings;
 }
 
-const std::vector<std::string> &EmbeddingSearch::getSentences(){
+const std::vector<std::vector<bool>> &EmbeddingSearch::getBinaryEmbeddings()
+{
+    return binary_embeddings;
+}
+
+const std::vector<std::string> &EmbeddingSearch::getSentences()
+{
     return sentences;
 }
 
@@ -100,34 +106,71 @@ bool EmbeddingSearch::load_json(const std::string &filename)
 
     file.clear();
     file.seekg(0);
-    while (std::getline(file, line)) {
-        try {
+    while (std::getline(file, line))
+    {
+        try
+        {
             json j = json::parse(line);
-            //std::cout << "Line " << lineNumber << ": " << j.dump() << std::endl;
+            // std::cout << "Line " << lineNumber << ": " << j.dump() << std::endl;
             embeddings[lineNumber] = j.at("all-MiniLM-L6-v2").get<std::vector<float>>();
             sentences[lineNumber] = j.at("body").get<std::string>();
-        } catch (json::parse_error& e) {
+        }
+        catch (json::parse_error &e)
+        {
             std::cerr << "Parse error on line " << lineNumber << ": " << e.what() << std::endl;
         }
         lineNumber++;
-        //exit(0);
     }
     file.close();
     std::cout << "Loaded " << num_vectors << " embeddings of dimension " << vector_size << std::endl;
     return true;
+}
 
-    /*
-    std::ifstream f(filename);
-    if (!f)
+bool EmbeddingSearch::load_json2(const std::string &filename)
+{
+    std::ifstream file(filename);
+    if (!file)
     {
         std::cerr << "Failed to open file: " << filename << std::endl;
         return false;
     }
+    std::string line;
+    int lineNumber = 0;
+    int num_vectors = countLines(filename);
 
-    json data = json::parse(f);
-    std::cout << "json first file: " << data.at(0).dump() << std::endl;
-    */
-    exit(0);
+    std::cout << "Num Lines: " << num_vectors << std::endl;
+
+    std::getline(file, line);
+    json j = json::parse(line);
+
+    
+    vector_size = j.at(1).at("data").at(0).at("embedding").size();
+    std::cout << "Dimensions: " << vector_size << std::endl;
+
+    embeddings.resize(num_vectors, std::vector<float>(vector_size));
+    sentences.resize(num_vectors);
+
+    file.clear();
+    file.seekg(0);
+    while (std::getline(file, line))
+    {
+        try
+        {
+            json j = json::parse(line);
+            // std::cout << "Line " << lineNumber << ": " << j.dump() << std::endl;
+            embeddings[lineNumber] = j.at(1).at("data").at(0).at("embedding").get<std::vector<float>>();
+            sentences[lineNumber] = j.at(0).at("input").get<std::string>();
+        }
+        catch (json::parse_error &e)
+        {
+            std::cerr << "Parse error on line " << lineNumber << ": " << e.what() << std::endl;
+        }
+        lineNumber++;
+        // exit(0);
+    }
+    file.close();
+    std::cout << "Loaded " << num_vectors << " embeddings of dimension " << vector_size << std::endl;
+    return true;
 }
 
 std::vector<std::pair<float, size_t>> EmbeddingSearch::similarity_search(const std::vector<float> &query, size_t k)
@@ -175,4 +218,58 @@ float EmbeddingSearch::cosine_similarity(const std::vector<float> &a, const std:
     }
 
     return dot_product / (std::sqrt(mag_a) * std::sqrt(mag_b));
+}
+
+bool EmbeddingSearch::create_binary_embedding_from_float(){
+    binary_embeddings.resize(embeddings.size(), std::vector<bool>(vector_size));
+    
+    int size = embeddings.size();
+
+    for(int i = 0; i < size; i++){
+        for(int j = 0; j < vector_size; j++){
+            uint32_t intBits = *reinterpret_cast<uint32_t*>(&embeddings[i][j]);
+            bool signBit = intBits >> 31;
+            binary_embeddings[i][j] = !signBit;
+        }
+    }
+    return true;
+}
+
+std::vector<std::pair<int, size_t>> EmbeddingSearch::binary_similarity_search(const std::vector<bool> &query, size_t k)
+{
+    if (query.size() != vector_size)
+    {
+        throw std::runtime_error("Query vector size does not match embedding size");
+    }
+
+    std::vector<std::pair<int, size_t>> similarities;
+    similarities.reserve(embeddings.size());
+
+    for (size_t i = 0; i < embeddings.size(); ++i)
+    {
+        int sim = binary_cosine_similarity(query, binary_embeddings[i]);
+        similarities.emplace_back(sim, i);
+    }
+
+    std::partial_sort(similarities.begin(), similarities.begin() + k, similarities.end(),
+                      [](const auto &a, const auto &b)
+                      { return a.first > b.first; });
+
+    // std::vector<size_t> result;
+    std::vector<std::pair<int, size_t>> result;
+    result.reserve(k);
+    for (size_t i = 0; i < k && i < similarities.size(); ++i)
+    {
+        result.push_back(similarities[i]);
+    }
+
+    return result;
+}
+
+int EmbeddingSearch::binary_cosine_similarity(const std::vector<bool> &a, const std::vector<bool> &b){
+    int dot_product = 0;
+    for(size_t i = 0; i < vector_size; i++){
+        dot_product += !(a[i] ^ b[i]);
+    }
+    return dot_product;
 }

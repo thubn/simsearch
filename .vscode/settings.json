@@ -61,7 +61,9 @@
         "ratio": "cpp",
         "iomanip": "cpp",
         "ranges": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "chrono": "cpp",
+        "unordered_set": "cpp"
     },
     "makefile.makefilePath": "build/Makefile"
 }
