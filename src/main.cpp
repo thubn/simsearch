@@ -79,6 +79,7 @@ int main()
     searcher.create_binary_embedding_from_float();
 
     std::cout << "vector_size: " << searcher.getVectorSize() << "\nEmbeddings: " << searcher.getEmbeddings().size() << std::endl;
+    std::cout << "binary vector_size: " << searcher.getBinaryEmbeddings()[0].size() << "\nbinary Embeddings: " << searcher.getBinaryEmbeddings().size() << std::endl;
 
     // Generate random index
     std::random_device rd;
@@ -92,10 +93,10 @@ int main()
 
         // Example query vector
         std::vector<float> query = searcher.getEmbeddings()[random_index];
-        std::vector<bool> binary_query = searcher.getBinaryEmbeddings()[random_index];
+        std::vector<u_int64_t> binary_query = searcher.getBinaryEmbeddings()[random_index];
 
         // Perform similarity search
-        size_t k = 100; // Number of similar vectors to retrieve
+        size_t k = 25; // Number of similar vectors to retrieve
 
         auto start = std::chrono::high_resolution_clock::now();
         std::vector<std::pair<float, size_t>> results = searcher.similarity_search(query, k);

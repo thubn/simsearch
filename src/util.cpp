@@ -64,3 +64,11 @@ int countLines(const std::string& filename) {
 
     return lineCount;
 }
+
+std::string uint64ToBinaryString(uint64_t value) {
+    std::string binary;
+    for (int i = 63; i >= 0; --i) {
+        binary += (value & (1ULL << i)) ? '1' : '0';
+    }
+    return binary;
+}

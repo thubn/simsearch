@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <vector>
 #include <nlohmann/json.hpp>
+#include <bitset>
 using json = nlohmann::json;
 
 EmbeddingSearch::EmbeddingSearch() : vector_size(0) {}
@@ -19,7 +20,7 @@ const std::vector<std::vector<float>> &EmbeddingSearch::getEmbeddings()
     return embeddings;
 }
 
-const std::vector<std::vector<bool>> &EmbeddingSearch::getBinaryEmbeddings()
+const std::vector<std::vector<uint64_t>> &EmbeddingSearch::getBinaryEmbeddings()
 {
     return binary_embeddings;
 }
@@ -143,7 +144,6 @@ bool EmbeddingSearch::load_json2(const std::string &filename)
     std::getline(file, line);
     json j = json::parse(line);
 
-    
     vector_size = j.at(1).at("data").at(0).at("embedding").size();
     std::cout << "Dimensions: " << vector_size << std::endl;
 
@@ -220,24 +220,62 @@ float EmbeddingSearch::cosine_similarity(const std::vector<float> &a, const std:
     return dot_product / (std::sqrt(mag_a) * std::sqrt(mag_b));
 }
 
-bool EmbeddingSearch::create_binary_embedding_from_float(){
+/*bool EmbeddingSearch::create_binary_embedding_from_float()
+{
     binary_embeddings.resize(embeddings.size(), std::vector<bool>(vector_size));
-    
+
     int size = embeddings.size();
 
-    for(int i = 0; i < size; i++){
-        for(int j = 0; j < vector_size; j++){
-            uint32_t intBits = *reinterpret_cast<uint32_t*>(&embeddings[i][j]);
+    for (int i = 0; i < size; i++)
+    {
+        for (int j = 0; j < vector_size; j++)
+        {
+            uint32_t intBits = *reinterpret_cast<uint32_t *>(&embeddings[i][j]);
             bool signBit = intBits >> 31;
             binary_embeddings[i][j] = !signBit;
         }
     }
     return true;
+}*/
+
+bool EmbeddingSearch::create_binary_embedding_from_float()
+{
+    int intsize = sizeof(uint64_t) * 8;
+    binary_embeddings.resize(embeddings.size(), std::vector<uint64_t>(vector_size / intsize));
+
+    int size = binary_embeddings.size();
+
+    // loop embeddings (<=> vectors)
+    for (int i = 0; i < size; i++)
+    {
+        // loop uint64_t vector components
+        for (int j = 0; j < vector_size / intsize; j++)
+        {
+            // loop bits of uint64_t vector component
+            for (int k = 0; k < intsize; k++)
+            {
+                uint32_t intBits = *reinterpret_cast<uint32_t *>(&embeddings[i][(intsize * j) + k]);
+                bool signBit = intBits >> 31;
+                signBit = !signBit;
+                binary_embeddings[i][j] |= static_cast<uint64_t>(signBit) << (intsize - k - 1);
+            }
+        }
+        /*
+        std::cout << "Binary: " << std::endl;
+        for (uint64_t &vec : binary_embeddings[i])
+        {
+            std::cout << uint64ToBinaryString(vec) << std::endl;
+            ;
+        }
+        exit(0);
+        */
+    }
+    return true;
 }
 
-std::vector<std::pair<int, size_t>> EmbeddingSearch::binary_similarity_search(const std::vector<bool> &query, size_t k)
+std::vector<std::pair<int, size_t>> EmbeddingSearch::binary_similarity_search(const std::vector<uint64_t> &query, size_t k)
 {
-    if (query.size() != vector_size)
+    if (query.size() != vector_size / 64)
     {
         throw std::runtime_error("Query vector size does not match embedding size");
     }
@@ -266,10 +304,35 @@ std::vector<std::pair<int, size_t>> EmbeddingSearch::binary_similarity_search(co
     return result;
 }
 
-int EmbeddingSearch::binary_cosine_similarity(const std::vector<bool> &a, const std::vector<bool> &b){
+int EmbeddingSearch::binary_cosine_similarity(const std::vector<uint64_t> &a, const std::vector<uint64_t> &b)
+{
     int dot_product = 0;
-    for(size_t i = 0; i < vector_size; i++){
-        dot_product += !(a[i] ^ b[i]);
+    for (size_t i = 0; i < a.size(); i++){
+        std::cout << "a[i]: " << uint64ToBinaryString(a[i]) << std::endl;
+        exit(0);
+        uint64_t result = ~(a[i] ^ b[i]);
+        dot_product += __builtin_popcount(result);
     }
     return dot_product;
+}
+
+/*
+int EmbeddingSearch::binary_cosine_similarity(const std::vector<uint64_t> &a, const std::vector<uint64_t> &b)
+{
+    int dot_product = 0;
+    for (size_t i = 0; i < vector_size; i++)
+    {
+        dot_product += a[i] == b[i];
+    }
+    return dot_product;
+}
+*/
+
+int EmbeddingSearch::binary_cosine_similarity2(const std::vector<uint64_t> &a, const std::vector<uint64_t> &b)
+{
+    std::vector<bool> result(vector_size);
+    std::transform(a.begin(), a.end(), b.begin(), result.begin(), [](bool a, bool b)
+                   { return a == b; });
+
+    return std::accumulate(result.begin(), result.end(), 0);
 }

@@ -17,5 +17,6 @@
 std::string readUTF8StringFromFile(const std::string& filename, std::streampos startByte, uint64_t& headerLength);
 
 int countLines(const std::string& filename);
+std::string uint64ToBinaryString(uint64_t value);
 
 #endif // UTF8_STRING_READER_H
