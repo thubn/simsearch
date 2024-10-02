@@ -1,7 +1,5 @@
 #include "embedding_search.h"
 #include "util.h"
-#define SAFETENSORS_CPP_IMPLEMENTATION
-#include "safetensors.hh"
 #include <fstream>
 #include <cmath>
 #include <algorithm>
@@ -11,6 +9,7 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 #include <bitset>
+#include <x86gprintrin.h>
 using json = nlohmann::json;
 
 EmbeddingSearch::EmbeddingSearch() : vector_size(0) {}
@@ -207,17 +206,18 @@ std::vector<std::pair<float, size_t>> EmbeddingSearch::similarity_search(const s
 float EmbeddingSearch::cosine_similarity(const std::vector<float> &a, const std::vector<float> &b)
 {
     float dot_product = 0.0f;
-    float mag_a = 0.0f;
-    float mag_b = 0.0f;
+    //float mag_a = 0.0f;
+    //float mag_b = 0.0f;
 
     for (size_t i = 0; i < a.size(); ++i)
     {
         dot_product += a[i] * b[i];
-        mag_a += a[i] * a[i];
-        mag_b += b[i] * b[i];
+        //mag_a += a[i] * a[i];
+        //mag_b += b[i] * b[i];
     }
 
-    return dot_product / (std::sqrt(mag_a) * std::sqrt(mag_b));
+    //return dot_product / (std::sqrt(mag_a) * std::sqrt(mag_b));
+    return dot_product;
 }
 
 /*bool EmbeddingSearch::create_binary_embedding_from_float()
@@ -309,8 +309,9 @@ int EmbeddingSearch::binary_cosine_similarity(const std::vector<uint64_t> &a, co
     int dot_product = 0;
     for (size_t i = 0; i < a.size(); i++){
         uint64_t result = ~(a[i] ^ b[i]);
-        dot_product += __builtin_popcount(result);
-        dot_product += __builtin_popcount(result >> 32);
+        dot_product += _popcnt64(result);
+        //dot_product += __builtin_popcount(result);
+        //dot_product += __builtin_popcount(result >> 32);
     }
     return dot_product;
 }
