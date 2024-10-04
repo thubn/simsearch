@@ -133,13 +133,13 @@ int main()
                   << "Time binary_avx2_similarity_search: " << time_binary_avx2_similarity_search << "us" << std::endl;
         std::cout << "Jaccard Index:\nf32 - binary: " << calculateJaccardIndex(results, binary_results) << " | f32 - avx2: " << calculateJaccardIndex(results, avx2_results) << " | f32 - binary_avx2: " << calculateJaccardIndex(results, binary_avx2_results) << std::endl;
         std::cout << "Top " << k << " similar vectors:" << std::endl
-                  << "f32 - binary - avx2 - binary_avx2" << std::endl;
+                  << "f32 | binary | avx2 | binary_avx2" << std::endl;
         for (int i = 0; i < k; i++)
         {
             std::cout << "Index: " << results[i].second << "\tScore: " << results[i].first
-                      << "\tIndex: " << binary_results[i].second << "\tScore: " << binary_results[i].first
-                      << "\tIndex: " << avx2_results[i].second << "\tScore: " << avx2_results[i].first
-                      << "\tIndex: " << binary_avx2_results[i].second << "\tScore: " << binary_avx2_results[i].first
+                      << "\t| Index: " << binary_results[i].second << "\tScore: " << binary_results[i].first
+                      << "\t| Index: " << avx2_results[i].second << "\tScore: " << avx2_results[i].first
+                      << "\t| Index: " << binary_avx2_results[i].second << "\tScore: " << binary_avx2_results[i].first
                       << std::endl;
         }
         std::cout << "===========================================================" << std::endl;
