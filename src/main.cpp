@@ -74,7 +74,7 @@ int main()
     {
         return 1;
     }*/
-    if (!searcher.load_json2("../data/requests_for_openai_embeddings_result.jsonl"))
+    if (!searcher.load_json2("../data/10k_requests_for_openai_embeddings_result.jsonl"))
     {
         return 1;
     }

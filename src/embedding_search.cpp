@@ -309,7 +309,7 @@ int EmbeddingSearch::binary_cosine_similarity(const std::vector<uint64_t> &a, co
     int dot_product = 0;
     for (size_t i = 0; i < a.size(); i++){
         uint64_t result = ~(a[i] ^ b[i]);
-        dot_product += _popcnt64(result);
+        dot_product += __builtin_popcountll(result);
         //dot_product += __builtin_popcount(result);
         //dot_product += __builtin_popcount(result >> 32);
     }

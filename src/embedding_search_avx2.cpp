@@ -15,10 +15,10 @@
 
 int popcount_avx2(const __m256i &v)
 {
-    int result = _popcnt64(_mm256_extract_epi64(v, 0));
-    result += _popcnt64(_mm256_extract_epi64(v, 1));
-    result += _popcnt64(_mm256_extract_epi64(v, 2));
-    result += _popcnt64(_mm256_extract_epi64(v, 3));
+    int result = __builtin_popcountll(_mm256_extract_epi64(v, 0));
+    result += __builtin_popcountll(_mm256_extract_epi64(v, 1));
+    result += __builtin_popcountll(_mm256_extract_epi64(v, 2));
+    result += __builtin_popcountll(_mm256_extract_epi64(v, 3));
 
     return result;
 }
