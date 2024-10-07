@@ -20,18 +20,6 @@ find_package(nlohmann_json REQUIRED)
 # Add the include directory to the include path
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# Create a library from the source files
-#add_library(embedding_search_float_lib src/embedding_search_float.cpp)
-#add_library(embedding_search_avx2_lib src/embedding_search_avx2.cpp)
-#add_library(util_lib src/util.cpp)
-
-# Link nlohmann_json to the library
-#target_link_libraries(embedding_search_lib
-#    PRIVATE 
-#        nlohmann_json::nlohmann_json
-#        util_lib
-#)
-
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/embedding_io.cpp
@@ -43,8 +31,6 @@ add_executable(${PROJECT_NAME}
 # Link the library and any other dependencies
 target_link_libraries(${PROJECT_NAME}
     PRIVATE 
-#        embedding_search_lib
-#        embedding_search_avx2_lib
         nlohmann_json::nlohmann_json
 )
 

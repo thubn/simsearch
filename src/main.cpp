@@ -76,14 +76,6 @@ int main()
     searcherBinary.create_binary_embedding_from_float(searcher.getEmbeddings());
     searcherBinaryAvx2.create_binary_embedding_from_float(searcher.getEmbeddings());
 
-    // searcherAvx2.setEbeddings(searcher.getEmbeddings());
-
-    // searcher.create_binary_embedding_from_float();
-    // searcherAvx2.setBinaryEbeddings(searcher.getBinaryEmbeddings());
-
-    // std::cout << "vector_size: " << searcher.getVectorSize() << "\nEmbeddings: " << searcher.getEmbeddings().size() << std::endl;
-    // std::cout << "binary vector_size: " << searcher.getBinaryEmbeddings()[0].size() << "\nbinary Embeddings: " << searcher.getBinaryEmbeddings().size() << std::endl;
-
     // Generate random index
     std::random_device rd;
     std::mt19937 gen(rd());
