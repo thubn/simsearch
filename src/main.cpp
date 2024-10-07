@@ -1,5 +1,7 @@
-#include "embedding_search.h"
+// #include "embedding_search.h"
 #include "embedding_search_avx2.h"
+#include "embedding_search_float.h"
+#include "embedding_search_binary.h"
 #include <iostream>
 #include <vector>
 #include <random>
@@ -62,8 +64,9 @@ long long benchmarkTime(Func func)
 
 int main()
 {
-    EmbeddingSearch searcher;
-    EmbeddingSearchAvx2 searcherAvx2;
+    EmbeddingSearchFloat searcher;
+    EmbeddingSearchAVX2 searcherAvx2;
+    EmbeddingSearchBinary searcherBinary;
 
     // Load embeddings
     /*if (!searcher.load_safetensors("../data/embeddings.safetensors"))
@@ -74,18 +77,21 @@ int main()
     {
         return 1;
     }*/
-    if (!searcher.load_json2("../data/10k_requests_for_openai_embeddings_result.jsonl"))
+    /*if (!searcher.load_json2("../data/10k_requests_for_openai_embeddings_result.jsonl"))
     {
         return 1;
-    }
+    }*/
+    searcher.load("../data/requests_for_openai_embeddings_result.jsonl");
+    searcherAvx2.setEmbeddings(searcher.getEmbeddings());
+    searcherBinary.create_binary_embedding_from_float(searcher.getEmbeddings());
 
-    searcherAvx2.setEbeddings(searcher.getEmbeddings());
+    // searcherAvx2.setEbeddings(searcher.getEmbeddings());
 
-    searcher.create_binary_embedding_from_float();
-    searcherAvx2.setBinaryEbeddings(searcher.getBinaryEmbeddings());
+    // searcher.create_binary_embedding_from_float();
+    // searcherAvx2.setBinaryEbeddings(searcher.getBinaryEmbeddings());
 
-    std::cout << "vector_size: " << searcher.getVectorSize() << "\nEmbeddings: " << searcher.getEmbeddings().size() << std::endl;
-    std::cout << "binary vector_size: " << searcher.getBinaryEmbeddings()[0].size() << "\nbinary Embeddings: " << searcher.getBinaryEmbeddings().size() << std::endl;
+    // std::cout << "vector_size: " << searcher.getVectorSize() << "\nEmbeddings: " << searcher.getEmbeddings().size() << std::endl;
+    // std::cout << "binary vector_size: " << searcher.getBinaryEmbeddings()[0].size() << "\nbinary Embeddings: " << searcher.getBinaryEmbeddings().size() << std::endl;
 
     // Generate random index
     std::random_device rd;
@@ -99,9 +105,9 @@ int main()
 
         // Example query vector
         std::vector<float> query = searcher.getEmbeddings()[random_index];
-        std::vector<u_int64_t> binary_query = searcher.getBinaryEmbeddings()[random_index];
+        std::vector<u_int64_t> binary_query = searcherBinary.getEmbeddings()[random_index];
         std::vector<__m256> queryAvx2 = searcherAvx2.getEmbeddings()[random_index];
-        std::vector<__m256i> binary_queryAvx2 = searcherAvx2.getBinaryEmbeddings()[random_index];
+        // std::vector<__m256i> binary_queryAvx2 = searcherAvx2.getBinaryEmbeddings()[random_index];
 
         // Perform similarity search
         size_t k = 25; // Number of similar vectors to retrieve
@@ -111,35 +117,40 @@ int main()
         std::vector<std::pair<float, size_t>> results = searcher.similarity_search(query, k);
         auto end = std::chrono::high_resolution_clock::now();
         auto time_similarity_search = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
         // Binary
         start = end;
-        std::vector<std::pair<int, size_t>> binary_results = searcher.binary_similarity_search(binary_query, k);
+        std::vector<std::pair<int, size_t>> binary_results = searcherBinary.similarity_search(binary_query, k);
         end = std::chrono::high_resolution_clock::now();
         auto time_binary_similarity_search = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
         // AVX2
         start = end;
         std::vector<std::pair<float, size_t>> avx2_results = searcherAvx2.similarity_search(queryAvx2, k);
         end = std::chrono::high_resolution_clock::now();
         auto time_avx2_similarity_search = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         // Binary AVX2
+        /*
         start = end;
         std::vector<std::pair<int, size_t>> binary_avx2_results = searcherAvx2.binary_similarity_search(binary_queryAvx2, k);
         end = std::chrono::high_resolution_clock::now();
         auto time_binary_avx2_similarity_search = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        */
 
         std::cout << "Time similarity_search:             " << time_similarity_search << "us\n"
-                  << "Time avx2_similarity_search:        " << time_avx2_similarity_search << "us\n"
-                  << "Time binary_similarity_search:      " << time_binary_similarity_search << "us\n"
-                  << "Time binary_avx2_similarity_search: " << time_binary_avx2_similarity_search << "us" << std::endl;
-        std::cout << "Jaccard Index:\nf32 - binary: " << calculateJaccardIndex(results, binary_results) << " | f32 - avx2: " << calculateJaccardIndex(results, avx2_results) << " | f32 - binary_avx2: " << calculateJaccardIndex(results, binary_avx2_results) << std::endl;
+                  << "Time avx2_similarity_search:        " << time_avx2_similarity_search << "us\tSpeedup to f32: x" << (float)time_similarity_search / time_avx2_similarity_search << "\n"
+                  << "Time binary_similarity_search:      " << time_binary_similarity_search << "us\tSpeedup to AVX2: x" << (float)time_avx2_similarity_search / time_binary_similarity_search << "\tSpeedup to f32: x" << (float)time_similarity_search / time_binary_similarity_search << "\n"
+                  //<< "Time binary_avx2_similarity_search: " << time_binary_avx2_similarity_search << "us"
+                  << std::endl;
+        std::cout << "Jaccard Index:\nf32 - binary: " << calculateJaccardIndex(results, binary_results) << " | f32 - avx2: " << calculateJaccardIndex(results, avx2_results) << std::endl;
         std::cout << "Top " << k << " similar vectors:" << std::endl
-                  << "f32 | binary | avx2 | binary_avx2" << std::endl;
+                  << "f32 - avx2 - binary - binary_avx2" << std::endl;
         for (int i = 0; i < k; i++)
         {
             std::cout << "Index: " << results[i].second << "\tScore: " << results[i].first
-                      << "\t| Index: " << binary_results[i].second << "\tScore: " << binary_results[i].first
-                      << "\t| Index: " << avx2_results[i].second << "\tScore: " << avx2_results[i].first
-                      << "\t| Index: " << binary_avx2_results[i].second << "\tScore: " << binary_avx2_results[i].first
+                      << "\tIndex: " << avx2_results[i].second << "\tScore: " << avx2_results[i].first
+                      << "\tIndex: " << binary_results[i].second << "\tScore: " << binary_results[i].first
+                      //<< "\tIndex: " << binary_avx2_results[i].second << "\tScore: " << binary_avx2_results[i].first
                       << std::endl;
         }
         std::cout << "===========================================================" << std::endl;
