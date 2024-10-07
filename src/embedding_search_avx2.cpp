@@ -53,6 +53,29 @@ std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(con
     return std::vector<std::pair<float, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
+std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(const std::vector<__m256> &query, size_t k, std::vector<std::pair<int, size_t>> &searchIndexes)
+{
+    if (query.size() != embeddings[0].size())
+    {
+        throw std::runtime_error("Query vector size does not match embedding size");
+    }
+
+    std::vector<std::pair<float, size_t>> similarities;
+    similarities.reserve(searchIndexes.size());
+
+    for (int i = 0; i < searchIndexes.size(); i++)
+    {
+        float sim = cosine_similarity(query, embeddings[searchIndexes[i].second]);
+        similarities.emplace_back(sim, searchIndexes[i].second);
+    }
+
+    std::partial_sort(similarities.begin(), similarities.begin() + k, similarities.end(),
+                      [](const auto &a, const auto &b)
+                      { return a.first > b.first; });
+
+    return std::vector<std::pair<float, size_t>>(similarities.begin(), similarities.begin() + k);
+}
+
 bool EmbeddingSearchAVX2::setEmbeddings(const std::vector<std::vector<float>> &m)
 {
     if (m.empty() || m[0].size() % 8 != 0)
