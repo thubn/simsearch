@@ -77,21 +77,33 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
             size_t k = j * 32;
             // embeddings[i][j] = _mm256_loadu_ps(&m[i][k]);
 
-            std::vector<uint8_t> a(32, 0);
+            std::vector<int8_t> a(32, 0);
             for (int l = 0; l < 32; l++)
             {
-                a[l] = (m[i][k + l] + 1) * 8;
-                if (a[l] > 15)
-                {
-                    a[l] = 15;
-                }
-                std::cout << "a[" << l << "]: " << a[l] << " m: " << (m[i][k + l] + 1) * 8 << "\t| ";
+                //JI: 0.756784 (sample size: 1000)
+                //a[l] = m[i][k + l] * 127;
+                
+                //JI: 0.530709 (sample size: 250) (exactly the same as binary?!? why?)
+                /*
+                float n = 1 / 4;
+                float x = m[i][k + l];
+                a[l] = std::copysign(std::pow(std::abs(x), n), x) * 127;
+                */
+                
+                //JI: 0.538676 (sample size: 250)
+                /*
+                float val = m[i][k + l];
+                uint32_t* floatBits = reinterpret_cast<uint32_t*>(&val);
+                a[l] = static_cast<int8_t>(*floatBits >> 24);
+                */
+                
+                // std::cout << "a[" << l << "]: " << (int)a[l] << " m: " << (m[i][k + l] + 1) * 8 << "\t| ";
             }
             // embeddings[i][j] = _mm256_loadu_epi8(a.data());
             embeddings[i][j] = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a.data()));
-            std::cout << std::endl;
+            // std::cout << std::endl;
         }
-        exit(0);
+        // exit(0);
     }
 
     return true;
@@ -99,34 +111,39 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
 
 uint EmbeddingSearchUint8AVX2::cosine_similarity(const std::vector<__m256i> &a, const std::vector<__m256i> &b)
 {
-    __m256i dot_product = _mm256_setzero_si256();
+    if (a.size() != b.size())
+    {
+        throw std::runtime_error("Vectors must have the same size");
+    }
+
+    __m256i sum_lo = _mm256_setzero_si256();
+    __m256i sum_hi = _mm256_setzero_si256();
 
     for (size_t i = 0; i < a.size(); ++i)
     {
-        //__m256i prod = _mm256_mullo_epi16(a[i], b[i]);
-        // dot_product = _mm256_mul(dot_product, prod);
-        // mag_a = _mm256_add_ps(mag_a, _mm256_mul_ps(a[i], a[i]));
-        // mag_b = _mm256_add_ps(mag_b, _mm256_mul_ps(b[i], b[i]));
+        // Multiply and add
+        __m256i mul_lo = _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[i], 0)),
+                                            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[i], 0)));
+        __m256i mul_hi = _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[i], 1)),
+                                            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[i], 1)));
 
-        __m256i mult_low = _mm256_mullo_epi16(_mm256_cvtepu8_epi16(_mm256_extracti128_si256(a[i], 0)),
-                                              _mm256_cvtepu8_epi16(_mm256_extracti128_si256(b[i], 0)));
-        __m256i mult_high = _mm256_mullo_epi16(_mm256_cvtepu8_epi16(_mm256_extracti128_si256(a[i], 1)),
-                                               _mm256_cvtepu8_epi16(_mm256_extracti128_si256(b[i], 1)));
-
-        dot_product = _mm256_add_epi32(dot_product, _mm256_cvtepu16_epi32(_mm256_extracti128_si256(mult_low, 0)));
-        dot_product = _mm256_add_epi32(dot_product, _mm256_cvtepu16_epi32(_mm256_extracti128_si256(mult_low, 1)));
-        dot_product = _mm256_add_epi32(dot_product, _mm256_cvtepu16_epi32(_mm256_extracti128_si256(mult_high, 0)));
-        dot_product = _mm256_add_epi32(dot_product, _mm256_cvtepu16_epi32(_mm256_extracti128_si256(mult_high, 1)));
+        sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo, _mm256_set1_epi16(1)));
+        sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi, _mm256_set1_epi16(1)));
     }
 
-    // Horizontal sum
-    __m128i sum128 = _mm_add_epi32(_mm256_extracti128_si256(dot_product, 0),
-                                   _mm256_extracti128_si256(dot_product, 1));
-    sum128 = _mm_add_epi32(sum128, _mm_srli_si128(sum128, 8));
-    sum128 = _mm_add_epi32(sum128, _mm_srli_si128(sum128, 4));
-    uint sum = _mm_cvtsi128_si32(sum128);
+    // Combine the results
+    __m256i sum = _mm256_add_epi32(sum_lo, sum_hi);
 
-    return sum;
+    // Horizontal sum
+    __m128i sum_128 = _mm_add_epi32(_mm256_extracti128_si256(sum, 0),
+                                    _mm256_extracti128_si256(sum, 1));
+    sum_128 = _mm_add_epi32(sum_128, _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(1, 0, 3, 2)));
+    sum_128 = _mm_add_epi32(sum_128, _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(2, 3, 0, 1)));
+
+    int32_t result = _mm_cvtsi128_si32(sum_128);
+
+    // Scale the result to match float32 range
+    return result;
 }
 
 /*float EmbeddingSearchUint8AVX2::dot_product_avx2(__m256 a, __m256 b)

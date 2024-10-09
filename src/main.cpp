@@ -80,7 +80,7 @@ int main()
     EmbeddingSearchUint8AVX2 searcherUint8Avx2;
 
     // Load embeddings
-    searcher.load("../data/10k_requests_for_openai_embeddings_result.jsonl");
+    searcher.load("../data/requests_for_openai_embeddings_result.jsonl");
     searcherAvx2.setEmbeddings(searcher.getEmbeddings());
     searcherBinary.create_binary_embedding_from_float(searcher.getEmbeddings());
     searcherBinaryAvx2.create_binary_embedding_from_float(searcher.getEmbeddings());
@@ -93,8 +93,8 @@ int main()
 
     // Number of similar vectors to retrieve
     size_t k = 25;
-    size_t runs = 10;
-    size_t rescoring_factor = 100;
+    size_t runs = 250;
+    size_t rescoring_factor = 50;
 
     // arrays for saving results times and jaccard
     std::vector<int64_t> times;
@@ -105,7 +105,7 @@ int main()
     for (int i = 0; i < runs; i++)
     {
         auto random_index = distrib(gen);
-        std::cout << "random index: " << random_index << std::endl;
+        //std::cout << "random index: " << random_index << std::endl;
 
         // Example query vector
         std::vector<float> query = searcher.getEmbeddings()[random_index];
@@ -151,6 +151,7 @@ int main()
         end = std::chrono::high_resolution_clock::now();
         auto time_uint8_avx2_similarity_search = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
+        /*
         std::cout << "Time similarity_search:             " << time_similarity_search << "us\n"
                   << "Time avx2_similarity_search:        " << time_avx2_similarity_search << "us\n"
                   << "Time binary_similarity_search:      " << time_binary_similarity_search << "us\n"
@@ -179,18 +180,21 @@ int main()
                       << std::endl;
         }
         std::cout << "===========================================================" << std::endl;
+        */
 
         times[F32] += time_similarity_search;
         times[F32_AVX2] += time_avx2_similarity_search;
         times[BINARY] += time_binary_similarity_search;
         times[BINARY_AVX2] += time_binary_avx2_similarity_search;
         times[BAVX2_F32AVX2] += time_binary_avx2_float32_avx2_similarity_search;
+        times[UINT8_AVX2] += time_uint8_avx2_similarity_search;
 
         //jaccardIndexes[F32] += time_similarity_search;
         jaccardIndexes[F32_AVX2] += calculateJaccardIndex(results, avx2_results);
         jaccardIndexes[BINARY] += calculateJaccardIndex(results, binary_results);
         jaccardIndexes[BINARY_AVX2] += calculateJaccardIndex(results, binary_avx2_results);
         jaccardIndexes[BAVX2_F32AVX2] += calculateJaccardIndex(results, avx2_rescore_results);
+        jaccardIndexes[UINT8_AVX2] += calculateJaccardIndex(results, uint8_avx2_results);
     }
     std::cout << "num runs: " << runs << " | k: " << k << " | rescoring_factor: " << rescoring_factor << " | num Embeddings: " << searcher.getEmbeddings().size() << " | vector dimensions: " << searcher.getEmbeddings()[0].size() << std::endl
               << std::endl
@@ -200,12 +204,14 @@ int main()
               << "BINARY:        " << times[BINARY] / runs << "us" << std::endl
               << "BINARY_AVX2:   " << times[BINARY_AVX2] / runs << "us" << std::endl
               << "BAVX2_F32AVX2: " << times[BAVX2_F32AVX2] / runs << "us" << std::endl
+              << "UINT8_AVX2:    " << times[UINT8_AVX2] / runs << "us" << std::endl
               << std::endl
               << "Average Jaccard Index (compared to F32):" << std::endl
               << "F32_AVX2:      " << jaccardIndexes[F32_AVX2] / runs << std::endl
               << "BINARY:        " << jaccardIndexes[BINARY] / runs << std::endl
               << "BINARY_AVX2:   " << jaccardIndexes[BINARY_AVX2] / runs << std::endl
               << "BAVX2_F32AVX2: " << jaccardIndexes[BAVX2_F32AVX2] / runs << std::endl
+              << "UINT8_AVX2:    " << jaccardIndexes[UINT8_AVX2] / runs << std::endl
               << std::endl;
 
     return 0;
