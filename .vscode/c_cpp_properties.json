@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include",
-                "${workspaceFolder}/build"
+                "${workspaceFolder}/build",
+                "${workspaceFolder}/build/build/Release/generators/",
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

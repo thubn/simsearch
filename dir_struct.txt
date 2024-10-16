@@ -1,0 +1,114 @@
+.
+├── build
+│   ├── CMakeCache.txt
+│   ├── CMakeFiles
+│   │   ├── 3.28.2
+│   │   │   ├── CMakeCCompiler.cmake
+│   │   │   ├── CMakeCXXCompiler.cmake
+│   │   │   ├── CMakeDetermineCompilerABI_C.bin
+│   │   │   ├── CMakeDetermineCompilerABI_CXX.bin
+│   │   │   ├── CMakeSystem.cmake
+│   │   │   ├── CompilerIdC
+│   │   │   │   ├── a.out
+│   │   │   │   ├── CMakeCCompilerId.c
+│   │   │   │   └── tmp
+│   │   │   └── CompilerIdCXX
+│   │   │       ├── a.out
+│   │   │       ├── CMakeCXXCompilerId.cpp
+│   │   │       └── tmp
+│   │   ├── cmake.check_cache
+│   │   ├── CMakeConfigureLog.yaml
+│   │   ├── CMakeDirectoryInformation.cmake
+│   │   ├── CMakeScratch
+│   │   ├── Makefile2
+│   │   ├── Makefile.cmake
+│   │   ├── pkgRedirects
+│   │   ├── Progress
+│   │   │   ├── 5
+│   │   │   └── count.txt
+│   │   ├── progress.marks
+│   │   ├── simsearch.dir
+│   │   │   ├── build.make
+│   │   │   ├── cmake_clean.cmake
+│   │   │   ├── compiler_depend.internal
+│   │   │   ├── compiler_depend.make
+│   │   │   ├── compiler_depend.ts
+│   │   │   ├── DependInfo.cmake
+│   │   │   ├── depend.make
+│   │   │   ├── flags.make
+│   │   │   ├── link.txt
+│   │   │   ├── progress.make
+│   │   │   └── src
+│   │   │       ├── embedding_io.cpp.o
+│   │   │       ├── embedding_io.cpp.o.d
+│   │   │       ├── embedding_search_avx2.cpp.o
+│   │   │       ├── embedding_search_avx2.cpp.o.d
+│   │   │       ├── embedding_search_binary_avx2.cpp.o
+│   │   │       ├── embedding_search_binary_avx2.cpp.o.d
+│   │   │       ├── embedding_search_binary.cpp.o
+│   │   │       ├── embedding_search_binary.cpp.o.d
+│   │   │       ├── embedding_search_float.cpp.o
+│   │   │       ├── embedding_search_float.cpp.o.d
+│   │   │       ├── embedding_search_uint8_avx2.cpp.o
+│   │   │       ├── embedding_search_uint8_avx2.cpp.o.d
+│   │   │       ├── main.cpp.o
+│   │   │       └── main.cpp.o.d
+│   │   └── TargetDirectories.txt
+│   ├── cmake_install.cmake
+│   ├── compile_commands.json
+│   ├── Makefile
+│   ├── Release
+│   │   └── generators
+│   │       ├── cmakedeps_macros.cmake
+│   │       ├── CMakePresets.json
+│   │       ├── conanbuildenv-release-x86_64.sh
+│   │       ├── conanbuild.sh
+│   │       ├── conandeps_legacy.cmake
+│   │       ├── conanrunenv-release-x86_64.sh
+│   │       ├── conanrun.sh
+│   │       ├── conan_toolchain.cmake
+│   │       ├── deactivate_conanbuild.sh
+│   │       ├── deactivate_conanrun.sh
+│   │       ├── Eigen3Config.cmake
+│   │       ├── Eigen3ConfigVersion.cmake
+│   │       ├── Eigen3-release-x86_64-data.cmake
+│   │       ├── Eigen3-Target-release.cmake
+│   │       ├── Eigen3Targets.cmake
+│   │       ├── nlohmann_json-config.cmake
+│   │       ├── nlohmann_json-config-version.cmake
+│   │       ├── nlohmann_json-release-x86_64-data.cmake
+│   │       ├── nlohmann_json-Target-release.cmake
+│   │       └── nlohmann_jsonTargets.cmake
+│   └── simsearch
+├── CMakeLists.txt
+├── CMakeUserPresets.json
+├── conanfile.txt
+├── data
+│   ├── 100_requests_for_openai_embeddings_result.jsonl
+│   ├── 10k_requests_for_openai_embeddings_result.jsonl
+│   ├── embeddings.safetensors
+│   ├── requests_for_openai_embeddings_result.jsonl
+│   └── wiki_minilm.ndjson
+├── dir_struct.txt
+├── include
+│   ├── embedding_io.h
+│   ├── embedding_search_avx2.h
+│   ├── embedding_search_base.h
+│   ├── embedding_search_binary_avx2.h
+│   ├── embedding_search_binary.h
+│   ├── embedding_search_float.h
+│   ├── embedding_search.h
+│   ├── embedding_search_uint8_avx2.h
+│   └── util.h
+├── json2.json
+├── json.json
+├── README.md
+└── src
+    ├── embedding_io.cpp
+    ├── embedding_search_avx2.cpp
+    ├── embedding_search_binary_avx2.cpp
+    ├── embedding_search_binary.cpp
+    ├── embedding_search_float.cpp
+    ├── embedding_search_uint8_avx2.cpp
+    ├── main.cpp
+    └── util.cpp

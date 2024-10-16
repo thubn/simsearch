@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
+include(${CMAKE_BINARY_DIR}/Release/generators/conan_toolchain.cmake)
 project(simsearch)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -16,6 +17,7 @@ else()
 endif()
 
 find_package(nlohmann_json REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 # Add the include directory to the include path
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -31,9 +33,12 @@ add_executable(${PROJECT_NAME}
 )
 # Link the library and any other dependencies
 target_link_libraries(${PROJECT_NAME}
+    PUBLIC
+        Eigen3::Eigen
     PRIVATE 
         nlohmann_json::nlohmann_json
 )
+#target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
 
 # Optionally, you can set different flags for Debug and Release builds
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")

@@ -66,5 +66,9 @@
         "unordered_set": "cpp",
         "bitset": "cpp"
     },
-    "makefile.makefilePath": "build/Makefile"
+    "makefile.makefilePath": "build/Makefile",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/build/Release/generators/conan_toolchain.cmake"
+    }
 }

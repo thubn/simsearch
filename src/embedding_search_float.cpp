@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <Eigen/Dense>
 
 bool EmbeddingSearchFloat::load(const std::string &filename)
 {
@@ -24,6 +25,66 @@ bool EmbeddingSearchFloat::load(const std::string &filename)
     {
         throw std::runtime_error("Unsupported file format");
     }
+}
+
+bool EmbeddingSearchFloat::pca_dimension_reduction(int target_dim)
+{
+    // Convert data to Eigen matrix
+    int rows = embeddings.size();
+    int cols = embeddings[0].size();
+    Eigen::MatrixXf matrix(rows, cols);
+    for (int i = 0; i < rows; ++i)
+    {
+        for (int j = 0; j < cols; ++j)
+        {
+            matrix(i, j) = embeddings[i][j];
+        }
+    }
+
+    // Center the data
+    Eigen::VectorXf mean = matrix.colwise().mean();
+    matrix = matrix.rowwise() - mean.transpose();
+
+    // Compute covariance matrix
+    Eigen::MatrixXf cov = (matrix.transpose() * matrix) / (float)(rows - 1);
+
+    // Compute eigendecomposition
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> eig(cov);
+
+    // Sort eigenvectors by descending eigenvalues
+    std::vector<std::pair<float, Eigen::VectorXf>> eigens;
+    for (int i = 0; i < cols; ++i)
+    {
+        eigens.push_back({eig.eigenvalues()[i], eig.eigenvectors().col(i)});
+    }
+    std::sort(eigens.begin(), eigens.end(),
+              [](const auto &a, const auto &b)
+              { return a.first > b.first; });
+
+    // Select top k eigenvectors
+    Eigen::MatrixXf pca_matrix(cols, target_dim);
+    for (int i = 0; i < target_dim; ++i)
+    {
+        pca_matrix.col(i) = eigens[i].second;
+    }
+
+    // Project data onto principal components
+    Eigen::MatrixXf reduced = matrix * pca_matrix;
+
+    // Convert back to vector of vectors
+    std::vector<std::vector<float>> result(rows, std::vector<float>(target_dim));
+    for (int i = 0; i < rows; ++i)
+    {
+        for (int j = 0; j < target_dim; ++j)
+        {
+            result[i][j] = reduced(i, j);
+        }
+    }
+
+    embeddings.resize(result.size(), std::vector<float>(result[0].size()));
+    embeddings = result;
+    vector_size = target_dim;
+    return true;
 }
 
 std::vector<std::pair<float, size_t>> EmbeddingSearchFloat::similarity_search(const std::vector<float> &query, size_t k)
