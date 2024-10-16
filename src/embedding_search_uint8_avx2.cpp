@@ -81,7 +81,7 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
             for (int l = 0; l < 32; l++)
             {
                 //JI: 0.756784 (sample size: 1000)
-                //a[l] = m[i][k + l] * 127;
+                a[l] = m[i][k + l] * 127;
                 
                 //JI: 0.530709 (sample size: 250) (exactly the same as binary?!? why?)
                 /*
