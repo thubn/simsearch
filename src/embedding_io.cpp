@@ -1,14 +1,89 @@
-// embedding_io.cpp
 #include "embedding_io.h"
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <nlohmann/json.hpp>
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <condition_variable>
+#include <atomic>
 
 using json = nlohmann::json;
 
 namespace EmbeddingIO
 {
+
+    class BoundedQueue
+    {
+    private:
+        std::queue<std::string> queue_;
+        mutable std::mutex mutex_; // Mark mutex as mutable
+        std::condition_variable not_full_;
+        std::condition_variable not_empty_;
+        size_t capacity_;
+        bool finished_{false};
+
+    public:
+        explicit BoundedQueue(size_t capacity = 1000) : capacity_(capacity) {}
+
+        void push(const std::string &value)
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            not_full_.wait(lock, [this]
+                           { return queue_.size() < capacity_ || finished_; });
+            if (finished_)
+                return;
+
+            queue_.push(value);
+            not_empty_.notify_one();
+        }
+
+        bool pop(std::string &value)
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            not_empty_.wait(lock, [this]
+                            { return !queue_.empty() || finished_; });
+
+            if (queue_.empty() && finished_)
+            {
+                return false;
+            }
+
+            value = std::move(queue_.front());
+            queue_.pop();
+            not_full_.notify_one();
+            return true;
+        }
+
+        void finish()
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            finished_ = true;
+            not_empty_.notify_all();
+            not_full_.notify_all();
+        }
+
+        size_t size() const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return queue_.size();
+        }
+    };
+
+    struct ThreadSafeEmbeddings
+    {
+        std::vector<std::vector<float>> embeddings;
+        std::vector<std::string> sentences;
+        std::mutex mutex;
+
+        void add(std::vector<float> &&embedding, std::string &&sentence)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            embeddings.push_back(std::move(embedding));
+            sentences.push_back(std::move(sentence));
+        }
+    };
 
     std::string readUTF8StringFromFile(const std::string &filename, size_t offset, uint64_t &length)
     {
@@ -74,6 +149,46 @@ namespace EmbeddingIO
         }
     }
 
+    void process_lines_json(BoundedQueue &queue, ThreadSafeEmbeddings &result, std::atomic<int> &error_count)
+    {
+        std::string line;
+        while (queue.pop(line))
+        {
+            try
+            {
+                json j = json::parse(line);
+                result.add(
+                    j.at("all-MiniLM-L6-v2").get<std::vector<float>>(),
+                    j.at("body").get<std::string>());
+            }
+            catch (const std::exception &e)
+            {
+                error_count++;
+                std::cerr << "Error processing line: " << e.what() << std::endl;
+            }
+        }
+    }
+
+    void process_lines_json2(BoundedQueue &queue, ThreadSafeEmbeddings &result, std::atomic<int> &error_count)
+    {
+        std::string line;
+        while (queue.pop(line))
+        {
+            try
+            {
+                json j = json::parse(line);
+                result.add(
+                    j.at(1).at("data").at(0).at("embedding").get<std::vector<float>>(),
+                    j.at(0).at("input").get<std::string>());
+            }
+            catch (const std::exception &e)
+            {
+                error_count++;
+                std::cerr << "Error processing line: " << e.what() << std::endl;
+            }
+        }
+    }
+
     bool load_json(const std::string &filename, std::vector<std::vector<float>> &embeddings, std::vector<std::string> &sentences)
     {
         try
@@ -84,34 +199,58 @@ namespace EmbeddingIO
                 throw std::runtime_error("Failed to open file: " + filename);
             }
 
-            std::string line;
-            int lineNumber = 0;
+            // Initialize thread-safe structures with bounded queue
+            constexpr size_t QUEUE_CAPACITY = 1000; // Adjust this based on your memory constraints
+            BoundedQueue queue(QUEUE_CAPACITY);
+            ThreadSafeEmbeddings result;
+            std::atomic<int> error_count{0};
 
+            // Create worker threads
+            unsigned int num_threads = std::thread::hardware_concurrency();
+            std::vector<std::thread> workers;
+            workers.reserve(num_threads);
+
+            // Start worker threads
+            for (unsigned int i = 0; i < num_threads; ++i)
+            {
+                workers.emplace_back(process_lines_json, std::ref(queue), std::ref(result), std::ref(error_count));
+            }
+
+            // Read lines and add to queue (will block if queue is full)
+            std::string line;
+            int line_count = 0;
             while (std::getline(file, line))
             {
-                try
+                queue.push(line);
+                line_count++;
+
+                if (line_count % 10000 == 0)
                 {
-                    json j = json::parse(line);
-                    embeddings.push_back(j.at("all-MiniLM-L6-v2").get<std::vector<float>>());
-                    sentences.push_back(j.at("body").get<std::string>());
-                    lineNumber++;
-                }
-                catch (json::parse_error &e)
-                {
-                    std::cerr << "Parse error on line " << lineNumber << ": " << e.what() << std::endl;
-                }
-                catch (json::out_of_range &e)
-                {
-                    std::cerr << "JSON key error on line " << lineNumber << ": " << e.what() << std::endl;
+                    std::cout << "Processed " << line_count << " lines, queue size: " << queue.size() << std::endl;
                 }
             }
+
+            // Signal completion to workers
+            queue.finish();
+
+            // Wait for all workers to finish
+            for (auto &worker : workers)
+            {
+                worker.join();
+            }
+
+            // Move results to output parameters
+            embeddings = std::move(result.embeddings);
+            sentences = std::move(result.sentences);
 
             if (embeddings.empty())
             {
                 throw std::runtime_error("No valid embeddings found in file: " + filename);
             }
 
-            std::cout << "Loaded " << lineNumber << " embeddings of dimension " << embeddings[0].size() << " from " << filename << std::endl;
+            std::cout << "Loaded " << embeddings.size() << " embeddings of dimension "
+                      << embeddings[0].size() << " from " << filename
+                      << " (Errors: " << error_count << ")" << std::endl;
             return true;
         }
         catch (const std::exception &e)
@@ -131,34 +270,58 @@ namespace EmbeddingIO
                 throw std::runtime_error("Failed to open file: " + filename);
             }
 
-            std::string line;
-            int lineNumber = 0;
+            // Initialize thread-safe structures with bounded queue
+            constexpr size_t QUEUE_CAPACITY = 1000; // Adjust this based on your memory constraints
+            BoundedQueue queue(QUEUE_CAPACITY);
+            ThreadSafeEmbeddings result;
+            std::atomic<int> error_count{0};
 
+            // Create worker threads
+            unsigned int num_threads = std::thread::hardware_concurrency();
+            std::vector<std::thread> workers;
+            workers.reserve(num_threads);
+
+            // Start worker threads
+            for (unsigned int i = 0; i < num_threads; ++i)
+            {
+                workers.emplace_back(process_lines_json2, std::ref(queue), std::ref(result), std::ref(error_count));
+            }
+
+            // Read lines and add to queue (will block if queue is full)
+            std::string line;
+            int line_count = 0;
             while (std::getline(file, line))
             {
-                try
+                queue.push(line);
+                line_count++;
+
+                if (line_count % 10000 == 0)
                 {
-                    json j = json::parse(line);
-                    embeddings.push_back(j.at(1).at("data").at(0).at("embedding").get<std::vector<float>>());
-                    sentences.push_back(j.at(0).at("input").get<std::string>());
-                    lineNumber++;
-                }
-                catch (json::parse_error &e)
-                {
-                    std::cerr << "Parse error on line " << lineNumber << ": " << e.what() << std::endl;
-                }
-                catch (json::out_of_range &e)
-                {
-                    std::cerr << "JSON key error on line " << lineNumber << ": " << e.what() << std::endl;
+                    std::cout << "Processed " << line_count << " lines, queue size: " << queue.size() << std::endl;
                 }
             }
+
+            // Signal completion to workers
+            queue.finish();
+
+            // Wait for all workers to finish
+            for (auto &worker : workers)
+            {
+                worker.join();
+            }
+
+            // Move results to output parameters
+            embeddings = std::move(result.embeddings);
+            sentences = std::move(result.sentences);
 
             if (embeddings.empty())
             {
                 throw std::runtime_error("No valid embeddings found in file: " + filename);
             }
 
-            std::cout << "Loaded " << lineNumber << " embeddings of dimension " << embeddings[0].size() << " from " << filename << std::endl;
+            std::cout << "Loaded " << embeddings.size() << " embeddings of dimension "
+                      << embeddings[0].size() << " from " << filename
+                      << " (Errors: " << error_count << ")" << std::endl;
             return true;
         }
         catch (const std::exception &e)
