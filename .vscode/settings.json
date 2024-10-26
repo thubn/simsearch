@@ -64,7 +64,14 @@
         "valarray": "cpp",
         "chrono": "cpp",
         "unordered_set": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "condition_variable": "cpp",
+        "complex": "cpp",
+        "set": "cpp",
+        "mutex": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp"
     },
     "makefile.makefilePath": "build/Makefile",
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",

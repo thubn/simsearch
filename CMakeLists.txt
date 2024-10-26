@@ -39,6 +39,9 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE 
         nlohmann_json::nlohmann_json
         OpenMP::OpenMP_CXX
+        #both installed via system pkg manager
+        arrow
+        parquet
 )
 #target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
 

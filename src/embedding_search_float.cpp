@@ -22,6 +22,10 @@ bool EmbeddingSearchFloat::load(const std::string &filename)
     {
         return EmbeddingIO::load_json2(filename, embeddings, sentences);
     }
+    else if (filename.ends_with(".parquet"))
+    {
+        return EmbeddingIO::load_parquet(filename, embeddings, sentences);
+    }
     else
     {
         throw std::runtime_error("Unsupported file format");

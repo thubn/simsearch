@@ -115,8 +115,8 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     searchers.pca2x2 = searchers.pca2;
     searchers.pca2x2.pca_dimension_reduction(searchers.pca2.getEmbeddings()[0].size() / 2);
 
-    searchers.pca6 = searchers.base;
-    searchers.pca6.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 6);
+    // searchers.pca6 = searchers.base;
+    // searchers.pca6.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 6);
 
     searchers.pca8 = searchers.base;
     searchers.pca8.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 8);
@@ -132,7 +132,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     searchers.avx2_pca8.setEmbeddings(searchers.pca8.getEmbeddings());
     searchers.binary.create_binary_embedding_from_float(searchers.base.getEmbeddings());
     searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
-    searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca6.getEmbeddings());
+    searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca4.getEmbeddings());
     searchers.uint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
 }
 
@@ -172,7 +172,7 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
     // Lambda to run benchmark for a specific searcher type
     auto runSearcherBenchmark = [&](const std::string &name, auto &searcher, SearcherType type, const auto &getQuery)
     {
-        std::cout << "Running " << name << " searches..." << std::endl;
+        std::cout << "Running " << name << " searches...";
         for (size_t i = 0; i < config.runs; i++)
         {
             auto start = std::chrono::high_resolution_clock::now();
@@ -182,11 +182,12 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
             results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
             results.jaccardIndexes[type] += calculateJaccardIndex(baseResults[i], search_results);
         }
+        std::cout << " ✓" << std::endl;
     };
 
     auto runSearcherBenchmarkTwoStep = [&](const std::string &name, auto &searcher, auto &searcherRescore, SearcherType type, const auto &getQuery, const auto &getQueryRescore)
     {
-        std::cout << "Running " << name << " 2step searches..." << std::endl;
+        std::cout << "Running " << name << " 2step searches...";
         for (size_t i = 0; i < config.runs; i++)
         {
             auto start = std::chrono::high_resolution_clock::now();
@@ -197,6 +198,7 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
             results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
             results.jaccardIndexes[type] += calculateJaccardIndex(baseResults[i], rescore_results);
         }
+        std::cout << " ✓" << std::endl;
     };
 
     // Run benchmarks for each searcher type sequentially
@@ -211,9 +213,9 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
                          [&](size_t idx)
                          { return searchers.pca2x2.getEmbeddings()[idx]; });
 
-    runSearcherBenchmark("PCA6", searchers.pca6, F32_PCA6,
+    /*runSearcherBenchmark("PCA6", searchers.pca6, F32_PCA6,
                          [&](size_t idx)
-                         { return searchers.pca6.getEmbeddings()[idx]; });
+                         { return searchers.pca6.getEmbeddings()[idx]; });*/
 
     runSearcherBenchmark("PCA8", searchers.pca8, F32_PCA8,
                          [&](size_t idx)
@@ -261,7 +263,7 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
 void printResults(const BenchmarkResults &results, const BenchmarkConfig &config, const Searchers &searchers)
 {
     const std::vector<std::string> names = {
-        "F32", "F32_PCA2", "F32_PCA4", "F32_PCA2x2", "F32_PCA6", "F32_PCA8",
+        "F32", "F32_PCA2", "F32_PCA4", "F32_PCA2x2", /*"F32_PCA6",*/ "F32_PCA8",
         "F32_PCA16", "F32_PCA32", "F32_AVX2", "F32_AVX2_PCA8", "BINARY",
         "BINARY_AVX2", "BINARY_AVX2_PCA6", "BAVX2_F32AVX2", "UINT8_AVX2"};
 

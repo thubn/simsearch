@@ -8,6 +8,13 @@
 #include <queue>
 #include <condition_variable>
 #include <atomic>
+#include <arrow/io/file.h>
+#include <arrow/table.h>
+#include <arrow/array.h>
+#include <arrow/chunked_array.h>
+#include <arrow/type_traits.h>
+#include <parquet/arrow/reader.h>
+#include <parquet/file_reader.h>
 
 using json = nlohmann::json;
 
@@ -327,6 +334,96 @@ namespace EmbeddingIO
         catch (const std::exception &e)
         {
             std::cerr << "Error in load_json2: " << e.what() << std::endl;
+            return false;
+        }
+    }
+
+    bool load_parquet(const std::string &filename, std::vector<std::vector<float>> &embeddings, std::vector<std::string> &sentences)
+    {
+        try
+        {
+            // Open the file
+            std::shared_ptr<arrow::io::ReadableFile> infile;
+            PARQUET_ASSIGN_OR_THROW(
+                infile,
+                arrow::io::ReadableFile::Open(filename));
+
+            // Create a ParquetFileReader instance
+            std::unique_ptr<parquet::arrow::FileReader> reader;
+            PARQUET_THROW_NOT_OK(
+                parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader));
+
+            // Read the entire file as a Table
+            std::shared_ptr<arrow::Table> table;
+            PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
+
+            // Get column indices
+            const int title_idx = table->schema()->GetFieldIndex("title");
+            const int text_idx = table->schema()->GetFieldIndex("text");
+
+            // Get text column for sentences
+            auto text_column = table->column(text_idx);
+
+            // Initialize vectors
+            const int64_t num_rows = table->num_rows();
+            const int embedding_dim = 1024;
+            embeddings.clear();
+            sentences.clear();
+            embeddings.reserve(num_rows);
+            sentences.reserve(num_rows);
+
+            // Process text column chunk by chunk
+            for (int chunk_idx = 0; chunk_idx < text_column->num_chunks(); ++chunk_idx)
+            {
+                auto text_array = std::static_pointer_cast<arrow::StringArray>(text_column->chunk(chunk_idx));
+                for (int64_t i = 0; i < text_array->length(); ++i)
+                {
+                    if (!text_array->IsNull(i))
+                    {
+                        sentences.push_back(text_array->GetString(i));
+                    }
+                    else
+                    {
+                        sentences.push_back(""); // Handle null values
+                    }
+                }
+            }
+
+            // Process embeddings
+            std::vector<float> current_embedding;
+            current_embedding.reserve(embedding_dim);
+
+            for (int64_t row = 0; row < num_rows; ++row)
+            {
+                current_embedding.clear();
+
+                for (int j = 0; j < embedding_dim; ++j)
+                {
+                    std::string col_name = "embedding_" + std::to_string(j);
+                    int col_idx = table->schema()->GetFieldIndex(col_name);
+                    auto embedding_column = table->column(col_idx);
+                    auto embedding_array = std::static_pointer_cast<arrow::FloatArray>(embedding_column->chunk(0));
+
+                    if (!embedding_array->IsNull(row))
+                    {
+                        current_embedding.push_back(embedding_array->Value(row));
+                    }
+                    else
+                    {
+                        current_embedding.push_back(0.0f); // Handle null values
+                    }
+                }
+
+                embeddings.push_back(current_embedding);
+            }
+
+            std::cout << "Loaded " << num_rows << " embeddings of dimension " << embedding_dim
+                      << " from " << filename << std::endl;
+            return true;
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error in load_parquet: " << e.what() << std::endl;
             return false;
         }
     }
