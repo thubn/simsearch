@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <bit>
 #include <immintrin.h>
+#include <omp.h>
 
 bool EmbeddingSearchBinaryAVX2::load(const std::string &filename)
 {
@@ -47,6 +48,7 @@ bool EmbeddingSearchBinaryAVX2::create_binary_embedding_from_float(const std::ve
     std::vector<std::vector<uint64_t>> embeddingsU64;
     embeddingsU64.resize(num_vectors, std::vector<uint64_t>(vector_size * 4));
 
+    #pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < num_vectors; ++i)
     {
         for (size_t j = 0; j < float_vector_size; j++)
@@ -57,6 +59,7 @@ bool EmbeddingSearchBinaryAVX2::create_binary_embedding_from_float(const std::ve
             }
         }
     }
+    #pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < num_vectors; i++)
     {
         for (size_t j = 0; j < vector_size; j++)

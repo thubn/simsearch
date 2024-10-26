@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <bit>
+#include <omp.h>
 
 bool EmbeddingSearchBinary::load(const std::string &filename)
 {
@@ -43,6 +44,7 @@ bool EmbeddingSearchBinary::create_binary_embedding_from_float(const std::vector
     vector_size = (float_vector_size + 63) / 64; // Round up to nearest multiple of 64
     embeddings.resize(num_vectors, std::vector<uint64_t>(vector_size, 0));
 
+    #pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < num_vectors; ++i)
     {
         for (size_t j = 0; j < float_vector_size; ++j)

@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <iostream>
+#include <omp.h>
 
 bool EmbeddingSearchUint8AVX2::load(const std::string &filename)
 {
@@ -70,6 +71,7 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
     size_t num_embeddings = m.size();
 
     embeddings.resize(num_embeddings, std::vector<__m256i>(vector_size));
+    #pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < num_embeddings; i++)
     {
         for (size_t j = 0; j < vector_size; j++)

@@ -18,6 +18,7 @@ endif()
 
 find_package(nlohmann_json REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(OpenMP REQUIRED)
 
 # Add the include directory to the include path
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -37,6 +38,7 @@ target_link_libraries(${PROJECT_NAME}
         Eigen3::Eigen
     PRIVATE 
         nlohmann_json::nlohmann_json
+        OpenMP::OpenMP_CXX
 )
 #target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
 
