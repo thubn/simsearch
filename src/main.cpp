@@ -251,24 +251,6 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
                          [&](size_t idx)
                          { return searchers.uint8_avx2.getEmbeddings()[idx]; });
 
-    // Run BAVX2_F32AVX2 (two-step search) separately
-    /*std::cout << "Running BAVX2_F32AVX2 searches..." << std::endl;
-    for (size_t i = 0; i < config.runs; i++)
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-        auto binary_avx2_rescore_results = searchers.binary_avx2.similarity_search(
-            searchers.binary_avx2.getEmbeddings()[randomIndexes[i]],
-            config.k * config.rescoring_factor);
-        auto avx2_rescore_results = searchers.avx2.similarity_search(
-            searchers.avx2.getEmbeddings()[randomIndexes[i]],
-            config.k,
-            binary_avx2_rescore_results);
-        auto end = std::chrono::high_resolution_clock::now();
-
-        results.times[BAVX2_F32AVX2] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-        results.jaccardIndexes[BAVX2_F32AVX2] += calculateJaccardIndex(baseResults[i], avx2_rescore_results);
-    }*/
-
     runSearcherBenchmarkTwoStep("BAVX2_F32AVX2", searchers.binary_avx2, searchers.avx2, BAVX2_F32AVX2, [&](size_t idx)
                                 { return searchers.binary_avx2.getEmbeddings()[idx]; }, [&](size_t idx)
                                 { return searchers.avx2.getEmbeddings()[idx]; });
