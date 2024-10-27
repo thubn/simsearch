@@ -13,11 +13,19 @@ bool EmbeddingSearchAVX2::load(const std::string &filename)
 
     if (filename.ends_with(".safetensors"))
     {
-        success = EmbeddingIO::load_safetensors(filename, float_embeddings, sentences);
+        return EmbeddingIO::load_safetensors(filename, float_embeddings, sentences);
     }
-    else if (filename.ends_with(".json"))
+    else if (filename.ends_with(".ndjson"))
     {
-        success = EmbeddingIO::load_json(filename, float_embeddings, sentences);
+        return EmbeddingIO::load_json(filename, float_embeddings, sentences);
+    }
+    else if (filename.ends_with(".jsonl"))
+    {
+        return EmbeddingIO::load_json2(filename, float_embeddings, sentences);
+    }
+    else if (filename.ends_with(".parquet"))
+    {
+        return EmbeddingIO::load_parquet(filename, float_embeddings, sentences);
     }
     else
     {

@@ -565,6 +565,7 @@ int main(int argc, char *argv[])
 
         if (args.is_query_mode)
         {
+            std::cout << "number of embds: " << searchers.base.getEmbeddings().size() << std::endl;
             // Run in query search mode
             std::cout << "Running in query search mode...\n";
             runQuerySearch(searchers, args.query_file, args.k);

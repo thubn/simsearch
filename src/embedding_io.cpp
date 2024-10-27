@@ -15,6 +15,7 @@
 #include <arrow/type_traits.h>
 #include <parquet/arrow/reader.h>
 #include <parquet/file_reader.h>
+#include <omp.h>
 
 using json = nlohmann::json;
 
@@ -344,80 +345,118 @@ namespace EmbeddingIO
         {
             // Open the file
             std::shared_ptr<arrow::io::ReadableFile> infile;
-            PARQUET_ASSIGN_OR_THROW(
-                infile,
-                arrow::io::ReadableFile::Open(filename));
+            PARQUET_ASSIGN_OR_THROW(infile, arrow::io::ReadableFile::Open(filename));
 
             // Create a ParquetFileReader instance
             std::unique_ptr<parquet::arrow::FileReader> reader;
-            PARQUET_THROW_NOT_OK(
-                parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader));
+            PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader));
 
-            // Read the entire file as a Table
-            std::shared_ptr<arrow::Table> table;
-            PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
+            // Get the file metadata
+            std::shared_ptr<arrow::Schema> schema;
+            PARQUET_THROW_NOT_OK(reader->GetSchema(&schema));
 
-            // Get column indices
-            // const int title_idx = table->schema()->GetFieldIndex("title");
-            const int text_idx = table->schema()->GetFieldIndex("formatted_text");
-
-            // Get text column for sentences
-            auto text_column = table->column(text_idx);
-
-            // Initialize vectors
-            const int64_t num_rows = table->num_rows();
+            auto file_metadata = reader->parquet_reader()->metadata();
+            int64_t num_rows = file_metadata->num_rows();
+            int num_row_groups = file_metadata->num_row_groups();
             const int embedding_dim = 1024;
+
+            std::cout << "Total rows: " << num_rows << ", Row groups: " << num_row_groups << std::endl;
+
+            // Create vectors for each thread to avoid contention
+            int num_threads = omp_get_max_threads();
+            std::vector<std::vector<std::vector<float>>> thread_embeddings(num_threads);
+            std::vector<std::vector<std::string>> thread_sentences(num_threads);
+
+            // Pre-calculate expected size for each thread
+            size_t expected_size = num_rows / num_threads + 1;
+            for (int i = 0; i < num_threads; i++)
+            {
+                thread_embeddings[i].reserve(expected_size);
+                thread_sentences[i].reserve(expected_size);
+            }
+
+            // Create column selection vector
+            std::vector<int> text_column{schema->GetFieldIndex("formatted_text")};
+            std::vector<int> embedding_columns;
+            for (int i = 0; i < embedding_dim; i++)
+            {
+                std::string col_name = "embedding_" + std::to_string(i);
+                embedding_columns.push_back(schema->GetFieldIndex(col_name));
+            }
+
+// Parallel processing of row groups
+#pragma omp parallel
+            {
+                int thread_id = omp_get_thread_num();
+
+#pragma omp for schedule(dynamic)
+                for (int row_group = 0; row_group < num_row_groups; row_group++)
+                {
+                    // Get number of rows in this group
+                    int64_t rows_in_group = file_metadata->RowGroup(row_group)->num_rows();
+
+                    // Read text column for this row group
+                    std::shared_ptr<arrow::Table> text_batch;
+#pragma omp critical
+                    {
+                        PARQUET_THROW_NOT_OK(reader->ReadRowGroup(row_group, text_column, &text_batch));
+                    }
+                    auto text_array = std::static_pointer_cast<arrow::StringArray>(text_batch->column(0)->chunk(0));
+
+                    // Read embedding columns for this row group
+                    std::shared_ptr<arrow::Table> embedding_batch;
+#pragma omp critical
+                    {
+                        PARQUET_THROW_NOT_OK(reader->ReadRowGroup(row_group, embedding_columns, &embedding_batch));
+                    }
+
+                    // Process each row in the group
+                    for (int64_t i = 0; i < rows_in_group; i++)
+                    {
+                        // Get text
+                        thread_sentences[thread_id].push_back(
+                            text_array->IsNull(i) ? "" : text_array->GetString(i).substr(0, 128));
+
+                        // Get embedding values
+                        std::vector<float> current_embedding;
+                        current_embedding.reserve(embedding_dim);
+
+                        for (int j = 0; j < embedding_dim; j++)
+                        {
+                            auto embedding_array = std::static_pointer_cast<arrow::FloatArray>(
+                                embedding_batch->column(j)->chunk(0));
+                            current_embedding.push_back(
+                                embedding_array->IsNull(i) ? 0.0f : embedding_array->Value(i));
+                        }
+
+                        thread_embeddings[thread_id].push_back(std::move(current_embedding));
+                    }
+                }
+            }
+
+            // Combine results from all threads
+            size_t total_size = 0;
+            for (const auto &thread_vec : thread_embeddings)
+            {
+                total_size += thread_vec.size();
+            }
+
             embeddings.clear();
             sentences.clear();
-            embeddings.reserve(num_rows);
-            sentences.reserve(num_rows);
+            embeddings.reserve(total_size);
+            sentences.reserve(total_size);
 
-            // Process text column chunk by chunk
-            for (int chunk_idx = 0; chunk_idx < text_column->num_chunks(); ++chunk_idx)
+            for (int i = 0; i < num_threads; i++)
             {
-                auto text_array = std::static_pointer_cast<arrow::StringArray>(text_column->chunk(chunk_idx));
-                for (int64_t i = 0; i < text_array->length(); ++i)
-                {
-                    if (!text_array->IsNull(i))
-                    {
-                        sentences.push_back(text_array->GetString(i).substr(0, 1024));
-                    }
-                    else
-                    {
-                        sentences.push_back(""); // Handle null values
-                    }
-                }
+                embeddings.insert(embeddings.end(),
+                                  std::make_move_iterator(thread_embeddings[i].begin()),
+                                  std::make_move_iterator(thread_embeddings[i].end()));
+                sentences.insert(sentences.end(),
+                                 std::make_move_iterator(thread_sentences[i].begin()),
+                                 std::make_move_iterator(thread_sentences[i].end()));
             }
 
-            // Process embeddings
-            std::vector<float> current_embedding;
-            current_embedding.reserve(embedding_dim);
-
-            for (int64_t row = 0; row < num_rows; ++row)
-            {
-                current_embedding.clear();
-
-                for (int j = 0; j < embedding_dim; ++j)
-                {
-                    std::string col_name = "embedding_" + std::to_string(j);
-                    int col_idx = table->schema()->GetFieldIndex(col_name);
-                    auto embedding_column = table->column(col_idx);
-                    auto embedding_array = std::static_pointer_cast<arrow::FloatArray>(embedding_column->chunk(0));
-
-                    if (!embedding_array->IsNull(row))
-                    {
-                        current_embedding.push_back(embedding_array->Value(row));
-                    }
-                    else
-                    {
-                        current_embedding.push_back(0.0f); // Handle null values
-                    }
-                }
-
-                embeddings.push_back(current_embedding);
-            }
-
-            std::cout << "Loaded " << num_rows << " embeddings of dimension " << embedding_dim
+            std::cout << "Loaded " << embeddings.size() << " embeddings of dimension " << embedding_dim
                       << " from " << filename << std::endl;
             return true;
         }
