@@ -4,6 +4,7 @@
 #include "embedding_search_binary_avx2.h"
 #include "embedding_search_uint8_avx2.h"
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <random>
 #include <unordered_set>
@@ -12,6 +13,10 @@
 #include <immintrin.h>
 #include <string>
 #include <filesystem>
+#include <nlohmann/json.hpp>
+#include <string>
+
+using json = nlohmann::json;
 
 // Benchmark configuration
 struct BenchmarkConfig
@@ -105,6 +110,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     // Load base embeddings
     searchers.base.load(filename);
 
+    /*
     // Initialize PCA variants
     searchers.pca2 = searchers.base;
     searchers.pca2.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 2);
@@ -134,6 +140,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
     searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca4.getEmbeddings());
     searchers.uint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
+    */
 }
 
 std::vector<size_t> generateRandomIndexes(size_t numRuns, size_t maxIndex)
@@ -289,26 +296,141 @@ void printResults(const BenchmarkResults &results, const BenchmarkConfig &config
     }
 }
 
+struct Query
+{
+    std::string query;
+    std::string formatted_query;
+    std::vector<float> embedding;
+};
+
+std::vector<Query> loadQueries(const std::string &filename)
+{
+    std::vector<Query> queries;
+    std::ifstream file(filename);
+    if (!file)
+    {
+        throw std::runtime_error("Failed to open query file: " + filename);
+    }
+
+    std::string line;
+    int lineNumber = 0;
+    while (std::getline(file, line))
+    {
+        try
+        {
+            json j = json::parse(line);
+            Query q;
+            q.query = j.at("query").get<std::string>();
+            q.formatted_query = j.at("formatted_query").get<std::string>();
+            q.embedding = j.at("embedding").get<std::vector<float>>();
+            queries.push_back(q);
+            lineNumber++;
+        }
+        catch (json::parse_error &e)
+        {
+            std::cerr << "Parse error on line " << lineNumber << ": " << e.what() << std::endl;
+        }
+        catch (json::out_of_range &e)
+        {
+            std::cerr << "JSON key error on line " << lineNumber << ": " << e.what() << std::endl;
+        }
+    }
+
+    if (queries.empty())
+    {
+        throw std::runtime_error("No valid queries found in file: " + filename);
+    }
+
+    std::cout << "Loaded " << queries.size() << " queries from " << filename << std::endl;
+    return queries;
+}
+template <typename NumberType>
+void printSearchResults(const std::string &query, const std::string &formatted_query,
+                        const std::vector<std::pair<NumberType, size_t>> &results,
+                        const std::vector<std::string> &sentences)
+{
+    std::cout << "\nQuery: " << query << "\n";
+    std::cout << "Formatted query: " << formatted_query << "\n";
+    std::cout << "Results (similarity, index, text):\n";
+    for (const auto &result : results)
+    {
+        std::cout << std::fixed << std::setprecision(4)
+                  << result.first << "\t"
+                  << result.second << "\t"
+                  << sentences[result.second].substr(0, 1024) << "\nwwwwwwwwwwwww\n";
+    }
+    std::cout << "-------------------\n";
+}
+
+void runQuerySearch(Searchers &searchers, const std::string &query_file, size_t k)
+{
+    std::vector<Query> queries = loadQueries(query_file);
+
+    std::cout << "\nRunning similarity search for " << queries.size() << " queries...\n";
+
+    // Run searches with different methods
+    for (size_t i = 0; i < queries.size(); i++)
+    {
+        std::cout << "\n=== Query " << (i + 1) << " of " << queries.size() << " ===\n";
+
+        // F32 (base) search
+        std::cout << "\nF32 Search Results:\n";
+        auto f32_results = searchers.base.similarity_search(queries[i].embedding, k);
+        printSearchResults(queries[i].query, queries[i].formatted_query, f32_results, searchers.base.getSentences());
+
+        /*
+        // AVX2 search
+        std::cout << "\nAVX2 Search Results:\n";
+        std::vector<__m256> avx2_query;
+        avx2_query.reserve(queries[i].embedding.size() / 8);
+        for (size_t j = 0; j < queries[i].embedding.size(); j += 8)
+        {
+            avx2_query.push_back(_mm256_loadu_ps(&queries[i].embedding[j]));
+        }
+        auto avx2_results = searchers.avx2.similarity_search(avx2_query, k);
+        printSearchResults(queries[i].query, queries[i].formatted_query, avx2_results, searchers.avx2.getSentences());
+
+        // Binary search
+        std::cout << "\nBinary Search Results:\n";
+        std::vector<uint64_t> binary_query;
+        binary_query.resize((queries[i].embedding.size() + 63) / 64, 0);
+        for (size_t j = 0; j < queries[i].embedding.size(); j++)
+        {
+            if (queries[i].embedding[j] >= 0)
+            {
+                binary_query[j / 64] |= (1ULL << (63 - (j % 64)));
+            }
+        }
+        auto binary_results = searchers.binary.similarity_search(binary_query, k);
+        printSearchResults(queries[i].query, queries[i].formatted_query, binary_results, searchers.binary.getSentences());
+        */
+    }
+}
+
 void printUsage(const char *programName)
 {
     std::cout << "Usage: " << programName << " [options]\n"
               << "\nOptions:\n"
               << "  -f, --file <path>              Input file path (required)\n"
+              << "  -q, --query-file <path>        Query file path (optional)\n"
               << "  -k, --topk <number>            Number of similar vectors to retrieve (default: 25)\n"
               << "  -r, --runs <number>            Number of benchmark runs (default: 500)\n"
               << "  -s, --rescoring-factor <number> Rescoring factor for two-step search (default: 50)\n"
               << "  -h, --help                     Show this help message\n"
-              << "\nExample:\n"
-              << "  " << programName << " -f embeddings.jsonl -k 10 -r 100 -s 25\n";
+              << "\nExamples:\n"
+              << "  " << programName << " -f embeddings.jsonl -k 10 -r 100 -s 25\n"
+              << "  " << programName << " -f embeddings.jsonl -q queries.jsonl -k 10\n";
 }
 
 struct CommandLineArgs
 {
     std::string filename;
+    std::string query_file;
     size_t k = 25;
     size_t runs = 500;
     size_t rescoring_factor = 50;
     bool valid = false;
+    bool is_query_mode = false;
 
     static CommandLineArgs parse(int argc, char *argv[])
     {
@@ -341,6 +463,11 @@ struct CommandLineArgs
             if (arg == "-f" || arg == "--file")
             {
                 args.filename = argv[++i];
+            }
+            else if (arg == "-q" || arg == "--query-file")
+            {
+                args.query_file = argv[++i];
+                args.is_query_mode = true;
             }
             else if (arg == "-k" || arg == "--topk")
             {
@@ -403,10 +530,16 @@ struct CommandLineArgs
             return args;
         }
 
-        // Check if file exists
         if (!std::filesystem::exists(args.filename))
         {
             std::cerr << "Error: File not found: " << args.filename << "\n\n";
+            printUsage(argv[0]);
+            return args;
+        }
+
+        if (args.is_query_mode && !std::filesystem::exists(args.query_file))
+        {
+            std::cerr << "Error: Query file not found: " << args.query_file << "\n\n";
             printUsage(argv[0]);
             return args;
         }
@@ -426,17 +559,24 @@ int main(int argc, char *argv[])
 
     try
     {
-        BenchmarkConfig config{args.k, args.runs, args.rescoring_factor};
         Searchers searchers;
-
         std::cout << "Initializing searchers with file: " << args.filename << "\n";
         initializeSearchers(searchers, args.filename);
 
-        std::cout << "Running benchmark...\n";
-        auto results = runBenchmark(searchers, config);
-
-        std::cout << "\nBenchmark complete. Results:\n";
-        printResults(results, config, searchers);
+        if (args.is_query_mode)
+        {
+            // Run in query search mode
+            std::cout << "Running in query search mode...\n";
+            runQuerySearch(searchers, args.query_file, args.k);
+        }
+        else
+        {
+            // Run in benchmark mode
+            std::cout << "Running in benchmark mode...\n";
+            BenchmarkConfig config{args.k, args.runs, args.rescoring_factor};
+            auto results = runBenchmark(searchers, config);
+            printResults(results, config, searchers);
+        }
     }
     catch (const std::exception &e)
     {

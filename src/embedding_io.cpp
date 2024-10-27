@@ -358,8 +358,8 @@ namespace EmbeddingIO
             PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
 
             // Get column indices
-            const int title_idx = table->schema()->GetFieldIndex("title");
-            const int text_idx = table->schema()->GetFieldIndex("text");
+            // const int title_idx = table->schema()->GetFieldIndex("title");
+            const int text_idx = table->schema()->GetFieldIndex("formatted_text");
 
             // Get text column for sentences
             auto text_column = table->column(text_idx);
@@ -380,7 +380,7 @@ namespace EmbeddingIO
                 {
                     if (!text_array->IsNull(i))
                     {
-                        sentences.push_back(text_array->GetString(i));
+                        sentences.push_back(text_array->GetString(i).substr(0, 1024));
                     }
                     else
                     {

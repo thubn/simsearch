@@ -71,7 +71,8 @@
         "mutex": "cpp",
         "semaphore": "cpp",
         "stop_token": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "filesystem": "cpp"
     },
     "makefile.makefilePath": "build/Makefile",
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
