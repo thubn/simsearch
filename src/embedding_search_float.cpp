@@ -32,13 +32,23 @@ bool EmbeddingSearchFloat::load(const std::string &filename)
     }
 }
 
+bool EmbeddingSearchFloat::unsetEmbeddings()
+{
+    embeddings.clear();
+}
+
+bool EmbeddingSearchFloat::unsetSentences()
+{
+    sentences.clear();
+}
+
 bool EmbeddingSearchFloat::pca_dimension_reduction(int target_dim)
 {
     // Convert data to Eigen matrix
     int rows = embeddings.size();
     int cols = embeddings[0].size();
     Eigen::MatrixXf matrix(rows, cols);
-    #pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < rows; ++i)
     {
         for (int j = 0; j < cols; ++j)
@@ -79,7 +89,7 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int target_dim)
 
     // Convert back to vector of vectors
     std::vector<std::vector<float>> result(rows, std::vector<float>(target_dim));
-    #pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < rows; ++i)
     {
         for (int j = 0; j < target_dim; ++j)

@@ -52,8 +52,9 @@ struct BenchmarkResults
 {
     std::vector<int64_t> times;
     std::vector<double> jaccardIndexes;
+    std::vector<double> NDCG;
 
-    BenchmarkResults() : times(NUM_SEARCHER_TYPES, 0), jaccardIndexes(NUM_SEARCHER_TYPES, 0) {}
+    BenchmarkResults() : times(NUM_SEARCHER_TYPES, -1), jaccardIndexes(NUM_SEARCHER_TYPES, 0), NDCG(NUM_SEARCHER_TYPES, 0) {}
 };
 
 // Struct to hold all searchers
@@ -105,42 +106,90 @@ double calculateJaccardIndex(const std::vector<std::pair<T1, size_t>> &set1,
     return union_set.empty() ? 0.0 : static_cast<double>(intersection.size()) / union_set.size();
 }
 
+template <typename T1, typename T2>
+double calculateNDCG(const std::vector<std::pair<T1, size_t>> &groundTruth,
+                     const std::vector<std::pair<T2, size_t>> &prediction)
+{
+    if (groundTruth.empty() || prediction.empty())
+    {
+        return 0.0;
+    }
+
+    const size_t k = std::min(groundTruth.size(), prediction.size());
+
+    // Create position lookup for ground truth
+    std::unordered_map<size_t, size_t> truthPositions;
+    for (size_t i = 0; i < k; ++i)
+    {
+        truthPositions[groundTruth[i].second] = i;
+    }
+
+    // Calculate DCG
+    double dcg = 0.0;
+    for (size_t i = 0; i < k; ++i)
+    {
+        auto it = truthPositions.find(prediction[i].second);
+        if (it != truthPositions.end())
+        {
+            // Calculate relevance score based on position difference
+            // Perfect match (same position) gets relevance of 1.0
+            // Relevance decreases based on position difference
+            double positionDiff = std::abs(static_cast<double>(it->second) - i);
+            double relevance = std::exp(-positionDiff / k); // Exponential decay
+
+            // DCG formula: rel_i / log2(i + 2)
+            dcg += relevance / std::log2(i + 2);
+        }
+    }
+
+    // Calculate IDCG (ideal DCG - when order is perfect)
+    double idcg = 0.0;
+    for (size_t i = 0; i < k; ++i)
+    {
+        idcg += 1.0 / std::log2(i + 2); // Perfect relevance of 1.0
+    }
+
+    return idcg > 0 ? dcg / idcg : 0.0;
+}
+
 void initializeSearchers(Searchers &searchers, const std::string &filename)
 {
     // Load base embeddings
     searchers.base.load(filename);
 
-    /*
     // Initialize PCA variants
-    searchers.pca2 = searchers.base;
-    searchers.pca2.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 2);
+    // searchers.pca2 = searchers.base;
+    // searchers.pca2.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 2);
 
-    searchers.pca4 = searchers.base;
-    searchers.pca4.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 4);
+    // searchers.pca4 = searchers.base;
+    // searchers.pca4.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 4);
+    // searchers.pca4.unsetSentences();
 
-    searchers.pca2x2 = searchers.pca2;
-    searchers.pca2x2.pca_dimension_reduction(searchers.pca2.getEmbeddings()[0].size() / 2);
+    // searchers.pca2x2 = searchers.pca2;
+    // searchers.pca2x2.pca_dimension_reduction(searchers.pca2.getEmbeddings()[0].size() / 2);
 
     // searchers.pca6 = searchers.base;
     // searchers.pca6.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 6);
 
-    searchers.pca8 = searchers.base;
-    searchers.pca8.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 8);
+    // searchers.pca8 = searchers.base;
+    // searchers.pca8.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 8);
+    // searchers.pca8.unsetSentences();
 
-    searchers.pca16 = searchers.base;
-    searchers.pca16.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 16);
+    // searchers.pca16 = searchers.base;
+    // searchers.pca16.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 16);
+    // searchers.pca16.unsetSentences();
 
-    searchers.pca32 = searchers.base;
-    searchers.pca32.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 32);
+    // searchers.pca32 = searchers.base;
+    // searchers.pca32.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 32);
 
     // Initialize specialized variants
     searchers.avx2.setEmbeddings(searchers.base.getEmbeddings());
-    searchers.avx2_pca8.setEmbeddings(searchers.pca8.getEmbeddings());
-    searchers.binary.create_binary_embedding_from_float(searchers.base.getEmbeddings());
-    searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
-    searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca4.getEmbeddings());
     searchers.uint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
-    */
+    // searchers.binary.create_binary_embedding_from_float(searchers.base.getEmbeddings());
+    searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
+    // searchers.avx2_pca8.setEmbeddings(searchers.pca8.getEmbeddings());
+    // searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca4.getEmbeddings());
+    // searchers.pca4.unsetEmbeddings();
 }
 
 std::vector<size_t> generateRandomIndexes(size_t numRuns, size_t maxIndex)
@@ -166,7 +215,7 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
     std::vector<size_t> randomIndexes = generateRandomIndexes(config.runs, searchers.base.getEmbeddings().size() - 1);
 
     // Run base F32 searches
-    std::cout << "Running F32 searches..." << std::endl;
+    std::cout << "Running F32 searches...";
     std::vector<std::vector<std::pair<float, size_t>>> baseResults(config.runs);
     for (size_t i = 0; i < config.runs; i++)
     {
@@ -175,37 +224,46 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
         auto end = std::chrono::high_resolution_clock::now();
         results.times[F32] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     }
+    std::cout << " ✓" << std::endl;
 
     // Lambda to run benchmark for a specific searcher type
     auto runSearcherBenchmark = [&](const std::string &name, auto &searcher, SearcherType type, const auto &getQuery)
     {
-        std::cout << "Running " << name << " searches...";
-        for (size_t i = 0; i < config.runs; i++)
+        if (searcher.isInitialized())
         {
-            auto start = std::chrono::high_resolution_clock::now();
-            auto search_results = searcher.similarity_search(getQuery(randomIndexes[i]), config.k);
-            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "Running " << name << " searches...";
+            for (size_t i = 0; i < config.runs; i++)
+            {
+                auto start = std::chrono::high_resolution_clock::now();
+                auto search_results = searcher.similarity_search(getQuery(randomIndexes[i]), config.k);
+                auto end = std::chrono::high_resolution_clock::now();
 
-            results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-            results.jaccardIndexes[type] += calculateJaccardIndex(baseResults[i], search_results);
+                results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+                results.jaccardIndexes[type] += calculateJaccardIndex(baseResults[i], search_results);
+                results.NDCG[type] += calculateNDCG(baseResults[i], search_results);
+            }
+            std::cout << " ✓" << std::endl;
         }
-        std::cout << " ✓" << std::endl;
     };
 
     auto runSearcherBenchmarkTwoStep = [&](const std::string &name, auto &searcher, auto &searcherRescore, SearcherType type, const auto &getQuery, const auto &getQueryRescore)
     {
-        std::cout << "Running " << name << " 2step searches...";
-        for (size_t i = 0; i < config.runs; i++)
+        if (searcher.isInitialized() && searcherRescore.isInitialized())
         {
-            auto start = std::chrono::high_resolution_clock::now();
-            auto search_results = searcher.similarity_search(getQuery(randomIndexes[i]), config.k * config.rescoring_factor);
-            auto rescore_results = searcherRescore.similarity_search(getQueryRescore(randomIndexes[i]), config.k, search_results);
-            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "Running " << name << " 2step searches...";
+            for (size_t i = 0; i < config.runs; i++)
+            {
+                auto start = std::chrono::high_resolution_clock::now();
+                auto search_results = searcher.similarity_search(getQuery(randomIndexes[i]), config.k * config.rescoring_factor);
+                auto rescore_results = searcherRescore.similarity_search(getQueryRescore(randomIndexes[i]), config.k, search_results);
+                auto end = std::chrono::high_resolution_clock::now();
 
-            results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-            results.jaccardIndexes[type] += calculateJaccardIndex(baseResults[i], rescore_results);
+                results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+                results.jaccardIndexes[type] += calculateJaccardIndex(baseResults[i], rescore_results);
+                results.NDCG[type] += calculateNDCG(baseResults[i], rescore_results);
+            }
+            std::cout << " ✓" << std::endl;
         }
-        std::cout << " ✓" << std::endl;
     };
 
     // Run benchmarks for each searcher type sequentially
@@ -220,9 +278,9 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
                          [&](size_t idx)
                          { return searchers.pca2x2.getEmbeddings()[idx]; });
 
-    /*runSearcherBenchmark("PCA6", searchers.pca6, F32_PCA6,
+    runSearcherBenchmark("PCA6", searchers.pca6, F32_PCA6,
                          [&](size_t idx)
-                         { return searchers.pca6.getEmbeddings()[idx]; });*/
+                         { return searchers.pca6.getEmbeddings()[idx]; });
 
     runSearcherBenchmark("PCA8", searchers.pca8, F32_PCA8,
                          [&](size_t idx)
@@ -270,7 +328,7 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
 void printResults(const BenchmarkResults &results, const BenchmarkConfig &config, const Searchers &searchers)
 {
     const std::vector<std::string> names = {
-        "F32", "F32_PCA2", "F32_PCA4", "F32_PCA2x2", /*"F32_PCA6",*/ "F32_PCA8",
+        "F32", "F32_PCA2", "F32_PCA4", "F32_PCA2x2", "F32_PCA6", "F32_PCA8",
         "F32_PCA16", "F32_PCA32", "F32_AVX2", "F32_AVX2_PCA8", "BINARY",
         "BINARY_AVX2", "BINARY_AVX2_PCA6", "BAVX2_F32AVX2", "UINT8_AVX2"};
 
@@ -284,15 +342,31 @@ void printResults(const BenchmarkResults &results, const BenchmarkConfig &config
 
     for (int i = 0; i < names.size(); i++)
     {
-        std::cout << std::left << std::setw(15) << names[i]
-                  << ": " << results.times[i] / config.runs << "us\n";
+        if (results.times[i] != -1)
+        {
+            std::cout << std::left << std::setw(15) << names[i]
+                      << ": " << results.times[i] / config.runs << "us\n";
+        }
     }
 
     std::cout << "\nAverage Jaccard Index (compared to F32):\n";
     for (int i = 1; i < names.size(); i++)
     {
-        std::cout << std::left << std::setw(15) << names[i]
-                  << ": " << results.jaccardIndexes[i] / config.runs << "\n";
+        if (results.times[i] != -1)
+        {
+            std::cout << std::left << std::setw(15) << names[i]
+                      << ": " << results.jaccardIndexes[i] / config.runs << "\n";
+        }
+    }
+
+    std::cout << "\nAverage NDCG Index (compared to F32):\n";
+    for (int i = 1; i < names.size(); i++)
+    {
+        if (results.times[i] != -1)
+        {
+            std::cout << std::left << std::setw(15) << names[i]
+                      << ": " << results.NDCG[i] / config.runs << "\n";
+        }
     }
 }
 
