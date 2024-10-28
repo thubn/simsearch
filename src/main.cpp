@@ -452,32 +452,15 @@ void runQuerySearch(Searchers &searchers, const std::string &query_file, size_t 
         auto f32_results = searchers.base.similarity_search(queries[i].embedding, k);
         printSearchResults(queries[i].query, queries[i].formatted_query, f32_results, searchers.base.getSentences());
 
-        /*
         // AVX2 search
         std::cout << "\nAVX2 Search Results:\n";
-        std::vector<__m256> avx2_query;
-        avx2_query.reserve(queries[i].embedding.size() / 8);
-        for (size_t j = 0; j < queries[i].embedding.size(); j += 8)
-        {
-            avx2_query.push_back(_mm256_loadu_ps(&queries[i].embedding[j]));
-        }
-        auto avx2_results = searchers.avx2.similarity_search(avx2_query, k);
-        printSearchResults(queries[i].query, queries[i].formatted_query, avx2_results, searchers.avx2.getSentences());
+        auto avx2_results = searchers.avx2.similarity_search(searchers.avx2.floatToAvx2(queries[i].embedding), k);
+        printSearchResults(queries[i].query, queries[i].formatted_query, avx2_results, searchers.base.getSentences());
 
-        // Binary search
-        std::cout << "\nBinary Search Results:\n";
-        std::vector<uint64_t> binary_query;
-        binary_query.resize((queries[i].embedding.size() + 63) / 64, 0);
-        for (size_t j = 0; j < queries[i].embedding.size(); j++)
-        {
-            if (queries[i].embedding[j] >= 0)
-            {
-                binary_query[j / 64] |= (1ULL << (63 - (j % 64)));
-            }
-        }
-        auto binary_results = searchers.binary.similarity_search(binary_query, k);
-        printSearchResults(queries[i].query, queries[i].formatted_query, binary_results, searchers.binary.getSentences());
-        */
+        // Binary AVX2 search
+        std::cout << "\nBinary AVX2 Search Results:\n";
+        auto binaryAvx2_results = searchers.binary_avx2.similarity_search(searchers.binary_avx2.floatToBinaryAvx2(queries[i].embedding), k);
+        printSearchResults(queries[i].query, queries[i].formatted_query, binaryAvx2_results, searchers.base.getSentences());
     }
 }
 

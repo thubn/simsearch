@@ -37,6 +37,31 @@ std::vector<std::pair<int, size_t>> EmbeddingSearchBinaryAVX2::similarity_search
     return std::vector<std::pair<int, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
+std::vector<__m256i> EmbeddingSearchBinaryAVX2::floatToBinaryAvx2(const std::vector<float> &v)
+{
+    // Calculate sizes
+    size_t u64Size = (v.size() + 63) / 64; // Round up division to handle partial groups
+    size_t avxSize = (u64Size + 3) / 4;    // Round up for AVX2 vectors (4 uint64_t per __m256i)
+
+    // Initialize vectors with proper size
+    std::vector<uint64_t> vU64(u64Size, 0); // Initialize with zeros
+    std::vector<__m256i> result(avxSize);
+
+    for (size_t j = 0; j < v.size(); j++)
+    {
+        if (v[j] >= 0)
+        {
+            vU64[j / 64] |= (1ULL << (63 - (j % 64)));
+        }
+    }
+    for (size_t j = 0; j < avxSize; j++)
+    {
+        int k = j * 4;
+        result[j] = _mm256_setr_epi64x(vU64[k], vU64[k + 1], vU64[k + 2], vU64[k + 3]);
+    }
+    return result;
+}
+
 bool EmbeddingSearchBinaryAVX2::create_binary_embedding_from_float(const std::vector<std::vector<float>> &float_data)
 {
     size_t num_vectors = float_data.size();
@@ -48,25 +73,10 @@ bool EmbeddingSearchBinaryAVX2::create_binary_embedding_from_float(const std::ve
     std::vector<std::vector<uint64_t>> embeddingsU64;
     embeddingsU64.resize(num_vectors, std::vector<uint64_t>(vector_size * 4));
 
-    #pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < num_vectors; ++i)
     {
-        for (size_t j = 0; j < float_vector_size; j++)
-        {
-            if (float_data[i][j] >= 0)
-            {
-                embeddingsU64[i][j / 64] |= (1ULL << (63 - (j % 64)));
-            }
-        }
-    }
-    #pragma omp parallel for schedule(dynamic)
-    for (size_t i = 0; i < num_vectors; i++)
-    {
-        for (size_t j = 0; j < vector_size; j++)
-        {
-            int k = j * 4;
-            embeddings[i][j] = _mm256_setr_epi64x(embeddingsU64[i][k], embeddingsU64[i][k + 1], embeddingsU64[i][k + 2], embeddingsU64[i][k + 3]);
-        }
+        embeddings[i] = floatToBinaryAvx2(float_data[i]);
     }
 
     // sentences = float_embeddings.getSentences();

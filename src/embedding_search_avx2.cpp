@@ -85,6 +85,17 @@ std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(con
     return std::vector<std::pair<float, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
+std::vector<__m256> EmbeddingSearchAVX2::floatToAvx2(const std::vector<float> &v) // Remove &
+{
+    std::vector<__m256> result;
+    result.resize(v.size() / 8);
+    for (size_t j = 0; j < v.size() / 8; j++)
+    {
+        result[j] = (_mm256_loadu_ps(&v[j * 8]));
+    }
+    return result;
+}
+
 bool EmbeddingSearchAVX2::setEmbeddings(const std::vector<std::vector<float>> &m)
 {
     if (m.empty() || m[0].size() % 8 != 0)
@@ -97,14 +108,10 @@ bool EmbeddingSearchAVX2::setEmbeddings(const std::vector<std::vector<float>> &m
     size_t num_embeddings = m.size();
 
     embeddings.resize(num_embeddings, std::vector<__m256>(vector_size));
-    #pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < num_embeddings; i++)
     {
-        for (size_t j = 0; j < vector_size; j++)
-        {
-            size_t k = j * 8;
-            embeddings[i][j] = _mm256_loadu_ps(&m[i][k]);
-        }
+        embeddings[i] = floatToAvx2(m[i]);
     }
 
     return true;
