@@ -59,6 +59,7 @@ public:
                 auto end = std::chrono::high_resolution_clock::now();
                 float_times.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
 
+                /*
                 // AVX2 search
                 start = std::chrono::high_resolution_clock::now();
                 auto avx2_results = avx2_searcher.similarity_search(avx2_searcher.floatToAvx2(query), k);
@@ -79,6 +80,7 @@ public:
                 end = std::chrono::high_resolution_clock::now();
                 uint8_times.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
                 uint8_accuracies.push_back(calculateJaccardIndex(float_results, uint8_results));
+                */
             }
         }
 
@@ -103,9 +105,9 @@ public:
 
         // Perform searches with all methods
         auto float_results = float_searcher.similarity_search(query, k);
-        auto avx2_results = avx2_searcher.similarity_search(avx2_searcher.floatToAvx2(query), k);
-        auto binary_results = binary_avx2_searcher.similarity_search(binary_avx2_searcher.floatToBinaryAvx2(query), k);
-        auto uint8_results = uint8_avx2_searcher.similarity_search(uint8_avx2_searcher.floatToAvx2(query), k);
+        //auto avx2_results = avx2_searcher.similarity_search(avx2_searcher.floatToAvx2(query), k);
+        //auto binary_results = binary_avx2_searcher.similarity_search(binary_avx2_searcher.floatToBinaryAvx2(query), k);
+        //auto uint8_results = uint8_avx2_searcher.similarity_search(uint8_avx2_searcher.floatToAvx2(query), k);
 
         // Get sentences for results
         const auto& sentences = float_searcher.getSentences();
@@ -116,6 +118,7 @@ public:
         for (const auto& result : float_results) {
             float_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
         }
+        /*
         for (const auto& result : avx2_results) {
             avx2_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
         }
@@ -125,6 +128,7 @@ public:
         for (const auto& result : uint8_results) {
             uint8_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
         }
+        */
 
         return py::make_tuple(float_results_py, avx2_results_py, binary_results_py, uint8_results_py);
     }

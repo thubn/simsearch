@@ -31,6 +31,7 @@ add_executable(${PROJECT_NAME}
     src/embedding_search_float.cpp
     src/embedding_search_binary_avx2.cpp
     src/embedding_search_uint8_avx2.cpp
+    src/embedding_utils.cpp
 )
 # Link the library and any other dependencies
 target_link_libraries(${PROJECT_NAME}

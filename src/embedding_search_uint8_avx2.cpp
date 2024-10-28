@@ -1,5 +1,6 @@
 #include "embedding_search_uint8_avx2.h"
 #include "embedding_io.h"
+#include "embedding_utils.h"
 #include <algorithm>
 #include <stdexcept>
 #include <cmath>
@@ -59,59 +60,49 @@ std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search
     return std::vector<std::pair<uint, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
-std::vector<__m256i> EmbeddingSearchUint8AVX2::floatToAvx2(const std::vector<float> &v)
-{
-    std::vector<__m256i> result(v.size() / 32);
-    for (size_t j = 0; j < v.size() / 32; j++)
-    {
-        size_t k = j * 32;
-        // embeddings[i][j] = _mm256_loadu_ps(&m[i][k]);
+/*
+// JI: 0.756784 (sample size: 1000)
+a[l] = v[k + l] * 127;
+// JI: 0.530709 (sample size: 250) (exactly the same as binary?!? why?)
 
-        std::vector<int8_t> a(32, 0);
-        for (int l = 0; l < 32; l++)
-        {
-            // JI: 0.756784 (sample size: 1000)
-            a[l] = v[k + l] * 127;
+float n = 1 / 4;
+float x = m[i][k + l];
+a[l] = std::copysign(std::pow(std::abs(x), n), x) * 127;
+*/
 
-            // JI: 0.530709 (sample size: 250) (exactly the same as binary?!? why?)
-            /*
-            float n = 1 / 4;
-            float x = m[i][k + l];
-            a[l] = std::copysign(std::pow(std::abs(x), n), x) * 127;
-            */
-
-            // JI: 0.538676 (sample size: 250)
-            /*
-            float val = m[i][k + l];
-            uint32_t* floatBits = reinterpret_cast<uint32_t*>(&val);
-            a[l] = static_cast<int8_t>(*floatBits >> 24);
-            */
-
-            // std::cout << "a[" << l << "]: " << (int)a[l] << " m: " << (m[i][k + l] + 1) * 8 << "\t| ";
-        }
-        // embeddings[i][j] = _mm256_loadu_epi8(a.data());
-        result[j] = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a.data()));
-        // std::cout << std::endl;
-    }
-    // exit(0);
-}
+// JI: 0.538676 (sample size: 250)
+/*
+float val = m[i][k + l];
+uint32_t* floatBits = reinterpret_cast<uint32_t*>(&val);
+a[l] = static_cast<int8_t>(*floatBits >> 24);
+*/
 
 bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float>> &m)
 {
-    if (m.empty() || m[0].size() % 8 != 0)
+    std::string error_message;
+    if (!EmbeddingUtils::validateUint8AVX2Dimensions(m, error_message))
     {
-        throw std::runtime_error("Input vector size must be a multiple of 8");
+        throw std::runtime_error(error_message);
     }
 
-    size_t org_vector_size = m[0].size();
-    vector_size = org_vector_size / 32;
     size_t num_embeddings = m.size();
+    size_t float_vector_size = m[0].size();
 
+    // Calculate required vector size
+    vector_size = EmbeddingUtils::calculateUint8AVX2VectorSize(float_vector_size);
+
+    // Resize embeddings vector
+    embeddings.clear(); // Clear first to ensure clean state
     embeddings.resize(num_embeddings, std::vector<__m256i>(vector_size));
-//#pragma omp parallel for schedule(dynamic)
-    for (size_t i = 0; i < num_embeddings; i++)
+
+// Convert all vectors in parallel
+#pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < num_embeddings; ++i)
     {
-        embeddings[i] = floatToAvx2(m[i]);
+        EmbeddingUtils::convertSingleFloatToUint8AVX2(
+            m[i],
+            embeddings[i],
+            vector_size);
     }
 
     return true;

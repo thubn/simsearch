@@ -1,6 +1,7 @@
 // embedding_search_avx2.cpp
 #include "embedding_search_avx2.h"
 #include "embedding_io.h"
+#include "embedding_utils.h"
 #include <algorithm>
 #include <stdexcept>
 #include <cmath>
@@ -85,36 +86,19 @@ std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(con
     return std::vector<std::pair<float, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
-std::vector<__m256> EmbeddingSearchAVX2::floatToAvx2(const std::vector<float> &v) // Remove &
-{
-    std::vector<__m256> result;
-    result.resize(v.size() / 8);
-    for (size_t j = 0; j < v.size() / 8; j++)
-    {
-        result[j] = (_mm256_loadu_ps(&v[j * 8]));
-    }
-    return result;
-}
-
 bool EmbeddingSearchAVX2::setEmbeddings(const std::vector<std::vector<float>> &m)
 {
-    if (m.empty() || m[0].size() % 8 != 0)
-    {
-        throw std::runtime_error("Input vector size must be a multiple of 8");
+    std::string error_message;
+    if (!EmbeddingUtils::validateAVX2Dimensions(m, error_message)) {
+        throw std::runtime_error(error_message);
     }
 
     size_t org_vector_size = m[0].size();
     vector_size = org_vector_size / 8;
-    size_t num_embeddings = m.size();
-
-    embeddings.resize(num_embeddings, std::vector<__m256>(vector_size));
-#pragma omp parallel for schedule(dynamic)
-    for (size_t i = 0; i < num_embeddings; i++)
-    {
-        embeddings[i] = floatToAvx2(m[i]);
-    }
-
+    
+    EmbeddingUtils::convertEmbeddingsToAVX2(m, embeddings, vector_size);
     return true;
+
 }
 
 // Helper function to sum up all elements in an __m256

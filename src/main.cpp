@@ -460,6 +460,7 @@ void runQuerySearch(Searchers &searchers, const std::string &query_file, size_t 
         auto f32_results = searchers.base.similarity_search(queries[i].embedding, k);
         printSearchResults(queries[i].query, queries[i].formatted_query, f32_results, searchers.base.getSentences());
 
+        /*
         // AVX2 search
         std::cout << "\nAVX2 Search Results:\n";
         auto avx2_results = searchers.avx2.similarity_search(searchers.avx2.floatToAvx2(queries[i].embedding), k);
@@ -469,6 +470,7 @@ void runQuerySearch(Searchers &searchers, const std::string &query_file, size_t 
         std::cout << "\nBinary AVX2 Search Results:\n";
         auto binaryAvx2_results = searchers.binary_avx2.similarity_search(searchers.binary_avx2.floatToBinaryAvx2(queries[i].embedding), k);
         printSearchResults(queries[i].query, queries[i].formatted_query, binaryAvx2_results, searchers.base.getSentences());
+        */
     }
 }
 

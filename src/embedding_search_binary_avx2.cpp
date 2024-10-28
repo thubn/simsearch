@@ -1,6 +1,7 @@
 // embedding_search_binary.cpp
 #include "embedding_search_binary_avx2.h"
 #include "embedding_search_float.h"
+#include "embedding_utils.h"
 #include <algorithm>
 #include <stdexcept>
 #include <bit>
@@ -37,49 +38,34 @@ std::vector<std::pair<int, size_t>> EmbeddingSearchBinaryAVX2::similarity_search
     return std::vector<std::pair<int, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
-std::vector<__m256i> EmbeddingSearchBinaryAVX2::floatToBinaryAvx2(const std::vector<float> &v)
-{
-    // Calculate sizes
-    size_t u64Size = (v.size() + 63) / 64; // Round up division to handle partial groups
-    size_t avxSize = (u64Size + 3) / 4;    // Round up for AVX2 vectors (4 uint64_t per __m256i)
-
-    // Initialize vectors with proper size
-    std::vector<uint64_t> vU64(u64Size, 0); // Initialize with zeros
-    std::vector<__m256i> result(avxSize);
-
-    for (size_t j = 0; j < v.size(); j++)
-    {
-        if (v[j] >= 0)
-        {
-            vU64[j / 64] |= (1ULL << (63 - (j % 64)));
-        }
-    }
-    for (size_t j = 0; j < avxSize; j++)
-    {
-        int k = j * 4;
-        result[j] = _mm256_setr_epi64x(vU64[k], vU64[k + 1], vU64[k + 2], vU64[k + 3]);
-    }
-    return result;
-}
-
 bool EmbeddingSearchBinaryAVX2::create_binary_embedding_from_float(const std::vector<std::vector<float>> &float_data)
 {
+    std::string error_message;
+    if (!EmbeddingUtils::validateBinaryAVX2Dimensions(float_data, error_message)) {
+        throw std::runtime_error(error_message);
+    }
+
     size_t num_vectors = float_data.size();
     size_t float_vector_size = float_data[0].size();
 
-    vector_size = ((float_vector_size + 63) / 64) / 4; // Round up to nearest multiple of 64
+    // Calculate required vector size with proper rounding
+    vector_size = EmbeddingUtils::calculateBinaryAVX2VectorSize(float_vector_size);
+
+    // Resize embeddings vector
+    embeddings.clear(); // Clear first to ensure clean state
     embeddings.resize(num_vectors, std::vector<__m256i>(vector_size));
 
-    std::vector<std::vector<uint64_t>> embeddingsU64;
-    embeddingsU64.resize(num_vectors, std::vector<uint64_t>(vector_size * 4));
-
-#pragma omp parallel for schedule(dynamic)
-    for (size_t i = 0; i < num_vectors; ++i)
-    {
-        embeddings[i] = floatToBinaryAvx2(float_data[i]);
+    // Convert all vectors in parallel
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < num_vectors; ++i) {
+        EmbeddingUtils::convertSingleFloatToBinaryAVX2(
+            float_data[i],
+            embeddings[i],
+            float_vector_size,
+            vector_size
+        );
     }
 
-    // sentences = float_embeddings.getSentences();
     return true;
 }
 
