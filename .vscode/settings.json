@@ -72,7 +72,10 @@
         "semaphore": "cpp",
         "stop_token": "cpp",
         "thread": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "list": "cpp",
+        "cinttypes": "cpp",
+        "typeindex": "cpp"
     },
     "makefile.makefilePath": "build/Makefile",
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",

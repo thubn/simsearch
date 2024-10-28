@@ -59,6 +59,43 @@ std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search
     return std::vector<std::pair<uint, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
+std::vector<__m256i> EmbeddingSearchUint8AVX2::floatToAvx2(const std::vector<float> &v)
+{
+    std::vector<__m256i> result(v.size() / 32);
+    for (size_t j = 0; j < v.size() / 32; j++)
+    {
+        size_t k = j * 32;
+        // embeddings[i][j] = _mm256_loadu_ps(&m[i][k]);
+
+        std::vector<int8_t> a(32, 0);
+        for (int l = 0; l < 32; l++)
+        {
+            // JI: 0.756784 (sample size: 1000)
+            a[l] = v[k + l] * 127;
+
+            // JI: 0.530709 (sample size: 250) (exactly the same as binary?!? why?)
+            /*
+            float n = 1 / 4;
+            float x = m[i][k + l];
+            a[l] = std::copysign(std::pow(std::abs(x), n), x) * 127;
+            */
+
+            // JI: 0.538676 (sample size: 250)
+            /*
+            float val = m[i][k + l];
+            uint32_t* floatBits = reinterpret_cast<uint32_t*>(&val);
+            a[l] = static_cast<int8_t>(*floatBits >> 24);
+            */
+
+            // std::cout << "a[" << l << "]: " << (int)a[l] << " m: " << (m[i][k + l] + 1) * 8 << "\t| ";
+        }
+        // embeddings[i][j] = _mm256_loadu_epi8(a.data());
+        result[j] = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a.data()));
+        // std::cout << std::endl;
+    }
+    // exit(0);
+}
+
 bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float>> &m)
 {
     if (m.empty() || m[0].size() % 8 != 0)
@@ -71,41 +108,10 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
     size_t num_embeddings = m.size();
 
     embeddings.resize(num_embeddings, std::vector<__m256i>(vector_size));
-    #pragma omp parallel for schedule(dynamic)
+//#pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < num_embeddings; i++)
     {
-        for (size_t j = 0; j < vector_size; j++)
-        {
-            size_t k = j * 32;
-            // embeddings[i][j] = _mm256_loadu_ps(&m[i][k]);
-
-            std::vector<int8_t> a(32, 0);
-            for (int l = 0; l < 32; l++)
-            {
-                //JI: 0.756784 (sample size: 1000)
-                a[l] = m[i][k + l] * 127;
-                
-                //JI: 0.530709 (sample size: 250) (exactly the same as binary?!? why?)
-                /*
-                float n = 1 / 4;
-                float x = m[i][k + l];
-                a[l] = std::copysign(std::pow(std::abs(x), n), x) * 127;
-                */
-                
-                //JI: 0.538676 (sample size: 250)
-                /*
-                float val = m[i][k + l];
-                uint32_t* floatBits = reinterpret_cast<uint32_t*>(&val);
-                a[l] = static_cast<int8_t>(*floatBits >> 24);
-                */
-                
-                // std::cout << "a[" << l << "]: " << (int)a[l] << " m: " << (m[i][k + l] + 1) * 8 << "\t| ";
-            }
-            // embeddings[i][j] = _mm256_loadu_epi8(a.data());
-            embeddings[i][j] = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(a.data()));
-            // std::cout << std::endl;
-        }
-        // exit(0);
+        embeddings[i] = floatToAvx2(m[i]);
     }
 
     return true;

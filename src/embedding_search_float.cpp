@@ -4,7 +4,8 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include <Eigen/Dense>
+//#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <omp.h>
 
 bool EmbeddingSearchFloat::load(const std::string &filename)

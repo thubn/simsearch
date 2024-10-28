@@ -155,7 +155,9 @@ double calculateNDCG(const std::vector<std::pair<T1, size_t>> &groundTruth,
 void initializeSearchers(Searchers &searchers, const std::string &filename)
 {
     // Load base embeddings
+    std::cout << "loading base searcher...";
     searchers.base.load(filename);
+    std::cout << " ✓" << std::endl;
 
     // Initialize PCA variants
     // searchers.pca2 = searchers.base;
@@ -183,10 +185,16 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     // searchers.pca32.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 32);
 
     // Initialize specialized variants
+    std::cout << "loading avx2 searcher...";
     searchers.avx2.setEmbeddings(searchers.base.getEmbeddings());
+    std::cout << " ✓" << std::endl;
+    std::cout << "loading uint8 avx2 searcher...";
     searchers.uint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
+    std::cout << " ✓" << std::endl;
     // searchers.binary.create_binary_embedding_from_float(searchers.base.getEmbeddings());
+    std::cout << "loading binary avx2 searcher...";
     searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
+    std::cout << " ✓" << std::endl;
     // searchers.avx2_pca8.setEmbeddings(searchers.pca8.getEmbeddings());
     // searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca4.getEmbeddings());
     // searchers.pca4.unsetEmbeddings();
