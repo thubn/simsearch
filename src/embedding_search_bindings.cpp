@@ -6,6 +6,7 @@
 #include "embedding_search_float.h"
 #include "embedding_search_binary_avx2.h"
 #include "embedding_search_uint8_avx2.h"
+#include <chrono>
 
 namespace py = pybind11;
 
