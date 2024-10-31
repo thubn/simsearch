@@ -3,6 +3,7 @@
 #include "embedding_search_binary.h"
 #include "embedding_search_binary_avx2.h"
 #include "embedding_search_uint8_avx2.h"
+#include "embedding_utils.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -14,7 +15,6 @@
 #include <string>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <string>
 
 using json = nlohmann::json;
 
@@ -75,82 +75,6 @@ struct Searchers
     EmbeddingSearchBinaryAVX2 binary_avx2_pca6;
     EmbeddingSearchUint8AVX2 uint8_avx2;
 };
-
-template <typename T1, typename T2>
-double calculateJaccardIndex(const std::vector<std::pair<T1, size_t>> &set1,
-                             const std::vector<std::pair<T2, size_t>> &set2)
-{
-    std::vector<size_t> vec1, vec2;
-
-    for (const auto &pair : set1)
-        vec1.push_back(pair.second);
-    for (const auto &pair : set2)
-        vec2.push_back(pair.second);
-
-    std::sort(vec1.begin(), vec1.end());
-    std::sort(vec2.begin(), vec2.end());
-
-    vec1.erase(std::unique(vec1.begin(), vec1.end()), vec1.end());
-    vec2.erase(std::unique(vec2.begin(), vec2.end()), vec2.end());
-
-    std::vector<size_t> intersection;
-    std::set_intersection(vec1.begin(), vec1.end(),
-                          vec2.begin(), vec2.end(),
-                          std::back_inserter(intersection));
-
-    std::vector<size_t> union_set;
-    std::set_union(vec1.begin(), vec1.end(),
-                   vec2.begin(), vec2.end(),
-                   std::back_inserter(union_set));
-
-    return union_set.empty() ? 0.0 : static_cast<double>(intersection.size()) / union_set.size();
-}
-
-template <typename T1, typename T2>
-double calculateNDCG(const std::vector<std::pair<T1, size_t>> &groundTruth,
-                     const std::vector<std::pair<T2, size_t>> &prediction)
-{
-    if (groundTruth.empty() || prediction.empty())
-    {
-        return 0.0;
-    }
-
-    const size_t k = std::min(groundTruth.size(), prediction.size());
-
-    // Create position lookup for ground truth
-    std::unordered_map<size_t, size_t> truthPositions;
-    for (size_t i = 0; i < k; ++i)
-    {
-        truthPositions[groundTruth[i].second] = i;
-    }
-
-    // Calculate DCG
-    double dcg = 0.0;
-    for (size_t i = 0; i < k; ++i)
-    {
-        auto it = truthPositions.find(prediction[i].second);
-        if (it != truthPositions.end())
-        {
-            // Calculate relevance score based on position difference
-            // Perfect match (same position) gets relevance of 1.0
-            // Relevance decreases based on position difference
-            double positionDiff = std::abs(static_cast<double>(it->second) - i);
-            double relevance = std::exp(-positionDiff / k); // Exponential decay
-
-            // DCG formula: rel_i / log2(i + 2)
-            dcg += relevance / std::log2(i + 2);
-        }
-    }
-
-    // Calculate IDCG (ideal DCG - when order is perfect)
-    double idcg = 0.0;
-    for (size_t i = 0; i < k; ++i)
-    {
-        idcg += 1.0 / std::log2(i + 2); // Perfect relevance of 1.0
-    }
-
-    return idcg > 0 ? dcg / idcg : 0.0;
-}
 
 void initializeSearchers(Searchers &searchers, const std::string &filename)
 {
@@ -247,8 +171,8 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
                 auto end = std::chrono::high_resolution_clock::now();
 
                 results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-                results.jaccardIndexes[type] += calculateJaccardIndex(baseResults[i], search_results);
-                results.NDCG[type] += calculateNDCG(baseResults[i], search_results);
+                results.jaccardIndexes[type] += EmbeddingUtils::calculateJaccardIndex(baseResults[i], search_results);
+                results.NDCG[type] += EmbeddingUtils::calculateNDCG(baseResults[i], search_results);
             }
             std::cout << " ✓" << std::endl;
         }
@@ -267,8 +191,8 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
                 auto end = std::chrono::high_resolution_clock::now();
 
                 results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-                results.jaccardIndexes[type] += calculateJaccardIndex(baseResults[i], rescore_results);
-                results.NDCG[type] += calculateNDCG(baseResults[i], rescore_results);
+                results.jaccardIndexes[type] += EmbeddingUtils::calculateJaccardIndex(baseResults[i], rescore_results);
+                results.NDCG[type] += EmbeddingUtils::calculateNDCG(baseResults[i], rescore_results);
             }
             std::cout << " ✓" << std::endl;
         }

@@ -83,14 +83,14 @@ public:
                 auto avx2_results = avx2_searcher.similarity_search(queryAvx2, k);
                 auto end = std::chrono::high_resolution_clock::now();
                 avx2_times.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-                // avx2_accuracies.push_back(calculateJaccardIndex(float_results, avx2_results));
+                // avx2_accuracies.push_back(EmbeddingUtils::calculateJaccardIndex(float_results, avx2_results));
 
                 // Binary AVX2 search
                 start = std::chrono::high_resolution_clock::now();
                 auto binary_results = binary_avx2_searcher.similarity_search(queryBinaryAvx2, k);
                 end = std::chrono::high_resolution_clock::now();
                 binary_times.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-                binary_accuracies.push_back(calculateJaccardIndex(avx2_results, binary_results));
+                binary_accuracies.push_back(EmbeddingUtils::calculateJaccardIndex(avx2_results, binary_results));
 
                 /*
                 // UINT8 AVX2 search
@@ -98,7 +98,7 @@ public:
                 auto uint8_results = uint8_avx2_searcher.similarity_search(uint8_avx2_searcher.floatToAvx2(query), k);
                 end = std::chrono::high_resolution_clock::now();
                 uint8_times.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-                uint8_accuracies.push_back(calculateJaccardIndex(float_results, uint8_results));
+                uint8_accuracies.push_back(EmbeddingUtils::calculateJaccardIndex(float_results, uint8_results));
                 */
             }
         }
@@ -162,32 +162,7 @@ public:
     }
 
 private:
-    template <typename T1, typename T2>
-    double calculateJaccardIndex(const std::vector<std::pair<T1, size_t>> &set1,
-                                 const std::vector<std::pair<T2, size_t>> &set2)
-    {
-        std::vector<size_t> vec1, vec2;
-
-        for (const auto &pair : set1)
-            vec1.push_back(pair.second);
-        for (const auto &pair : set2)
-            vec2.push_back(pair.second);
-
-        std::sort(vec1.begin(), vec1.end());
-        std::sort(vec2.begin(), vec2.end());
-
-        std::vector<size_t> intersection;
-        std::set_intersection(vec1.begin(), vec1.end(),
-                              vec2.begin(), vec2.end(),
-                              std::back_inserter(intersection));
-
-        std::vector<size_t> union_set;
-        std::set_union(vec1.begin(), vec1.end(),
-                       vec2.begin(), vec2.end(),
-                       std::back_inserter(union_set));
-
-        return union_set.empty() ? 0.0 : static_cast<double>(intersection.size()) / union_set.size();
-    }
+    
 };
 
 PYBIND11_MODULE(embedding_search, m)
