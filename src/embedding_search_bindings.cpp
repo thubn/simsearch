@@ -31,8 +31,7 @@ public:
             avx2_searcher.setEmbeddings(float_searcher.getEmbeddings());
             avx2_searcher.setSentences(float_searcher.getSentences());
             binary_avx2_searcher.create_binary_embedding_from_float(float_searcher.getEmbeddings());
-            // uint8_avx2_searcher.setEmbeddings(float_searcher.getEmbeddings());
-
+            uint8_avx2_searcher.setEmbeddings(float_searcher.getEmbeddings());
             is_initialized = true;
         }
         return success;
@@ -109,7 +108,7 @@ public:
             avx2_accuracies, binary_accuracies, uint8_accuracies);
     }
 
-    py::tuple search(py::array_t<float> query_vector, size_t k)
+    py::tuple search(py::array_t<float> query_vector, size_t k, size_t rescoring_factor)
     {
         if (!is_initialized)
         {
@@ -123,46 +122,92 @@ public:
             throw std::runtime_error("Query vector must be 1-dimensional");
         }
         std::vector<float> query(static_cast<float *>(buf.ptr), static_cast<float *>(buf.ptr) + buf.shape[0]);
-        std::vector<__m256> queryAvx2(query.size() / 8);
-        EmbeddingUtils::convertSingleEmbeddingToAVX2(query, queryAvx2, query.size() / 8);
-        std::vector<__m256i> queryBinaryAvx2(query.size() / 8 / 32);
-        EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2, query.size(), query.size() / 8 / 32);
 
-        // Perform searches with all methods
-        // auto float_results = float_searcher.similarity_search(query, k);
-        auto avx2_results = avx2_searcher.similarity_search(queryAvx2, k);
-        auto binary_results = binary_avx2_searcher.similarity_search(queryBinaryAvx2, k);
-        // auto uint8_results = uint8_avx2_searcher.similarity_search(uint8_avx2_searcher.floatToAvx2(query), k);
-
-        // Get sentences for results
-        const auto &sentences = avx2_searcher.getSentences();
-
-        // Convert results to Python lists
-        py::list float_results_py, avx2_results_py, binary_results_py, uint8_results_py;
-
-        /*for (const auto &result : float_results)
+        try
         {
-            float_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
-        }*/
-        for (const auto &result : avx2_results)
-        {
-            avx2_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
-        }
-        for (const auto &result : binary_results)
-        {
-            binary_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
-        }
-        /*
-        for (const auto& result : uint8_results) {
-            uint8_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
-        }
-        */
+            // Convert query for different searchers
+            std::vector<__m256> queryAvx2(query.size() / 8);
+            EmbeddingUtils::convertSingleEmbeddingToAVX2(query, queryAvx2, query.size() / 8);
 
-        return py::make_tuple(float_results_py, avx2_results_py, binary_results_py, uint8_results_py);
+            std::vector<__m256i> queryBinaryAvx2(query.size() / 8 / 32);
+            EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2, query.size(), query.size() / 8 / 32);
+
+            std::vector<__m256i> queryUint8Avx2(query.size() / 8 / 4);
+            EmbeddingUtils::convertSingleFloatToUint8AVX2(query, queryUint8Avx2, query.size() / 8 / 4);
+
+            // Timing variables
+            int64_t avx2_time, binary_time, uint8_time, twostep_time;
+
+            // Perform AVX2 search with timing
+            auto avx2_start = std::chrono::high_resolution_clock::now();
+            auto avx2_results = avx2_searcher.similarity_search(queryAvx2, k);
+            auto avx2_end = std::chrono::high_resolution_clock::now();
+            avx2_time = std::chrono::duration_cast<std::chrono::microseconds>(avx2_end - avx2_start).count();
+
+            // Perform Binary AVX2 search with timing
+            auto binary_start = std::chrono::high_resolution_clock::now();
+            auto binary_results = binary_avx2_searcher.similarity_search(queryBinaryAvx2, k);
+            auto binary_end = std::chrono::high_resolution_clock::now();
+            binary_time = std::chrono::duration_cast<std::chrono::microseconds>(binary_end - binary_start).count();
+
+            // Perform UINT8 AVX2 search with timing
+            auto uint8_start = std::chrono::high_resolution_clock::now();
+            auto uint8_results = uint8_avx2_searcher.similarity_search(queryUint8Avx2, k);
+            auto uint8_end = std::chrono::high_resolution_clock::now();
+            uint8_time = std::chrono::duration_cast<std::chrono::microseconds>(uint8_end - uint8_start).count();
+
+            // Perform Binary AVX2 search with timing
+            auto twostep_start = std::chrono::high_resolution_clock::now();
+            auto twostep_binary_results = binary_avx2_searcher.similarity_search(queryBinaryAvx2, k * rescoring_factor);
+            auto twostep_avx2_results = avx2_searcher.similarity_search(queryAvx2, k, twostep_binary_results);
+            auto twostep_end = std::chrono::high_resolution_clock::now();
+            twostep_time = std::chrono::duration_cast<std::chrono::microseconds>(twostep_start - twostep_end).count();
+
+            // Calculate comparison metrics
+            double binary_jaccard = EmbeddingUtils::calculateJaccardIndex(avx2_results, binary_results);
+            double uint8_jaccard = EmbeddingUtils::calculateJaccardIndex(avx2_results, uint8_results);
+            double twostep_jaccard = EmbeddingUtils::calculateJaccardIndex(avx2_results, twostep_avx2_results);
+
+            double binary_ndcg = EmbeddingUtils::calculateNDCG(avx2_results, binary_results);
+            double uint8_ndcg = EmbeddingUtils::calculateNDCG(avx2_results, uint8_results);
+            double twostep_ndcg = EmbeddingUtils::calculateNDCG(avx2_results, twostep_avx2_results);
+
+            // Get sentences
+            const auto &sentences = avx2_searcher.getSentences();
+
+            // Convert results to Python lists
+            py::list avx2_results_py, binary_results_py, uint8_results_py, twostep_results_py;
+
+            for (const auto &result : avx2_results)
+            {
+                avx2_results_py.append(py::make_tuple(result.first, result.second, EmbeddingUtils::sanitize_utf8(sentences[result.second])));
+            }
+            for (const auto &result : binary_results)
+            {
+                binary_results_py.append(py::make_tuple(result.first, result.second, EmbeddingUtils::sanitize_utf8(sentences[result.second])));
+            }
+            for (const auto &result : uint8_results)
+            {
+                uint8_results_py.append(py::make_tuple(result.first, result.second, EmbeddingUtils::sanitize_utf8(sentences[result.second])));
+            }
+            for (const auto &result : twostep_avx2_results)
+            {
+                twostep_results_py.append(py::make_tuple(result.first, result.second, EmbeddingUtils::sanitize_utf8(sentences[result.second])));
+            }
+
+            return py::make_tuple(
+                avx2_results_py, binary_results_py, uint8_results_py, twostep_results_py,
+                avx2_time, binary_time, uint8_time, twostep_time,
+                binary_jaccard, uint8_jaccard, twostep_jaccard,
+                binary_ndcg, uint8_ndcg, twostep_ndcg);
+        }
+        catch (const std::exception &e)
+        {
+            throw std::runtime_error(std::string("Search failed: ") + e.what());
+        }
     }
 
 private:
-    
 };
 
 PYBIND11_MODULE(embedding_search, m)

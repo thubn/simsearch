@@ -161,4 +161,82 @@ namespace EmbeddingUtils
     {
         return float_vector_size / 32; // Each AVX2 vector holds 32 int8 values
     }
+
+    // Function to sanitize UTF-8 text
+    std::string sanitize_utf8(const std::string &input)
+    {
+        std::string output;
+        output.reserve(input.size());
+
+        for (size_t i = 0; i < input.size();)
+        {
+            unsigned char c = input[i];
+
+            if (c < 0x80)
+            { // ASCII character
+                if (c < 0x20 && c != '\n' && c != '\t' && c != '\r')
+                {
+                    // Replace control characters except newline, tab, and carriage return
+                    output += ' ';
+                }
+                else
+                {
+                    output += c;
+                }
+                i++;
+                continue;
+            }
+
+            // Multi-byte UTF-8 sequence
+            int length = 0;
+            if ((c & 0xE0) == 0xC0)
+                length = 2; // 2-byte sequence
+            else if ((c & 0xF0) == 0xE0)
+                length = 3; // 3-byte sequence
+            else if ((c & 0xF8) == 0xF0)
+                length = 4; // 4-byte sequence
+            else
+            {
+                // Invalid UTF-8 sequence start
+                output += ' ';
+                i++;
+                continue;
+            }
+
+            // Check if we have enough bytes for the sequence
+            if (i + length > input.size())
+            {
+                // Incomplete sequence
+                output += ' ';
+                i++;
+                continue;
+            }
+
+            // Validate continuation bytes
+            bool valid = true;
+            for (int j = 1; j < length; j++)
+            {
+                if ((input[i + j] & 0xC0) != 0x80)
+                {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (valid)
+            {
+                // Copy valid UTF-8 sequence
+                output.append(input.substr(i, length));
+                i += length;
+            }
+            else
+            {
+                // Invalid sequence
+                output += ' ';
+                i++;
+            }
+        }
+
+        return output;
+    }
 }

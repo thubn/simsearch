@@ -47,6 +47,8 @@ namespace EmbeddingUtils
 
     size_t calculateUint8AVX2VectorSize(size_t float_vector_size);
 
+    std::string sanitize_utf8(const std::string &input);
+
     template <typename T1, typename T2>
     double calculateJaccardIndex(const std::vector<std::pair<T1, size_t>> &set1,
                                  const std::vector<std::pair<T2, size_t>> &set2)
