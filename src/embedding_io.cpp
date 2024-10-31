@@ -339,7 +339,7 @@ namespace EmbeddingIO
         }
     }
 
-    bool load_parquet(const std::string &filename, std::vector<std::vector<float>> &embeddings, std::vector<std::string> &sentences)
+    bool load_parquet(const std::string &filename, std::vector<std::vector<float>> &embeddings, std::vector<std::string> &sentences, int num_threads)
     {
         try
         {
@@ -363,7 +363,10 @@ namespace EmbeddingIO
             std::cout << "Total rows: " << num_rows << ", Row groups: " << num_row_groups << std::endl;
 
             // Create vectors for each thread to avoid contention
-            int num_threads = omp_get_max_threads();
+            // Limit number of threads to reduce resource usage
+            num_threads = std::min(num_threads, omp_get_max_threads());
+            omp_set_num_threads(num_threads);
+
             std::vector<std::vector<std::vector<float>>> thread_embeddings(num_threads);
             std::vector<std::vector<std::string>> thread_sentences(num_threads);
 
@@ -384,12 +387,12 @@ namespace EmbeddingIO
                 embedding_columns.push_back(schema->GetFieldIndex(col_name));
             }
 
-// Parallel processing of row groups
-#pragma omp parallel
+// Process row groups with limited parallelism
+#pragma omp parallel num_threads(num_threads)
             {
                 int thread_id = omp_get_thread_num();
 
-#pragma omp for schedule(dynamic)
+#pragma omp for schedule(dynamic, 1)
                 for (int row_group = 0; row_group < num_row_groups; row_group++)
                 {
                     // Get number of rows in this group

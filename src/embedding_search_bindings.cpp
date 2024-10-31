@@ -15,7 +15,7 @@ namespace py = pybind11;
 class PyEmbeddingSearch
 {
 private:
-    EmbeddingSearchFloat float_searcher;
+    // EmbeddingSearchFloat float_searcher;
     EmbeddingSearchAVX2 avx2_searcher;
     EmbeddingSearchBinaryAVX2 binary_avx2_searcher;
     EmbeddingSearchUint8AVX2 uint8_avx2_searcher;
@@ -24,12 +24,15 @@ private:
 public:
     bool load(const std::string &filename)
     {
+        EmbeddingSearchFloat float_searcher;
         bool success = float_searcher.load(filename);
         if (success)
         {
             avx2_searcher.setEmbeddings(float_searcher.getEmbeddings());
+            avx2_searcher.setSentences(float_searcher.getSentences());
             binary_avx2_searcher.create_binary_embedding_from_float(float_searcher.getEmbeddings());
             // uint8_avx2_searcher.setEmbeddings(float_searcher.getEmbeddings());
+
             is_initialized = true;
         }
         return success;
@@ -68,24 +71,26 @@ public:
 
             // Float search (baseline)
             {
+                /*
                 auto start = std::chrono::high_resolution_clock::now();
                 auto float_results = float_searcher.similarity_search(query, k);
                 auto end = std::chrono::high_resolution_clock::now();
                 float_times.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
+                */
 
                 // AVX2 search
-                start = std::chrono::high_resolution_clock::now();
+                auto start = std::chrono::high_resolution_clock::now();
                 auto avx2_results = avx2_searcher.similarity_search(queryAvx2, k);
-                end = std::chrono::high_resolution_clock::now();
+                auto end = std::chrono::high_resolution_clock::now();
                 avx2_times.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-                avx2_accuracies.push_back(calculateJaccardIndex(float_results, avx2_results));
+                // avx2_accuracies.push_back(calculateJaccardIndex(float_results, avx2_results));
 
                 // Binary AVX2 search
                 start = std::chrono::high_resolution_clock::now();
                 auto binary_results = binary_avx2_searcher.similarity_search(queryBinaryAvx2, k);
                 end = std::chrono::high_resolution_clock::now();
                 binary_times.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-                binary_accuracies.push_back(calculateJaccardIndex(float_results, binary_results));
+                binary_accuracies.push_back(calculateJaccardIndex(avx2_results, binary_results));
 
                 /*
                 // UINT8 AVX2 search
@@ -124,26 +129,27 @@ public:
         EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2, query.size(), query.size() / 8 / 32);
 
         // Perform searches with all methods
-        auto float_results = float_searcher.similarity_search(query, k);
+        // auto float_results = float_searcher.similarity_search(query, k);
         auto avx2_results = avx2_searcher.similarity_search(queryAvx2, k);
         auto binary_results = binary_avx2_searcher.similarity_search(queryBinaryAvx2, k);
         // auto uint8_results = uint8_avx2_searcher.similarity_search(uint8_avx2_searcher.floatToAvx2(query), k);
 
         // Get sentences for results
-        const auto &sentences = float_searcher.getSentences();
+        const auto &sentences = avx2_searcher.getSentences();
 
         // Convert results to Python lists
         py::list float_results_py, avx2_results_py, binary_results_py, uint8_results_py;
 
-        for (const auto &result : float_results)
+        /*for (const auto &result : float_results)
         {
             float_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
-        }
+        }*/
         for (const auto &result : avx2_results)
         {
             avx2_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
         }
-        for (const auto& result : binary_results) {
+        for (const auto &result : binary_results)
+        {
             binary_results_py.append(py::make_tuple(result.first, result.second, sentences[result.second]));
         }
         /*

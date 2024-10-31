@@ -20,6 +20,11 @@ public:
 
     const std::vector<std::vector<VectorType>> &getEmbeddings() const { return embeddings; }
     const std::vector<std::string> &getSentences() const { return sentences; }
+    bool setSentences(const std::vector<std::string> &s)
+    {
+        sentences = s;
+        return true;
+    };
     size_t getVectorSize() const { return vector_size; }
 };
 
