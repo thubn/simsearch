@@ -161,7 +161,7 @@ public:
             auto twostep_binary_results = binary_avx2_searcher.similarity_search(queryBinaryAvx2, k * rescoring_factor);
             auto twostep_avx2_results = avx2_searcher.similarity_search(queryAvx2, k, twostep_binary_results);
             auto twostep_end = std::chrono::high_resolution_clock::now();
-            twostep_time = std::chrono::duration_cast<std::chrono::microseconds>(twostep_start - twostep_end).count();
+            twostep_time = std::chrono::duration_cast<std::chrono::microseconds>(twostep_end - twostep_start).count();
 
             // Calculate comparison metrics
             double binary_jaccard = EmbeddingUtils::calculateJaccardIndex(avx2_results, binary_results);
