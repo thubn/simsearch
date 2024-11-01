@@ -4,6 +4,7 @@
 #include "embedding_search_binary_avx2.h"
 #include "embedding_search_uint8_avx2.h"
 #include "embedding_utils.h"
+#include "optimized_embedding_search_avx2.h"
 #include "aligned_types.h"
 #include <iostream>
 #include <fstream>
@@ -40,6 +41,7 @@ enum SearcherType
     F32_PCA32,
     F32_AVX2,
     F32_AVX2_PCA8,
+    F32_OAVX2,
     BINARY,
     BINARY_AVX2,
     BINARY_AVX2_PCA6,
@@ -75,6 +77,7 @@ struct Searchers
     EmbeddingSearchBinaryAVX2 binary_avx2;
     EmbeddingSearchBinaryAVX2 binary_avx2_pca6;
     EmbeddingSearchUint8AVX2 uint8_avx2;
+    OptimizedEmbeddingSearchAVX2 oavx2;
 };
 
 void initializeSearchers(Searchers &searchers, const std::string &filename)
@@ -119,6 +122,9 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     // searchers.binary.create_binary_embedding_from_float(searchers.base.getEmbeddings());
     std::cout << "loading binary avx2 searcher...";
     searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
+    std::cout << " ✓" << std::endl;
+    std::cout << "loading optimized avx2 searcher...";
+    searchers.oavx2.load_from_vectors(searchers.base.getEmbeddings());
     std::cout << " ✓" << std::endl;
     // searchers.avx2_pca8.setEmbeddings(searchers.pca8.getEmbeddings());
     // searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca4.getEmbeddings());
@@ -167,6 +173,7 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
             std::cout << "Running " << name << " searches...";
             for (size_t i = 0; i < config.runs; i++)
             {
+                auto q = getQuery(randomIndexes[i]);
                 auto start = std::chrono::high_resolution_clock::now();
                 auto search_results = searcher.similarity_search(getQuery(randomIndexes[i]), config.k);
                 auto end = std::chrono::high_resolution_clock::now();
@@ -190,9 +197,11 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
             std::cout << "Running " << name << " 2step searches...";
             for (size_t i = 0; i < config.runs; i++)
             {
+                auto q = getQuery(randomIndexes[i]);
+                auto q_rescore = getQueryRescore(randomIndexes[i]);
                 auto start = std::chrono::high_resolution_clock::now();
-                auto search_results = searcher.similarity_search(getQuery(randomIndexes[i]), config.k * config.rescoring_factor);
-                auto rescore_results = searcherRescore.similarity_search(getQueryRescore(randomIndexes[i]), config.k, search_results);
+                auto search_results = searcher.similarity_search(q, config.k * config.rescoring_factor);
+                auto rescore_results = searcherRescore.similarity_search(q_rescore, config.k, search_results);
                 auto end = std::chrono::high_resolution_clock::now();
 
                 results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -263,6 +272,10 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
                                 { return searchers.binary_avx2.getEmbeddings()[idx]; }, [&](size_t idx)
                                 { return searchers.avx2.getEmbeddings()[idx]; });
 
+    runSearcherBenchmark("OAVX2", searchers.oavx2, F32_OAVX2,
+                         [&](size_t idx)
+                         { return searchers.oavx2.getEmbedding(idx); });
+
     return results;
 }
 
@@ -270,7 +283,7 @@ void printResults(const BenchmarkResults &results, const BenchmarkConfig &config
 {
     const std::vector<std::string> names = {
         "F32", "F32_PCA2", "F32_PCA4", "F32_PCA2x2", "F32_PCA6", "F32_PCA8",
-        "F32_PCA16", "F32_PCA32", "F32_AVX2", "F32_AVX2_PCA8", "BINARY",
+        "F32_PCA16", "F32_PCA32", "F32_AVX2", "F32_AVX2_PCA8", "F32_OAVX2", "BINARY",
         "BINARY_AVX2", "BINARY_AVX2_PCA6", "BAVX2_F32AVX2", "UINT8_AVX2"};
 
     std::cout << "Configuration:\n"

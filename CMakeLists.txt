@@ -10,7 +10,7 @@ include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
 
 if(COMPILER_SUPPORTS_AVX2)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
     add_definitions(-DAVX2_ENABLED)
 else()
     message(WARNING "AVX2 is not supported on this machine.")
