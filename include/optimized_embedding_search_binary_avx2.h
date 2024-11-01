@@ -14,7 +14,7 @@
 class OptimizedEmbeddingSearchBinaryAVX2 : public EmbeddingSearchBase<avx2i_vector, int>
 {
 public:
-    OptimizedEmbeddingSearchBinaryAVX2() : num_vectors(0), vector_dim(0), padded_dim(0) {}
+    OptimizedEmbeddingSearchBinaryAVX2() : config_(ConfigRef::get()), num_vectors(0), vector_dim(0), padded_dim(0) {}
 
     bool load(const std::string &filename) override
     {
@@ -41,7 +41,7 @@ public:
             // Allocate aligned memory for embeddings
             size_t total_size = num_vectors * avx_vectors_per_embedding;
             embedding_data.reset(static_cast<__m256i *>(
-                std::aligned_alloc(AVX2_ALIGNMENT, total_size * sizeof(__m256i))));
+                std::aligned_alloc(config_.memory.alignmentSize, total_size * sizeof(__m256i))));
 
             // Process each input vector
             for (size_t i = 0; i < num_vectors; i++)
@@ -65,9 +65,7 @@ public:
         throw std::runtime_error("AVX2 vector input not supported in optimized version");
     }
 
-    std::vector<std::pair<int, size_t>> similarity_search(
-        const std::vector<float> &query,
-        size_t k)
+    std::vector<std::pair<int, size_t>> similarity_search(const std::vector<float> &query, size_t k)
     {
         if (query.size() != vector_dim)
         {
@@ -82,20 +80,12 @@ public:
         std::vector<std::pair<int, size_t>> results;
         results.reserve(num_vectors);
 
-        // Process in batches for better cache utilization
-        constexpr size_t BATCH_SIZE = 256;
-
-        for (size_t batch_start = 0; batch_start < num_vectors; batch_start += BATCH_SIZE)
+        for (size_t i = 0; i < num_vectors; i++)
         {
-            size_t batch_end = std::min(batch_start + BATCH_SIZE, num_vectors);
-
-            for (size_t i = batch_start; i < batch_end; i++)
-            {
-                int similarity = compute_similarity_avx2(
-                    get_embedding_ptr(i),
-                    query_aligned.get());
-                results.emplace_back(similarity, i);
-            }
+            int similarity = compute_similarity_avx2(
+                get_embedding_ptr(i),
+                query_aligned.get());
+            results.emplace_back(similarity, i);
         }
 
         // Partial sort to get top-k results
@@ -165,6 +155,7 @@ public:
     size_t getAVXVectorsPerEmbedding() const { return avx_vectors_per_embedding; }
 
 private:
+    const config::SearchConfig &config_;
     static constexpr size_t AVX2_ALIGNMENT = 32;
 
     std::unique_ptr<__m256i[]> embedding_data;

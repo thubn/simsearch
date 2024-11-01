@@ -1,5 +1,6 @@
 // optimized_embedding_search_uint8_avx2.h
 #pragma once
+#include "config_manager.h"
 #include "embedding_search_base.h"
 #include "embedding_io.h"
 #include "aligned_types.h"
@@ -14,7 +15,7 @@
 class OptimizedEmbeddingSearchUint8AVX2 : public EmbeddingSearchBase<avx2i_vector, uint>
 {
 public:
-    OptimizedEmbeddingSearchUint8AVX2() : num_vectors(0), vector_dim(0), padded_dim(0) {}
+    OptimizedEmbeddingSearchUint8AVX2() : config_(ConfigRef::get()), num_vectors(0), vector_dim(0), padded_dim(0) {}
 
     bool load(const std::string &filename) override
     {
@@ -41,7 +42,7 @@ public:
             // Allocate aligned memory for embeddings
             size_t total_size = num_vectors * avx_vectors_per_embedding;
             embedding_data.reset(static_cast<__m256i *>(
-                std::aligned_alloc(AVX2_ALIGNMENT, total_size * sizeof(__m256i))));
+                std::aligned_alloc(config_.memory.alignmentSize, total_size * sizeof(__m256i))));
 
             // Convert and store each vector
             for (size_t i = 0; i < num_vectors; i++)
@@ -82,20 +83,12 @@ public:
         std::vector<std::pair<uint, size_t>> results;
         results.reserve(num_vectors);
 
-        // Process in batches for better cache utilization
-        constexpr size_t BATCH_SIZE = 256;
-
-        for (size_t batch_start = 0; batch_start < num_vectors; batch_start += BATCH_SIZE)
+        for (size_t i = 0; i < num_vectors; i++)
         {
-            size_t batch_end = std::min(batch_start + BATCH_SIZE, num_vectors);
-
-            for (size_t i = batch_start; i < batch_end; i++)
-            {
-                uint similarity = compute_similarity_avx2(
-                    get_embedding_ptr(i),
-                    query_aligned.get());
-                results.emplace_back(similarity, i);
-            }
+            uint similarity = compute_similarity_avx2(
+                get_embedding_ptr(i),
+                query_aligned.get());
+            results.emplace_back(similarity, i);
         }
 
         // Partial sort to get top-k results
@@ -164,10 +157,11 @@ public:
     size_t getAVXVectorsPerEmbedding() const { return avx_vectors_per_embedding; }
 
 private:
+    const config::SearchConfig &config_;
     static constexpr size_t AVX2_ALIGNMENT = 32;
 
     std::unique_ptr<__m256i[]> embedding_data;
-    //std::vector<std::string> sentences;
+    // std::vector<std::string> sentences;
 
     size_t num_vectors;
     size_t vector_dim;                // Original dimension

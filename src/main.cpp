@@ -1,3 +1,4 @@
+#include "config_manager.h"
 #include "embedding_search_avx2.h"
 #include "embedding_search_float.h"
 #include "embedding_search_binary.h"
@@ -89,9 +90,8 @@ struct Searchers
 void initializeSearchers(Searchers &searchers, const std::string &filename)
 {
     // Load base embeddings
-    std::cout << "loading base searcher...";
     searchers.base.load(filename);
-    std::cout << " ✓" << std::endl;
+    std::cout << "loading base searcher..." << " ✓" << std::endl;
 
     // Initialize PCA variants
     // searchers.pca2 = searchers.base;
@@ -592,6 +592,9 @@ int main(int argc, char *argv[])
 
     try
     {
+        ConfigManager::getInstance().initialize("../config.json");
+        const auto &config = ConfigRef::get();
+
         Searchers searchers;
         std::cout << "Initializing searchers with file: " << args.filename << "\n";
         initializeSearchers(searchers, args.filename);
@@ -607,10 +610,15 @@ int main(int argc, char *argv[])
         {
             // Run in benchmark mode
             std::cout << "Running in benchmark mode...\n";
-            BenchmarkConfig config{args.k, args.runs, args.rescoring_factor};
-            auto results = runBenchmark(searchers, config);
-            printResults(results, config, searchers);
+            BenchmarkConfig benchConfig{args.k, args.runs, args.rescoring_factor};
+            auto results = runBenchmark(searchers, benchConfig);
+            printResults(results, benchConfig, searchers);
         }
+    }
+    catch (const config::ConfigException &e)
+    {
+        std::cerr << "Configuration error: " << e.what() << "\n";
+        return 1;
     }
     catch (const std::exception &e)
     {

@@ -1,5 +1,6 @@
 // optimized_embedding_search_avx2.h
 #pragma once
+#include "config_manager.h"
 #include "embedding_search_base.h"
 #include "embedding_io.h"
 #include "aligned_types.h"
@@ -15,7 +16,7 @@
 class OptimizedEmbeddingSearchAVX2 : public EmbeddingSearchBase<avx2_vector, float>
 {
 public:
-    OptimizedEmbeddingSearchAVX2() : num_vectors(0), vector_dim(0), padded_dim(0) {}
+    OptimizedEmbeddingSearchAVX2() : config_(ConfigRef::get()), num_vectors(0), vector_dim(0), padded_dim(0) {}
 
     bool load(const std::string &filename)
     {
@@ -24,9 +25,7 @@ public:
         throw std::runtime_error("Direct loading of binary embeddings not implemented");
     }
 
-    bool load_from_vectors(const std::vector<std::vector<float>> &input_vectors /*,
-                           const std::vector<std::string>& input_sentences*/
-    )
+    bool load_from_vectors(const std::vector<std::vector<float>> &input_vectors)
     {
         if (input_vectors.empty() || input_vectors[0].empty())
         {
@@ -46,7 +45,7 @@ public:
             // Allocate aligned memory for embeddings
             size_t total_size = num_vectors * padded_dim;
             embedding_data.reset(static_cast<float *>(
-                std::aligned_alloc(AVX2_ALIGNMENT, total_size * sizeof(float))));
+                std::aligned_alloc(config_.memory.alignmentSize, total_size * sizeof(float))));
 
             // Initialize norms
             norms.resize(num_vectors);
@@ -84,9 +83,7 @@ public:
         throw std::runtime_error("AVX2 vector input not supported in optimized version");
     }
 
-    std::vector<std::pair<float, size_t>> similarity_search(
-        const std::vector<float> &query,
-        size_t k)
+    std::vector<std::pair<float, size_t>> similarity_search(const std::vector<float> &query, size_t k)
     {
         if (query.size() != vector_dim)
         {
@@ -106,22 +103,14 @@ public:
         std::vector<std::pair<float, size_t>> results;
         results.reserve(num_vectors);
 
-        // Process in batches for better cache utilization
-        constexpr size_t BATCH_SIZE = 256;
-
-        for (size_t batch_start = 0; batch_start < num_vectors; batch_start += BATCH_SIZE)
+        for (size_t i = 0; i < num_vectors; i++)
         {
-            size_t batch_end = std::min(batch_start + BATCH_SIZE, num_vectors);
-
-            for (size_t i = batch_start; i < batch_end; i++)
-            {
-                float similarity = compute_similarity_avx2(
-                    get_embedding_ptr(i),
-                    query_aligned.get(),
-                    norms[i],
-                    query_norm);
-                results.emplace_back(similarity, i);
-            }
+            float similarity = compute_similarity_avx2(
+                get_embedding_ptr(i),
+                query_aligned.get(),
+                norms[i],
+                query_norm);
+            results.emplace_back(similarity, i);
         }
 
         // Partial sort to get top-k results
@@ -174,6 +163,7 @@ public:
     }
 
 private:
+    const config::SearchConfig &config_;
     static constexpr size_t AVX2_ALIGNMENT = 32;
 
     std::unique_ptr<float[]> embedding_data;
