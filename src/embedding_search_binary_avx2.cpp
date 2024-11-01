@@ -15,7 +15,7 @@ bool EmbeddingSearchBinaryAVX2::load(const std::string &filename)
     throw std::runtime_error("Direct loading of binary embeddings not implemented");
 }
 
-std::vector<std::pair<int, size_t>> EmbeddingSearchBinaryAVX2::similarity_search(const std::vector<__m256i> &query, size_t k)
+std::vector<std::pair<int, size_t>> EmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query, size_t k)
 {
     if (query.size() != vector_size)
     {
@@ -53,7 +53,7 @@ bool EmbeddingSearchBinaryAVX2::create_binary_embedding_from_float(const std::ve
 
     // Resize embeddings vector
     embeddings.clear(); // Clear first to ensure clean state
-    embeddings.resize(num_vectors, std::vector<__m256i>(vector_size));
+    embeddings.resize(num_vectors, avx2i_vector(vector_size));
 
     // Convert all vectors in parallel
     #pragma omp parallel for schedule(dynamic)
@@ -61,7 +61,6 @@ bool EmbeddingSearchBinaryAVX2::create_binary_embedding_from_float(const std::ve
         EmbeddingUtils::convertSingleFloatToBinaryAVX2(
             float_data[i],
             embeddings[i],
-            float_vector_size,
             vector_size
         );
     }
@@ -79,7 +78,7 @@ int popcount_avx2(const __m256i &v)
     return result;
 }
 
-int EmbeddingSearchBinaryAVX2::binary_cosine_similarity(const std::vector<__m256i> &a, const std::vector<__m256i> &b)
+int EmbeddingSearchBinaryAVX2::binary_cosine_similarity(const avx2i_vector &a, const avx2i_vector &b)
 {
     int dot_product = 0;
     for (size_t i = 0; i < a.size(); ++i)

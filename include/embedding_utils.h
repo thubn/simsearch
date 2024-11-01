@@ -1,5 +1,6 @@
 // embedding_utils.h
 #pragma once
+#include "aligned_types.h"
 #include <vector>
 #include <immintrin.h>
 #include <string>
@@ -12,13 +13,13 @@ namespace EmbeddingUtils
     // Convert a single float vector to AVX2 format
     void convertSingleEmbeddingToAVX2(
         const std::vector<float> &input,
-        std::vector<__m256> &output,
+        avx2_vector &output,
         size_t vector_size);
 
     // Convert multiple float vectors to AVX2 format in parallel
     void convertEmbeddingsToAVX2(
         const std::vector<std::vector<float>> &input,
-        std::vector<std::vector<__m256>> &output,
+        std::vector<avx2_vector> &output,
         size_t vector_size);
 
     // Validate input dimensions for AVX2 conversion
@@ -28,8 +29,7 @@ namespace EmbeddingUtils
 
     void convertSingleFloatToBinaryAVX2(
         const std::vector<float> &input,
-        std::vector<__m256i> &output,
-        size_t float_vector_size,
+        avx2i_vector &output,
         size_t vector_size);
 
     bool validateBinaryAVX2Dimensions(
@@ -38,7 +38,7 @@ namespace EmbeddingUtils
 
     void convertSingleFloatToUint8AVX2(
         const std::vector<float> &input,
-        std::vector<__m256i> &output,
+        avx2i_vector &output,
         size_t vector_size);
 
     bool validateUint8AVX2Dimensions(

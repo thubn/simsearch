@@ -14,7 +14,7 @@ bool EmbeddingSearchUint8AVX2::load(const std::string &filename)
     throw std::runtime_error("Direct loading of binary embeddings not implemented");
 }
 
-std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search(const std::vector<__m256i> &query, size_t k)
+std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query, size_t k)
 {
     if (query.size() != embeddings[0].size())
     {
@@ -37,7 +37,7 @@ std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search
     return std::vector<std::pair<uint, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
-std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search(const std::vector<__m256i> &query, size_t k, std::vector<std::pair<int, size_t>> &searchIndexes)
+std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query, size_t k, std::vector<std::pair<int, size_t>> &searchIndexes)
 {
     if (query.size() != embeddings[0].size())
     {
@@ -93,7 +93,7 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
 
     // Resize embeddings vector
     embeddings.clear(); // Clear first to ensure clean state
-    embeddings.resize(num_embeddings, std::vector<__m256i>(vector_size));
+    embeddings.resize(num_embeddings, avx2i_vector(vector_size));
 
 // Convert all vectors in parallel
 #pragma omp parallel for schedule(dynamic)
@@ -108,7 +108,7 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
     return true;
 }
 
-uint EmbeddingSearchUint8AVX2::cosine_similarity(const std::vector<__m256i> &a, const std::vector<__m256i> &b)
+uint EmbeddingSearchUint8AVX2::cosine_similarity(const avx2i_vector &a, const avx2i_vector &b)
 {
     if (a.size() != b.size())
     {
