@@ -5,6 +5,8 @@
 #include "embedding_search_uint8_avx2.h"
 #include "embedding_utils.h"
 #include "optimized_embedding_search_avx2.h"
+#include "optimized_embedding_search_binary_avx2.h"
+#include "optimized_embedding_search_uint8_avx2.h"
 #include "aligned_types.h"
 #include <iostream>
 #include <fstream>
@@ -45,8 +47,10 @@ enum SearcherType
     BINARY,
     BINARY_AVX2,
     BINARY_AVX2_PCA6,
+    OBINAR_AVX2,
     BAVX2_F32AVX2,
     UINT8_AVX2,
+    OUINT8_AVX2,
     NUM_SEARCHER_TYPES // Used to determine array sizes
 };
 
@@ -78,6 +82,8 @@ struct Searchers
     EmbeddingSearchBinaryAVX2 binary_avx2_pca6;
     EmbeddingSearchUint8AVX2 uint8_avx2;
     OptimizedEmbeddingSearchAVX2 oavx2;
+    OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
+    OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
 };
 
 void initializeSearchers(Searchers &searchers, const std::string &filename)
@@ -119,12 +125,18 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     std::cout << "loading uint8 avx2 searcher...";
     searchers.uint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
     std::cout << " ✓" << std::endl;
+    std::cout << "loading optimized uint8 avx2 searcher...";
+    searchers.ouint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
+    std::cout << " ✓" << std::endl;
     // searchers.binary.create_binary_embedding_from_float(searchers.base.getEmbeddings());
     std::cout << "loading binary avx2 searcher...";
     searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
     std::cout << " ✓" << std::endl;
     std::cout << "loading optimized avx2 searcher...";
     searchers.oavx2.load_from_vectors(searchers.base.getEmbeddings());
+    std::cout << " ✓" << std::endl;
+    std::cout << "loading optimized binary avx2 searcher...";
+    searchers.obinary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
     std::cout << " ✓" << std::endl;
     // searchers.avx2_pca8.setEmbeddings(searchers.pca8.getEmbeddings());
     // searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca4.getEmbeddings());
@@ -276,6 +288,14 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
                          [&](size_t idx)
                          { return searchers.oavx2.getEmbedding(idx); });
 
+    runSearcherBenchmark("O Binary AVX2", searchers.obinary_avx2, OBINAR_AVX2,
+                         [&](size_t idx)
+                         { return searchers.base.getEmbeddings()[idx]; });
+
+    runSearcherBenchmark("O UINT8 AVX2", searchers.ouint8_avx2, OUINT8_AVX2,
+                         [&](size_t idx)
+                         { return searchers.base.getEmbeddings()[idx]; });
+
     return results;
 }
 
@@ -284,7 +304,7 @@ void printResults(const BenchmarkResults &results, const BenchmarkConfig &config
     const std::vector<std::string> names = {
         "F32", "F32_PCA2", "F32_PCA4", "F32_PCA2x2", "F32_PCA6", "F32_PCA8",
         "F32_PCA16", "F32_PCA32", "F32_AVX2", "F32_AVX2_PCA8", "F32_OAVX2", "BINARY",
-        "BINARY_AVX2", "BINARY_AVX2_PCA6", "BAVX2_F32AVX2", "UINT8_AVX2"};
+        "BINARY_AVX2", "BINARY_AVX2_PCA6", "OBINARY_AVX2", "BAVX2_F32AVX2", "UINT8_AVX2", "OUINT8_AVX2"};
 
     std::cout << "Configuration:\n"
               << "Runs: " << config.runs
