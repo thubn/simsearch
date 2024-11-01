@@ -63,10 +63,10 @@ public:
         for (size_t q = 0; q < num_queries; q++)
         {
             std::vector<float> query(ptr + q * dim, ptr + (q + 1) * dim);
-            std::vector<__m256> queryAvx2(query.size() / 8);
+            avx2_vector queryAvx2(query.size() / 8);
             EmbeddingUtils::convertSingleEmbeddingToAVX2(query, queryAvx2, query.size() / 8);
-            std::vector<__m256i> queryBinaryAvx2(query.size() / 8 / 32);
-            EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2, query.size(), query.size() / 8 / 32);
+            avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
+            EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2, query.size() / 8 / 32);
 
             // Float search (baseline)
             {
@@ -126,13 +126,13 @@ public:
         try
         {
             // Convert query for different searchers
-            std::vector<__m256> queryAvx2(query.size() / 8);
+            avx2_vector queryAvx2(query.size() / 8);
             EmbeddingUtils::convertSingleEmbeddingToAVX2(query, queryAvx2, query.size() / 8);
 
-            std::vector<__m256i> queryBinaryAvx2(query.size() / 8 / 32);
-            EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2, query.size(), query.size() / 8 / 32);
+            avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
+            EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2, query.size() / 8 / 32);
 
-            std::vector<__m256i> queryUint8Avx2(query.size() / 8 / 4);
+            avx2i_vector queryUint8Avx2(query.size() / 8 / 4);
             EmbeddingUtils::convertSingleFloatToUint8AVX2(query, queryUint8Avx2, query.size() / 8 / 4);
 
             // Timing variables

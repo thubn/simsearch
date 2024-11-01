@@ -40,7 +40,7 @@ bool EmbeddingSearchAVX2::load(const std::string &filename)
     return false;
 }
 
-std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(const std::vector<__m256> &query, size_t k)
+std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(const avx2_vector &query, size_t k)
 {
     if (query.size() != embeddings[0].size())
     {
@@ -63,7 +63,7 @@ std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(con
     return std::vector<std::pair<float, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
-std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(const std::vector<__m256> &query, size_t k, std::vector<std::pair<int, size_t>> &searchIndexes)
+std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(const avx2_vector &query, size_t k, std::vector<std::pair<int, size_t>> &searchIndexes)
 {
     if (query.size() != embeddings[0].size())
     {
@@ -112,7 +112,7 @@ float _mm256_reduce_add_ps(__m256 x)
     return _mm_cvtss_f32(sum);
 }
 
-float EmbeddingSearchAVX2::cosine_similarity(const std::vector<__m256> &a, const std::vector<__m256> &b)
+float EmbeddingSearchAVX2::cosine_similarity(const avx2_vector &a, const avx2_vector &b)
 {
     __m256 dot_product = _mm256_setzero_ps();
     __m256 mag_a = _mm256_setzero_ps();

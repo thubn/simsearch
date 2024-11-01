@@ -33,12 +33,12 @@ bool EmbeddingSearchFloat::load(const std::string &filename)
     }
 }
 
-bool EmbeddingSearchFloat::unsetEmbeddings()
+void EmbeddingSearchFloat::unsetEmbeddings()
 {
     embeddings.clear();
 }
 
-bool EmbeddingSearchFloat::unsetSentences()
+void EmbeddingSearchFloat::unsetSentences()
 {
     sentences.clear();
 }

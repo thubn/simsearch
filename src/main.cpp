@@ -4,6 +4,7 @@
 #include "embedding_search_binary_avx2.h"
 #include "embedding_search_uint8_avx2.h"
 #include "embedding_utils.h"
+#include "aligned_types.h"
 #include <iostream>
 #include <fstream>
 #include <vector>

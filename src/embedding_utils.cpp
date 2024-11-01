@@ -1,4 +1,5 @@
 #include "embedding_utils.h"
+#include "aligned_types.h"
 #include <stdexcept>
 #include <omp.h>
 #include <cstdint>
@@ -7,23 +8,24 @@ namespace EmbeddingUtils
 {
     void convertSingleEmbeddingToAVX2(
         const std::vector<float> &input,
-        std::vector<__m256> &output,
+        avx2_vector &output,
         size_t vector_size)
     {
         for (size_t j = 0; j < vector_size; j++)
         {
             size_t k = j * 8; // Each AVX2 vector holds 8 floats
+            // Since we're using aligned vectors, we can use aligned load
             output[j] = _mm256_loadu_ps(&input[k]);
         }
     }
 
     void convertEmbeddingsToAVX2(
         const std::vector<std::vector<float>> &input,
-        std::vector<std::vector<__m256>> &output,
+        std::vector<avx2_vector> &output,
         size_t vector_size)
     {
         size_t num_embeddings = input.size();
-        output.resize(num_embeddings, std::vector<__m256>(vector_size));
+        output.resize(num_embeddings, avx2_vector(vector_size));
 
 #pragma omp parallel for schedule(dynamic)
         for (size_t i = 0; i < num_embeddings; i++)
@@ -56,37 +58,32 @@ namespace EmbeddingUtils
 
     void convertSingleFloatToBinaryAVX2(
         const std::vector<float> &input,
-        std::vector<__m256i> &output,
-        size_t float_vector_size,
+        avx2i_vector &output,
         size_t vector_size)
     {
-        // Process each AVX2 vector (256 bits = 4 x 64 bits)
+        // Implementation for binary conversion
         for (size_t j = 0; j < vector_size; j++)
         {
             uint64_t temp_bits[4] = {0, 0, 0, 0};
+            size_t base_idx = j * 256;
 
-            // Process each 64-bit chunk within this AVX2 vector
             for (size_t chunk = 0; chunk < 4; chunk++)
             {
-                // Calculate base index for this 64-bit chunk
-                size_t base_idx = j * 256 + chunk * 64;
-
-                // Process each bit within the 64-bit chunk
-                for (size_t bit = 0; bit < 64 && (base_idx + bit) < float_vector_size; bit++)
+                for (size_t bit = 0; bit < 64; bit++)
                 {
-                    if (base_idx + bit < input.size() && input[base_idx + bit] >= 0)
+                    size_t idx = base_idx + chunk * 64 + bit;
+                    if (idx < input.size() && input[idx] >= 0)
                     {
                         temp_bits[chunk] |= (1ULL << (63 - bit));
                     }
                 }
             }
 
-            // Convert to AVX2 vector
-            output[j] = _mm256_setr_epi64x(
-                temp_bits[0],
-                temp_bits[1],
+            output[j] = _mm256_set_epi64x(
+                temp_bits[3],
                 temp_bits[2],
-                temp_bits[3]);
+                temp_bits[1],
+                temp_bits[0]);
         }
     }
 
@@ -111,7 +108,7 @@ namespace EmbeddingUtils
 
     void convertSingleFloatToUint8AVX2(
         const std::vector<float> &input,
-        std::vector<__m256i> &output,
+        avx2i_vector &output,
         size_t vector_size)
     {
         for (size_t j = 0; j < vector_size; j++)
