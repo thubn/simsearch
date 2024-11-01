@@ -5,10 +5,6 @@
 
 class EmbeddingSearchAVX2 : public EmbeddingSearchBase<avx2_vector, float>
 {
-private:
-    std::vector<avx2_vector> embeddings;
-    size_t vector_size;
-
 public:
     bool load(const std::string &filename) override;
     bool setEmbeddings(const std::vector<std::vector<float>> &m);

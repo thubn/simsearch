@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <omp.h>
+#include <iostream>
 
 bool EmbeddingSearchAVX2::load(const std::string &filename)
 {
@@ -89,16 +90,15 @@ std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(con
 bool EmbeddingSearchAVX2::setEmbeddings(const std::vector<std::vector<float>> &m)
 {
     std::string error_message;
-    if (!EmbeddingUtils::validateAVX2Dimensions(m, error_message)) {
+    if (!EmbeddingUtils::validateAVX2Dimensions(m, error_message))
+    {
         throw std::runtime_error(error_message);
     }
 
-    size_t org_vector_size = m[0].size();
-    vector_size = org_vector_size / 8;
-    
+    vector_size = m[0].size() / 8;
+
     EmbeddingUtils::convertEmbeddingsToAVX2(m, embeddings, vector_size);
     return true;
-
 }
 
 // Helper function to sum up all elements in an __m256

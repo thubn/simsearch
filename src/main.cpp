@@ -177,6 +177,10 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
             }
             std::cout << " ✓" << std::endl;
         }
+        else
+        {
+            std::cout << name << " is not initialized..." << std::endl;
+        }
     };
 
     auto runSearcherBenchmarkTwoStep = [&](const std::string &name, auto &searcher, auto &searcherRescore, SearcherType type, const auto &getQuery, const auto &getQueryRescore)
@@ -196,6 +200,10 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
                 results.NDCG[type] += EmbeddingUtils::calculateNDCG(baseResults[i], rescore_results);
             }
             std::cout << " ✓" << std::endl;
+        }
+        else
+        {
+            std::cout << name << " is not initialized..." << std::endl;
         }
     };
 
