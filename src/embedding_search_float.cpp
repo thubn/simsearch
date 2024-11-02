@@ -1,16 +1,13 @@
-// embedding_search_float.cpp
 #include "embedding_search_float.h"
 #include "embedding_io.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-//#include <Eigen/Dense>
 #include <eigen3/Eigen/Dense>
 #include <omp.h>
 
 bool EmbeddingSearchFloat::load(const std::string &filename)
 {
-    // Determine file type and call appropriate loader
     if (filename.ends_with(".safetensors"))
     {
         return EmbeddingIO::load_safetensors(filename, embeddings, sentences);
@@ -31,6 +28,7 @@ bool EmbeddingSearchFloat::load(const std::string &filename)
     {
         throw std::runtime_error("Unsupported file format");
     }
+    num_vectors = embeddings.size();
 }
 
 void EmbeddingSearchFloat::unsetEmbeddings()
@@ -49,6 +47,7 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int target_dim)
     int rows = embeddings.size();
     int cols = embeddings[0].size();
     Eigen::MatrixXf matrix(rows, cols);
+
 #pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < rows; ++i)
     {
@@ -68,12 +67,13 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int target_dim)
     // Compute eigendecomposition
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> eig(cov);
 
-    // Sort eigenvectors by descending eigenvalues
+    // Sort eigenvectors by eigenvalues
     std::vector<std::pair<float, Eigen::VectorXf>> eigens;
     for (int i = 0; i < cols; ++i)
     {
         eigens.push_back({eig.eigenvalues()[i], eig.eigenvectors().col(i)});
     }
+
     std::sort(eigens.begin(), eigens.end(),
               [](const auto &a, const auto &b)
               { return a.first > b.first; });
@@ -90,6 +90,7 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int target_dim)
 
     // Convert back to vector of vectors
     std::vector<std::vector<float>> result(rows, std::vector<float>(target_dim));
+
 #pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < rows; ++i)
     {
@@ -99,8 +100,7 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int target_dim)
         }
     }
 
-    embeddings.resize(result.size(), std::vector<float>(result[0].size()));
-    embeddings = result;
+    embeddings = std::move(result);
     vector_size = target_dim;
     return true;
 }
@@ -121,9 +121,13 @@ std::vector<std::pair<float, size_t>> EmbeddingSearchFloat::similarity_search(co
         similarities.emplace_back(sim, i);
     }
 
-    std::partial_sort(similarities.begin(), similarities.begin() + k, similarities.end(),
+    std::partial_sort(similarities.begin(),
+                      similarities.begin() + k,
+                      similarities.end(),
                       [](const auto &a, const auto &b)
-                      { return a.first > b.first; });
+                      {
+                          return a.first > b.first;
+                      });
 
     return std::vector<std::pair<float, size_t>>(similarities.begin(), similarities.begin() + k);
 }

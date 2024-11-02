@@ -1,17 +1,13 @@
-// embedding_search_binary.cpp
 #include "embedding_search_binary_avx2.h"
-#include "embedding_search_float.h"
+#include "embedding_io.h"
 #include "embedding_utils.h"
 #include <algorithm>
 #include <stdexcept>
 #include <bit>
-#include <immintrin.h>
 #include <omp.h>
 
 bool EmbeddingSearchBinaryAVX2::load(const std::string &filename)
 {
-    // Binary embeddings are typically created from float embeddings
-    // This method could be implemented to directly load binary data if needed
     throw std::runtime_error("Direct loading of binary embeddings not implemented");
 }
 
@@ -41,41 +37,40 @@ std::vector<std::pair<int, size_t>> EmbeddingSearchBinaryAVX2::similarity_search
 bool EmbeddingSearchBinaryAVX2::create_binary_embedding_from_float(const std::vector<std::vector<float>> &float_data)
 {
     std::string error_message;
-    if (!EmbeddingUtils::validateBinaryAVX2Dimensions(float_data, error_message)) {
+    if (!validateDimensions(float_data, error_message))
+    {
         throw std::runtime_error(error_message);
     }
 
-    size_t num_vectors = float_data.size();
+    num_vectors = float_data.size();
     size_t float_vector_size = float_data[0].size();
 
-    // Calculate required vector size with proper rounding
-    vector_size = EmbeddingUtils::calculateBinaryAVX2VectorSize(float_vector_size);
-
-    // Resize embeddings vector
-    embeddings.clear(); // Clear first to ensure clean state
+    vector_size = (float_vector_size + 255) / 256; // Round up to nearest multiple of 256 bits
     embeddings.resize(num_vectors, avx2i_vector(vector_size));
 
-    // Convert all vectors in parallel
-    #pragma omp parallel for schedule(dynamic)
-    for (size_t i = 0; i < num_vectors; ++i) {
-        EmbeddingUtils::convertSingleFloatToBinaryAVX2(
-            float_data[i],
-            embeddings[i],
-            vector_size
-        );
+    for (size_t i = 0; i < num_vectors; ++i)
+    {
+        for (size_t j = 0; j < float_vector_size; ++j)
+        {
+            if (float_data[i][j] >= 0)
+            {
+                size_t vector_idx = j / 256;
+                size_t bit_pos = j % 256;
+                size_t chunk_idx = bit_pos / 64;
+                size_t local_bit_pos = bit_pos % 64;
+
+                uint64_t *ptr = reinterpret_cast<uint64_t *>(&embeddings[i][vector_idx]);
+                ptr[chunk_idx] |= (1ULL << (63 - local_bit_pos));
+            }
+        }
     }
 
     return true;
 }
 
-int popcount_avx2(const __m256i &v)
+bool EmbeddingSearchBinaryAVX2::validateDimensions(const std::vector<std::vector<float>> &input, std::string &error_message)
 {
-    int result = __builtin_popcountll(_mm256_extract_epi64(v, 0));
-    result += __builtin_popcountll(_mm256_extract_epi64(v, 1));
-    result += __builtin_popcountll(_mm256_extract_epi64(v, 2));
-    result += __builtin_popcountll(_mm256_extract_epi64(v, 3));
-
-    return result;
+    return EmbeddingUtils::validateBinaryAVX2Dimensions(input, error_message);
 }
 
 int EmbeddingSearchBinaryAVX2::binary_cosine_similarity(const avx2i_vector &a, const avx2i_vector &b)
@@ -86,7 +81,12 @@ int EmbeddingSearchBinaryAVX2::binary_cosine_similarity(const avx2i_vector &a, c
         __m256i result = _mm256_xor_si256(a[i], b[i]);
         __m256i all_ones = _mm256_set1_epi32(-1);
         result = _mm256_xor_si256(result, all_ones);
-        dot_product += popcount_avx2(result);
+
+        uint64_t *result_ptr = reinterpret_cast<uint64_t *>(&result);
+        dot_product += __builtin_popcountll(result_ptr[0]);
+        dot_product += __builtin_popcountll(result_ptr[1]);
+        dot_product += __builtin_popcountll(result_ptr[2]);
+        dot_product += __builtin_popcountll(result_ptr[3]);
     }
     return dot_product;
 }

@@ -1,4 +1,3 @@
-// embedding_search_avx2.cpp
 #include "embedding_search_avx2.h"
 #include "embedding_io.h"
 #include "embedding_utils.h"
@@ -11,7 +10,6 @@
 bool EmbeddingSearchAVX2::load(const std::string &filename)
 {
     std::vector<std::vector<float>> float_embeddings;
-    bool success;
 
     if (filename.ends_with(".safetensors"))
     {
@@ -34,11 +32,7 @@ bool EmbeddingSearchAVX2::load(const std::string &filename)
         throw std::runtime_error("Unsupported file format");
     }
 
-    if (success)
-    {
-        return setEmbeddings(float_embeddings);
-    }
-    return false;
+    return setEmbeddings(float_embeddings);
 }
 
 std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(const avx2_vector &query, size_t k)
@@ -74,7 +68,7 @@ std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(con
     std::vector<std::pair<float, size_t>> similarities;
     similarities.reserve(searchIndexes.size());
 
-    for (int i = 0; i < searchIndexes.size(); i++)
+    for (size_t i = 0; i < searchIndexes.size(); i++)
     {
         float sim = cosine_similarity(query, embeddings[searchIndexes[i].second]);
         similarities.emplace_back(sim, searchIndexes[i].second);
@@ -90,19 +84,25 @@ std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(con
 bool EmbeddingSearchAVX2::setEmbeddings(const std::vector<std::vector<float>> &m)
 {
     std::string error_message;
-    if (!EmbeddingUtils::validateAVX2Dimensions(m, error_message))
+    if (!validateDimensions(m, error_message))
     {
         throw std::runtime_error(error_message);
     }
 
     vector_size = m[0].size() / 8;
-
+    num_vectors = m.size();
+    embeddings.clear();
     EmbeddingUtils::convertEmbeddingsToAVX2(m, embeddings, vector_size);
     return true;
 }
 
+bool EmbeddingSearchAVX2::validateDimensions(const std::vector<std::vector<float>> &input, std::string &error_message)
+{
+    return EmbeddingUtils::validateAVX2Dimensions(input, error_message);
+}
+
 // Helper function to sum up all elements in an __m256
-float _mm256_reduce_add_ps(__m256 x)
+inline float _mm256_reduce_add_ps(__m256 x)
 {
     __m128 high128 = _mm256_extractf128_ps(x, 1);
     __m128 low128 = _mm256_castps256_ps128(x);

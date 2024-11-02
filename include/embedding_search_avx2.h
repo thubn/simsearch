@@ -6,11 +6,15 @@
 class EmbeddingSearchAVX2 : public EmbeddingSearchBase<avx2_vector, float>
 {
 public:
+    EmbeddingSearchAVX2() = default;
+
     bool load(const std::string &filename) override;
+    std::vector<std::pair<float, size_t>> similarity_search(const avx2_vector &query, size_t k) override;
+    bool validateDimensions(const std::vector<std::vector<float>> &input, std::string &error_message) override;
+
+    std::vector<std::pair<float, size_t>> similarity_search(const avx2_vector &query, size_t k, std::vector<std::pair<int, size_t>> &searchIndexes);
+
     bool setEmbeddings(const std::vector<std::vector<float>> &m);
-    std::vector<std::pair<float, size_t>> similarity_search(const avx2_vector &query, size_t k);
-    std::vector<std::pair<float, size_t>> similarity_search(const avx2_vector &query, size_t k,
-                                                            std::vector<std::pair<int, size_t>> &searchIndexes);
 
 private:
     float cosine_similarity(const avx2_vector &a, const avx2_vector &b);

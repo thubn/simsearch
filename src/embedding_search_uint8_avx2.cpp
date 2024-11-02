@@ -9,9 +9,7 @@
 
 bool EmbeddingSearchUint8AVX2::load(const std::string &filename)
 {
-    // Binary embeddings are typically created from float embeddings
-    // This method could be implemented to directly load binary data if needed
-    throw std::runtime_error("Direct loading of binary embeddings not implemented");
+    throw std::runtime_error("Direct loading of uint8 embeddings not implemented");
 }
 
 std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query, size_t k)
@@ -30,11 +28,17 @@ std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search
         similarities.emplace_back(sim, i);
     }
 
-    std::partial_sort(similarities.begin(), similarities.begin() + k, similarities.end(),
+    std::partial_sort(similarities.begin(),
+                      similarities.begin() + k,
+                      similarities.end(),
                       [](const auto &a, const auto &b)
-                      { return a.first > b.first; });
+                      {
+                          return a.first > b.first;
+                      });
 
-    return std::vector<std::pair<uint, size_t>>(similarities.begin(), similarities.begin() + k);
+    return std::vector<std::pair<uint, size_t>>(
+        similarities.begin(),
+        similarities.begin() + k);
 }
 
 std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query, size_t k, std::vector<std::pair<int, size_t>> &searchIndexes)
@@ -47,35 +51,24 @@ std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search
     std::vector<std::pair<uint, size_t>> similarities;
     similarities.reserve(searchIndexes.size());
 
-    for (int i = 0; i < searchIndexes.size(); i++)
+    for (const auto &[_, idx] : searchIndexes)
     {
-        uint sim = cosine_similarity(query, embeddings[searchIndexes[i].second]);
-        similarities.emplace_back(sim, searchIndexes[i].second);
+        uint sim = cosine_similarity(query, embeddings[idx]);
+        similarities.emplace_back(sim, idx);
     }
 
-    std::partial_sort(similarities.begin(), similarities.begin() + k, similarities.end(),
+    std::partial_sort(similarities.begin(),
+                      similarities.begin() + k,
+                      similarities.end(),
                       [](const auto &a, const auto &b)
-                      { return a.first > b.first; });
+                      {
+                          return a.first > b.first;
+                      });
 
-    return std::vector<std::pair<uint, size_t>>(similarities.begin(), similarities.begin() + k);
+    return std::vector<std::pair<uint, size_t>>(
+        similarities.begin(),
+        similarities.begin() + k);
 }
-
-/*
-// JI: 0.756784 (sample size: 1000)
-a[l] = v[k + l] * 127;
-// JI: 0.530709 (sample size: 250) (exactly the same as binary?!? why?)
-
-float n = 1 / 4;
-float x = m[i][k + l];
-a[l] = std::copysign(std::pow(std::abs(x), n), x) * 127;
-*/
-
-// JI: 0.538676 (sample size: 250)
-/*
-float val = m[i][k + l];
-uint32_t* floatBits = reinterpret_cast<uint32_t*>(&val);
-a[l] = static_cast<int8_t>(*floatBits >> 24);
-*/
 
 bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float>> &m)
 {
@@ -87,16 +80,11 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
 
     size_t num_embeddings = m.size();
     size_t float_vector_size = m[0].size();
-
-    // Calculate required vector size
     vector_size = EmbeddingUtils::calculateUint8AVX2VectorSize(float_vector_size);
 
-    // Resize embeddings vector
-    embeddings.clear(); // Clear first to ensure clean state
+    embeddings.clear();
     embeddings.resize(num_embeddings, avx2i_vector(vector_size));
 
-// Convert all vectors in parallel
-#pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < num_embeddings; ++i)
     {
         EmbeddingUtils::convertSingleFloatToUint8AVX2(
@@ -106,6 +94,11 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
     }
 
     return true;
+}
+
+bool EmbeddingSearchUint8AVX2::validateDimensions(const std::vector<std::vector<float>> &input, std::string &error_message)
+{
+    return EmbeddingUtils::validateUint8AVX2Dimensions(input, error_message);
 }
 
 uint EmbeddingSearchUint8AVX2::cosine_similarity(const avx2i_vector &a, const avx2i_vector &b)
@@ -120,33 +113,18 @@ uint EmbeddingSearchUint8AVX2::cosine_similarity(const avx2i_vector &a, const av
 
     for (size_t i = 0; i < a.size(); ++i)
     {
-        // Multiply and add
-        __m256i mul_lo = _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[i], 0)),
-                                            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[i], 0)));
-        __m256i mul_hi = _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[i], 1)),
-                                            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[i], 1)));
+        __m256i mul_lo = _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[i], 0)), _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[i], 0)));
+        __m256i mul_hi = _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[i], 1)), _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[i], 1)));
 
         sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo, _mm256_set1_epi16(1)));
         sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi, _mm256_set1_epi16(1)));
     }
 
-    // Combine the results
     __m256i sum = _mm256_add_epi32(sum_lo, sum_hi);
+    __m128i sum_128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
 
-    // Horizontal sum
-    __m128i sum_128 = _mm_add_epi32(_mm256_extracti128_si256(sum, 0),
-                                    _mm256_extracti128_si256(sum, 1));
     sum_128 = _mm_add_epi32(sum_128, _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(1, 0, 3, 2)));
     sum_128 = _mm_add_epi32(sum_128, _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(2, 3, 0, 1)));
 
-    int32_t result = _mm_cvtsi128_si32(sum_128);
-
-    // Scale the result to match float32 range
-    return result;
+    return _mm_cvtsi128_si32(sum_128);
 }
-
-/*float EmbeddingSearchUint8AVX2::dot_product_avx2(__m256 a, __m256 b)
-{
-    __m256 mul = _mm256_mul_ps(a, b);
-    return _mm256_reduce_add_ps(mul);
-}*/
