@@ -12,8 +12,9 @@ public:
     // Virtual function declarations
     bool setEmbeddings(const std::vector<std::vector<float>> &input_vectors) override;
     std::vector<std::pair<float, size_t>> similarity_search(const avx2_vector &query, size_t k) override;
+    std::vector<std::pair<float, size_t>> similarity_search(const std::vector<float> &query, size_t k);
     bool load(const std::string &filename) override;
-    avx2_vector getEmbeddingAVX2(size_t index) const;
+    std::vector<float> getEmbedding(size_t index) const;
 
 protected:
     bool validateDimensions(const std::vector<std::vector<float>> &input, std::string &error_message) override;

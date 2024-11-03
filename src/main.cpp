@@ -91,7 +91,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
 {
     // Load base embeddings
     searchers.base.load(filename);
-    std::cout << "loading base searcher..." << " ✓" << std::endl;
+    std::cout << "loading base searcher..." << std::endl;
 
     // Initialize PCA variants
     // searchers.pca2 = searchers.base;
@@ -119,27 +119,29 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     // searchers.pca32.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 32);
 
     // Initialize specialized variants
-    std::cout << "loading avx2 searcher...";
+    std::cout << "loading avx2 searcher..." << std::endl;
     searchers.avx2.setEmbeddings(searchers.base.getEmbeddings());
-    std::cout << " ✓" << std::endl;
-    std::cout << "loading uint8 avx2 searcher...";
-    searchers.uint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
-    std::cout << " ✓" << std::endl;
-    std::cout << "loading optimized uint8 avx2 searcher...";
-    searchers.ouint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
-    std::cout << " ✓" << std::endl;
+
+    //std::cout << "loading uint8 avx2 searcher..." << std::endl;
+    //searchers.uint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
+
+    //std::cout << "loading optimized uint8 avx2 searcher..." << std::endl;
+    //searchers.ouint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
+
     // searchers.binary.create_binary_embedding_from_float(searchers.base.getEmbeddings());
-    std::cout << "loading binary avx2 searcher...";
-    searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
-    std::cout << " ✓" << std::endl;
-    std::cout << "loading optimized avx2 searcher...";
+
+    //std::cout << "loading binary avx2 searcher..." << std::endl;
+    //searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
+
+    std::cout << "loading optimized avx2 searcher..." << std::endl;
     searchers.oavx2.setEmbeddings(searchers.base.getEmbeddings());
-    std::cout << " ✓" << std::endl;
-    std::cout << "loading optimized binary avx2 searcher...";
-    searchers.obinary_avx2.setEmbeddings(searchers.base.getEmbeddings());
-    std::cout << " ✓" << std::endl;
+
+    //std::cout << "loading optimized binary avx2 searcher..." << std::endl;
+    //searchers.obinary_avx2.setEmbeddings(searchers.base.getEmbeddings());
     // searchers.avx2_pca8.setEmbeddings(searchers.pca8.getEmbeddings());
+
     // searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca4.getEmbeddings());
+
     // searchers.pca4.unsetEmbeddings();
 }
 
@@ -295,7 +297,7 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
 
     runSearcherBenchmark("OAVX2", searchers.oavx2, F32_OAVX2,
                          [&](size_t idx)
-                         { return searchers.oavx2.getEmbeddingAVX2(idx); });
+                         { return searchers.oavx2.getEmbedding(idx); });
 
     runSearcherBenchmark("O Binary AVX2", searchers.obinary_avx2, OBINAR_AVX2,
                          [&](size_t idx)
