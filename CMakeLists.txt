@@ -34,6 +34,9 @@ add_executable(${PROJECT_NAME}
     src/embedding_search_binary_avx2.cpp
     src/embedding_search_uint8_avx2.cpp
     src/embedding_utils.cpp
+    src/optimized_embedding_search_uint8_avx2.cpp
+    src/optimized_embedding_search_avx2.cpp
+    src/optimized_embedding_search_binary_avx2.cpp
 )
 
 # Create the Python module
@@ -46,6 +49,9 @@ pybind11_add_module(embedding_search
     src/embedding_search_binary_avx2.cpp
     src/embedding_search_uint8_avx2.cpp
     src/embedding_utils.cpp
+    src/optimized_embedding_search_uint8_avx2.cpp
+    src/optimized_embedding_search_avx2.cpp
+    src/optimized_embedding_search_binary_avx2.cpp
 )
 
 # Link libraries for main executable
