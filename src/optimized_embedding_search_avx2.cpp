@@ -95,7 +95,6 @@ std::vector<std::pair<float, size_t>> OptimizedEmbeddingSearchAVX2::similarity_s
     {
         std::memset(query_aligned.data() + vector_dim, 0, (padded_dim - vector_dim) * sizeof(float));
     }
-    // crashes, when called, why?
     float query_norm = compute_norm_avx2(query_aligned.data());
 
     // Calculate similarities
@@ -110,6 +109,51 @@ std::vector<std::pair<float, size_t>> OptimizedEmbeddingSearchAVX2::similarity_s
             norms[i],
             query_norm);
         results.emplace_back(similarity, i);
+    }
+
+    // Partial sort to get top-k results
+    if (results.size() > k)
+    {
+        std::partial_sort(
+            results.begin(),
+            results.begin() + k,
+            results.end(),
+            [](const auto &a, const auto &b)
+            { return a.first > b.first; });
+        results.resize(k);
+    }
+
+    return results;
+}
+
+std::vector<std::pair<float, size_t>> OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query, size_t k, std::vector<std::pair<int, size_t>> &searchIndexes)
+{
+    if (query.size() != vector_dim)
+    {
+        throw std::invalid_argument("Invalid query dimension");
+    }
+
+    // Prepare aligned query vector
+    auto query_aligned = aligned_vector<float>(padded_dim);
+    std::memcpy(query_aligned.data(), query.data(), vector_dim * sizeof(float));
+    if (padded_dim > vector_dim)
+    {
+        std::memset(query_aligned.data() + vector_dim, 0, (padded_dim - vector_dim) * sizeof(float));
+    }
+    float query_norm = compute_norm_avx2(query_aligned.data());
+
+    // Calculate similarities
+    std::vector<std::pair<float, size_t>> results;
+    results.reserve(searchIndexes.size());
+
+    for (size_t i = 0; i < searchIndexes.size(); i++)
+    {
+        float similarity = compute_similarity_avx2(
+            get_embedding_ptr(searchIndexes[i].second),
+            query_aligned.data(),
+            norms[searchIndexes[i].second],
+            query_norm);
+        results.emplace_back(similarity, searchIndexes[i].second);
     }
 
     // Partial sort to get top-k results

@@ -124,4 +124,14 @@ namespace EmbeddingUtils
 
         return idcg > 0 ? dcg / idcg : 0.0;
     }
+
+    inline float calcNorm(const std::vector<float> &input)
+    {
+        float norm = 0.0f;
+        for (const float &val : input)
+        {
+            norm += val * val;
+        }
+        return std::sqrt(norm);
+    }
 }
