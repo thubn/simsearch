@@ -70,15 +70,15 @@ struct BenchmarkResults
 struct Searchers
 {
     EmbeddingSearchFloat base;
-    EmbeddingSearchFloat pca2;
+    OptimizedEmbeddingSearchAVX2 pca2;
     EmbeddingSearchFloat pca2x2;
-    EmbeddingSearchFloat pca4;
+    OptimizedEmbeddingSearchAVX2 pca4;
     EmbeddingSearchFloat pca6;
-    EmbeddingSearchFloat pca8;
-    EmbeddingSearchFloat pca16;
-    EmbeddingSearchFloat pca32;
+    OptimizedEmbeddingSearchAVX2 pca8;
+    OptimizedEmbeddingSearchAVX2 pca16;
+    OptimizedEmbeddingSearchAVX2 pca32;
     EmbeddingSearchAVX2 avx2;
-    EmbeddingSearchAVX2 avx2_pca8;
+    //EmbeddingSearchAVX2 avx2_pca8;
     EmbeddingSearchBinary binary;
     EmbeddingSearchBinaryAVX2 binary_avx2;
     EmbeddingSearchBinaryAVX2 binary_avx2_pca6;
@@ -96,8 +96,10 @@ struct Searchers
 
     void initPca2()
     {
-        pca2.setEmbeddings(base.getEmbeddings());
-        pca2.pca_dimension_reduction(2);
+        EmbeddingSearchFloat temp;
+        temp.setEmbeddings(base.getEmbeddings());
+        temp.pca_dimension_reduction(2);
+        pca2.setEmbeddings(temp.getEmbeddings());
     }
     void initPca2x2()
     {
@@ -107,8 +109,10 @@ struct Searchers
     }
     void initPca4()
     {
-        pca4.setEmbeddings(base.getEmbeddings());
-        pca4.pca_dimension_reduction(4);
+        EmbeddingSearchFloat temp;
+        temp.setEmbeddings(base.getEmbeddings());
+        temp.pca_dimension_reduction(4);
+        pca4.setEmbeddings(temp.getEmbeddings());
     }
     void initPca6()
     {
@@ -117,27 +121,33 @@ struct Searchers
     }
     void initPca8()
     {
-        pca8.setEmbeddings(base.getEmbeddings());
-        pca8.pca_dimension_reduction(8);
+        EmbeddingSearchFloat temp;
+        temp.setEmbeddings(base.getEmbeddings());
+        temp.pca_dimension_reduction(8);
+        pca8.setEmbeddings(temp.getEmbeddings());
     }
     void initPca16()
     {
-        pca16.setEmbeddings(base.getEmbeddings());
-        pca16.pca_dimension_reduction(16);
+        EmbeddingSearchFloat temp;
+        temp.setEmbeddings(base.getEmbeddings());
+        temp.pca_dimension_reduction(16);
+        pca16.setEmbeddings(temp.getEmbeddings());
     }
     void initPca32()
     {
-        pca32.setEmbeddings(base.getEmbeddings());
-        pca32.pca_dimension_reduction(32);
+        EmbeddingSearchFloat temp;
+        temp.setEmbeddings(base.getEmbeddings());
+        temp.pca_dimension_reduction(32);
+        pca32.setEmbeddings(temp.getEmbeddings());
     }
     void initAvx2()
     {
         avx2.setEmbeddings(base.getEmbeddings());
     }
-    void initAvx2_pca8()
+    /*void initAvx2_pca8()
     {
         avx2_pca8.setEmbeddings(pca8.getEmbeddings());
-    }
+    }*/
     void initBinary()
     {
         binary.setEmbeddings(base.getEmbeddings());
@@ -173,38 +183,38 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     // Load base embeddings
     searchers.initBase(filename);
 
-    //std::thread tPca2(&Searchers::initPca2, &searchers);
+    std::thread tPca2(&Searchers::initPca2, &searchers);
     //std::thread tPca2x2(&Searchers::initPca2x2, &searchers);
-    //std::thread tPca4(&Searchers::initPca4, &searchers);
+    std::thread tPca4(&Searchers::initPca4, &searchers);
     //std::thread tPca6(&Searchers::initPca6, &searchers);
-    //std::thread tPca8(&Searchers::initPca8, &searchers);
-    //std::thread tPca16(&Searchers::initPca16, &searchers);
-    //std::thread tPca32(&Searchers::initPca32, &searchers);
+    std::thread tPca8(&Searchers::initPca8, &searchers);
+    std::thread tPca16(&Searchers::initPca16, &searchers);
+    std::thread tPca32(&Searchers::initPca32, &searchers);
 
 
     std::thread tAvx2(&Searchers::initAvx2, &searchers);
     std::thread tBinary(&Searchers::initBinary, &searchers);
     std::thread tBinary_avx2(&Searchers::initBinary_avx2, &searchers);
-    //std::thread tUint8_avx2(&Searchers::initUint8_avx2, &searchers);
+    std::thread tUint8_avx2(&Searchers::initUint8_avx2, &searchers);
     std::thread tOavx2(&Searchers::initOavx2, &searchers);
     std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
     std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
 
 
-    //tPca8.join();
+    tPca8.join();
     //std::thread tAvx2_pca8(&Searchers::initAvx2_pca8, &searchers);
     //tPca6.join();
     //std::thread tBinary_avx2_pca6(&Searchers::initBinary_avx2_pca6, &searchers);
-    //tPca2.join();
+    tPca2.join();
     //tPca2x2.join();
-    //tPca4.join();
-    //tPca16.join();
-    //tPca32.join();
+    tPca4.join();
+    tPca16.join();
+    tPca32.join();
 
     tAvx2.join();
     tBinary.join();
     tBinary_avx2.join();
-    //tUint8_avx2.join();
+    tUint8_avx2.join();
     tOavx2.join();
     tObinary_avx2.join();
     tOuint_avx2.join();
@@ -299,11 +309,11 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
 
     // Run benchmarks for each searcher type sequentially
     runSearcherBenchmark("PCA2", searchers.pca2, F32_PCA2, [&](size_t idx)
-                         { return searchers.pca2.getEmbeddings()[idx]; });
+                         { return searchers.pca2.getEmbedding(idx); });
 
     runSearcherBenchmark("PCA4", searchers.pca4, F32_PCA4,
                          [&](size_t idx)
-                         { return searchers.pca4.getEmbeddings()[idx]; });
+                         { return searchers.pca4.getEmbedding(idx); });
 
     runSearcherBenchmark("PCA2x2", searchers.pca2x2, F32_PCA2x2,
                          [&](size_t idx)
@@ -315,23 +325,23 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
 
     runSearcherBenchmark("PCA8", searchers.pca8, F32_PCA8,
                          [&](size_t idx)
-                         { return searchers.pca8.getEmbeddings()[idx]; });
+                         { return searchers.pca8.getEmbedding(idx); });
 
     runSearcherBenchmark("PCA16", searchers.pca16, F32_PCA16,
                          [&](size_t idx)
-                         { return searchers.pca16.getEmbeddings()[idx]; });
+                         { return searchers.pca16.getEmbedding(idx); });
 
     runSearcherBenchmark("PCA32", searchers.pca32, F32_PCA32,
                          [&](size_t idx)
-                         { return searchers.pca32.getEmbeddings()[idx]; });
+                         { return searchers.pca32.getEmbedding(idx); });
 
     runSearcherBenchmark("AVX2", searchers.avx2, F32_AVX2,
                          [&](size_t idx)
                          { return searchers.avx2.getEmbeddings()[idx]; });
 
-    runSearcherBenchmark("AVX2_PCA8", searchers.avx2_pca8, F32_AVX2_PCA8,
+    /*runSearcherBenchmark("AVX2_PCA8", searchers.avx2_pca8, F32_AVX2_PCA8,
                          [&](size_t idx)
-                         { return searchers.avx2_pca8.getEmbeddings()[idx]; });
+                         { return searchers.avx2_pca8.getEmbeddings()[idx]; });*/
 
     runSearcherBenchmark("Binary", searchers.binary, BINARY,
                          [&](size_t idx)

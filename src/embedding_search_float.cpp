@@ -8,6 +8,8 @@
 
 bool EmbeddingSearchFloat::setEmbeddings(const std::vector<std::vector<float>> &input_vectors)
 {
+    num_vectors = input_vectors.size();
+    vector_dim = input_vectors[0].size();
     embeddings = input_vectors;
     return true;
 }
@@ -18,9 +20,9 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int factor)
     int rows = embeddings.size();
     int cols = embeddings[0].size();
     Eigen::MatrixXf matrix(rows, cols);
-    int target_dim = embeddings.size() / factor;
+    int target_dim = cols / factor;
 
-#pragma omp parallel for schedule(dynamic)
+//#pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < rows; ++i)
     {
         for (int j = 0; j < cols; ++j)
@@ -63,7 +65,7 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int factor)
     // Convert back to vector of vectors
     std::vector<std::vector<float>> result(rows, std::vector<float>(target_dim));
 
-#pragma omp parallel for schedule(dynamic)
+//#pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < rows; ++i)
     {
         for (int j = 0; j < target_dim; ++j)
@@ -71,7 +73,7 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int factor)
             result[i][j] = reduced(i, j);
         }
     }
-
+    embeddings.resize(embeddings.size(), std::vector<float>(target_dim));
     embeddings = std::move(result);
     vector_size = target_dim;
     return true;
