@@ -105,62 +105,51 @@ uint32_t OptimizedEmbeddingSearchUint8AVX2::compute_similarity_avx2(const __m256
 {
     __m256i sum_lo = _mm256_setzero_si256();
     __m256i sum_hi = _mm256_setzero_si256();
-    __m256i a[4];
-    __m256i b[4];
-    __m256i mul_lo[4];
-    __m256i mul_hi[4];
+    __m256i a[2];
+    __m256i b[2];
+    __m256i mul_lo[2];
+    __m256i mul_hi[2];
     __m256i ones = _mm256_set1_epi16(1);
 
-    for (size_t i = 0; i < vectors_per_embedding; i += 4)
+    for (size_t i = 0; i < vectors_per_embedding; i += 2)
     {
-        // Load 4 vectors at once
-        a[0] = vec_a[i];
-        a[1] = vec_a[i + 1];
-        a[2] = vec_a[i + 2];
-        a[3] = vec_a[i + 3];
+        a[0] = _mm256_load_si256(vec_a + i);
+        a[1] = _mm256_load_si256(vec_a + i + 1);
 
-        b[0] = vec_b[i];
-        b[1] = vec_b[i + 1];
-        b[2] = vec_b[i + 2];
-        b[3] = vec_b[i + 3];
+        b[0] = _mm256_load_si256(vec_b + i);
+        b[1] = _mm256_load_si256(vec_b + i + 1);
 
-        // Process all low halves
+        //prefetch 1 cache line for 2 vectors 10 loops ahead
+        _mm_prefetch(vec_a + i + 2 * 10, _MM_HINT_T0);
+
+        // Process first pair
         mul_lo[0] = _mm256_mullo_epi16(
             _mm256_cvtepi8_epi16(_mm256_castsi256_si128(a[0])),
             _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[0])));
-        mul_lo[1] = _mm256_mullo_epi16(
-            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(a[1])),
-            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[1])));
-        mul_lo[2] = _mm256_mullo_epi16(
-            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(a[2])),
-            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[2])));
-        mul_lo[3] = _mm256_mullo_epi16(
-            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(a[3])),
-            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[3])));
 
-        // Process all high halves
         mul_hi[0] = _mm256_mullo_epi16(
             _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[0], 1)),
             _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[0], 1)));
+
+        // Process second pair while first pair's results might still be in flight
+        mul_lo[1] = _mm256_mullo_epi16(
+            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(a[1])),
+            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[1])));
+
         mul_hi[1] = _mm256_mullo_epi16(
             _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[1], 1)),
             _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[1], 1)));
-        mul_hi[2] = _mm256_mullo_epi16(
-            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[2], 1)),
-            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[2], 1)));
-        mul_hi[3] = _mm256_mullo_epi16(
-            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[3], 1)),
-            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[3], 1)));
 
-        // Accumulate all results
-        sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo[0], ones));
-        sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi[0], ones));
-        sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo[1], ones));
-        sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi[1], ones));
-        sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo[2], ones));
-        sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi[2], ones));
-        sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo[3], ones));
-        sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi[3], ones));
+        // Accumulate results
+        sum_lo = _mm256_add_epi32(sum_lo,
+                                  _mm256_add_epi32(
+                                      _mm256_madd_epi16(mul_lo[0], ones),
+                                      _mm256_madd_epi16(mul_lo[1], ones)));
+
+        sum_hi = _mm256_add_epi32(sum_hi,
+                                  _mm256_add_epi32(
+                                      _mm256_madd_epi16(mul_hi[0], ones),
+                                      _mm256_madd_epi16(mul_hi[1], ones)));
     }
 
     __m256i sum = _mm256_add_epi32(sum_lo, sum_hi);

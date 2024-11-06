@@ -62,7 +62,7 @@ std::vector<std::pair<int32_t, size_t>> OptimizedEmbeddingSearchBinaryAVX2::simi
 
     const __m256i *query_data = reinterpret_cast<const __m256i *>(query.data());
     AVX2Popcount counter;
-    //AVX2PopcountHarleySeal counter;
+    // AVX2PopcountHarleySeal counter;
 
     for (size_t i = 0; i < num_vectors; i++)
     {
@@ -116,26 +116,14 @@ void OptimizedEmbeddingSearchBinaryAVX2::convert_float_to_binary_avx2(const std:
     }
 }
 
+// currently hardcoded for 1024bit vectors
 int32_t OptimizedEmbeddingSearchBinaryAVX2::compute_similarity_avx2(const __m256i *vec_a, const __m256i *vec_b, AVX2Popcount &counter) const
 {
     int32_t total_popcount = 0;
 
-    /*
-    for (size_t i = 0; i < vectors_per_embedding; i++)
-    {
-        __m256i xor_result = _mm256_xor_si256(vec_a[i], vec_b[i]);
-        __m256i all_ones = _mm256_set1_epi32(-1);
-        xor_result = _mm256_xor_si256(xor_result, all_ones);
-
-        // Count matching bits using population count
-        uint64_t *match_ptr = (uint64_t *)&xor_result;
-        total_popcount += __builtin_popcountll(match_ptr[0]);
-        total_popcount += __builtin_popcountll(match_ptr[1]);
-        total_popcount += __builtin_popcountll(match_ptr[2]);
-        total_popcount += __builtin_popcountll(match_ptr[3]);
-    }
-    */
-
+   // prefetch 2 cache lines for 4 vectors 10 loops ahead
+    _mm_prefetch(vec_a + 4 * 10, _MM_HINT_T0);
+    _mm_prefetch(vec_a + 4 * 10 + 2, _MM_HINT_T0);
     __m256i all_ones = _mm256_set1_epi32(-1);
     __m256i xor_result[4];
     xor_result[0] = _mm256_xor_si256(vec_a[0], vec_b[0]);
@@ -147,6 +135,6 @@ int32_t OptimizedEmbeddingSearchBinaryAVX2::compute_similarity_avx2(const __m256
     xor_result[3] = _mm256_xor_si256(vec_a[3], vec_b[3]);
     xor_result[3] = _mm256_xor_si256(xor_result[3], all_ones);
 
-    //return counter.popcnt_AVX2_lookup(reinterpret_cast<const uint8_t *>(xor_result), 4 * sizeof(__m256i));
+    // popcnt lookup is faster than harley seal
     return counter.popcnt_AVX2_lookup(reinterpret_cast<const uint8_t *>(xor_result), 4 * sizeof(__m256i));
 }

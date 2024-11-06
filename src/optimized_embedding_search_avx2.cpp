@@ -218,6 +218,12 @@ inline float OptimizedEmbeddingSearchAVX2::compute_similarity_avx2(const float *
         b[6] = _mm256_load_ps(vec_b + i + 6 * 8);
         b[7] = _mm256_load_ps(vec_b + i + 7 * 8);
 
+        // Prefetch next 4 cache lines for 8 vectors 2 loops ahead
+        _mm_prefetch(vec_a + i + 8 * 8 * 2, _MM_HINT_T0);
+        _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16, _MM_HINT_T0);
+        _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 2, _MM_HINT_T0);
+        _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 3, _MM_HINT_T0);
+
         sum = _mm256_fmadd_ps(a[0], b[0], sum);
         sum = _mm256_fmadd_ps(a[1], b[1], sum);
         sum = _mm256_fmadd_ps(a[2], b[2], sum);

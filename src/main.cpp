@@ -183,13 +183,13 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     // Load base embeddings
     searchers.initBase(filename);
 
-    std::thread tPca2(&Searchers::initPca2, &searchers);
+    //std::thread tPca2(&Searchers::initPca2, &searchers);
     //std::thread tPca2x2(&Searchers::initPca2x2, &searchers);
-    std::thread tPca4(&Searchers::initPca4, &searchers);
+    //std::thread tPca4(&Searchers::initPca4, &searchers);
     //std::thread tPca6(&Searchers::initPca6, &searchers);
-    std::thread tPca8(&Searchers::initPca8, &searchers);
-    std::thread tPca16(&Searchers::initPca16, &searchers);
-    std::thread tPca32(&Searchers::initPca32, &searchers);
+    //std::thread tPca8(&Searchers::initPca8, &searchers);
+    //std::thread tPca16(&Searchers::initPca16, &searchers);
+    //std::thread tPca32(&Searchers::initPca32, &searchers);
 
 
     std::thread tAvx2(&Searchers::initAvx2, &searchers);
@@ -201,15 +201,15 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
 
 
-    tPca8.join();
+    //tPca8.join();
     //std::thread tAvx2_pca8(&Searchers::initAvx2_pca8, &searchers);
     //tPca6.join();
     //std::thread tBinary_avx2_pca6(&Searchers::initBinary_avx2_pca6, &searchers);
-    tPca2.join();
+    //tPca2.join();
     //tPca2x2.join();
-    tPca4.join();
-    tPca16.join();
-    tPca32.join();
+    //tPca4.join();
+    //tPca16.join();
+    //tPca32.join();
 
     tAvx2.join();
     tBinary.join();
