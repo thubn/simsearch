@@ -6,11 +6,6 @@
 #include <bit>
 #include <omp.h>
 
-bool EmbeddingSearchBinaryAVX2::load(const std::string &filename)
-{
-    throw std::runtime_error("Direct loading of binary embeddings not implemented");
-}
-
 std::vector<std::pair<int, size_t>> EmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query, size_t k)
 {
     if (query.size() != vector_size)
@@ -34,7 +29,7 @@ std::vector<std::pair<int, size_t>> EmbeddingSearchBinaryAVX2::similarity_search
     return std::vector<std::pair<int, size_t>>(similarities.begin(), similarities.begin() + k);
 }
 
-bool EmbeddingSearchBinaryAVX2::create_binary_embedding_from_float(const std::vector<std::vector<float>> &float_data)
+bool EmbeddingSearchBinaryAVX2::setEmbeddings(const std::vector<std::vector<float>> &float_data)
 {
     std::string error_message;
     if (!validateDimensions(float_data, error_message))

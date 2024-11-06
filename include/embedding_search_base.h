@@ -1,9 +1,11 @@
 #pragma once
 #include "config_manager.h"
+#include "embedding_io.h"
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <stdexcept>
+#include <iostream>
 
 template <typename VectorType, typename SimilarityType, typename RawType = float>
 class EmbeddingSearchBase
@@ -19,8 +21,10 @@ protected:
 public:
     virtual ~EmbeddingSearchBase() = default;
 
+    // Common optimized methods
+    virtual bool setEmbeddings(const std::vector<std::vector<float>> &input_vectors) = 0;
+
     // Common interface methods
-    virtual bool load(const std::string &filename) = 0;
     virtual std::vector<std::pair<SimilarityType, size_t>> similarity_search(const VectorType &query, size_t k) = 0;
 
     // Optional two-step search interface
@@ -32,11 +36,46 @@ public:
         throw std::runtime_error("Two-step search not implemented for this searcher");
     }
 
+    bool load(const std::string &filename, bool set_sentences = true)
+    {
+        std::vector<std::vector<float>> temp_embeddings;
+        std::vector<std::string> temp_sentences;
+        bool result = false;
+        if (filename.ends_with(".safetensors"))
+        {
+            result = EmbeddingIO::load_safetensors(filename, temp_embeddings, temp_sentences);
+        }
+        else if (filename.ends_with(".ndjson"))
+        {
+            result = EmbeddingIO::load_json(filename, temp_embeddings, temp_sentences);
+        }
+        else if (filename.ends_with(".jsonl"))
+        {
+            result = EmbeddingIO::load_json2(filename, temp_embeddings, temp_sentences);
+        }
+        else if (filename.ends_with(".parquet"))
+        {
+            result = EmbeddingIO::load_parquet(filename, temp_embeddings, temp_sentences);
+        }
+        else
+        {
+            throw std::runtime_error("Unsupported file format");
+        }
+        num_vectors = temp_embeddings.size();
+        this->setEmbeddings(temp_embeddings);
+        if (set_sentences)
+        {
+            this->setSentences(temp_sentences);
+        }
+        return result;
+    }
+
     // Common getters/setters that were duplicated across classes
     const std::vector<VectorType> &getEmbeddings() const { return embeddings; }
     const std::vector<std::string> &getSentences() const { return sentences; }
     bool setSentences(const std::vector<std::string> &s)
     {
+        sentences.resize(s.size());
         sentences = s;
         return true;
     }
@@ -81,7 +120,7 @@ public:
                                      vectors_per_embedding(0) {}
 
     // Common optimized methods
-    virtual bool setEmbeddings(const std::vector<std::vector<float>> &input_vectors) = 0;
+    // virtual bool setEmbeddings(const std::vector<std::vector<float>> &input_vectors) = 0;
 
     // Common memory management methods
     StorageType *get_embedding_ptr(size_t index)

@@ -6,12 +6,9 @@ class EmbeddingSearchFloat : public EmbeddingSearchBase<std::vector<float>, floa
 public:
     EmbeddingSearchFloat() = default;
 
-    bool load(const std::string &filename) override;
     std::vector<std::pair<float, size_t>> similarity_search(const std::vector<float> &query, size_t k) override;
 
-    void unsetEmbeddings();
-    void unsetSentences();
-    bool pca_dimension_reduction(int target_dim);
+    bool pca_dimension_reduction(int factor);
 
     bool validateDimensions(const std::vector<std::vector<float>> &input, std::string &error_message) override
     {
@@ -23,6 +20,7 @@ public:
         return true;
     }
 
+    bool setEmbeddings(const std::vector<std::vector<float>> &float_embeddings) override;
 private:
     float cosine_similarity(const std::vector<float> &a, const std::vector<float> &b);
 };

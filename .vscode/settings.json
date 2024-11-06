@@ -75,7 +75,8 @@
         "filesystem": "cpp",
         "list": "cpp",
         "cinttypes": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "future": "cpp"
     },
     "makefile.makefilePath": "build/Makefile",
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",

@@ -71,11 +71,6 @@ std::vector<float> OptimizedEmbeddingSearchAVX2::getEmbedding(size_t index) cons
     return result;
 }
 
-bool OptimizedEmbeddingSearchAVX2::load(const std::string &filename)
-{
-    throw std::runtime_error("Direct loading not implemented");
-}
-
 std::vector<std::pair<float, size_t>> OptimizedEmbeddingSearchAVX2::similarity_search(const avx2_vector &query, size_t k)
 {
     throw std::runtime_error("AVX2 vector input not supported in optimized version");

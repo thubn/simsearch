@@ -5,11 +5,6 @@
 #include <bit>
 #include <omp.h>
 
-bool EmbeddingSearchBinary::load(const std::string &filename)
-{
-    throw std::runtime_error("Direct loading of binary embeddings not implemented");
-}
-
 std::vector<std::pair<int, size_t>> EmbeddingSearchBinary::similarity_search(const std::vector<uint64_t> &query, size_t k)
 {
     if (query.size() != vector_size)
@@ -58,7 +53,7 @@ bool EmbeddingSearchBinary::setEmbeddings(
         throw std::runtime_error(error_message);
     }
 
-    size_t num_vectors = float_data.size();
+    num_vectors = float_data.size();
     size_t float_vector_size = float_data[0].size();
 
     vector_size = (float_vector_size + 63) / 64; // Round up to nearest multiple of 64

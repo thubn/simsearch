@@ -50,11 +50,6 @@ avx2i_vector OptimizedEmbeddingSearchBinaryAVX2::getEmbeddingAVX2(size_t index) 
     return result;
 }
 
-bool OptimizedEmbeddingSearchBinaryAVX2::load(const std::string &filename)
-{
-    throw std::runtime_error("Direct loading not implemented");
-}
-
 std::vector<std::pair<int32_t, size_t>> OptimizedEmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query, size_t k)
 {
     if (query.size() != vectors_per_embedding)

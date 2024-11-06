@@ -7,34 +7,6 @@
 #include <omp.h>
 #include <iostream>
 
-bool EmbeddingSearchAVX2::load(const std::string &filename)
-{
-    std::vector<std::vector<float>> float_embeddings;
-
-    if (filename.ends_with(".safetensors"))
-    {
-        return EmbeddingIO::load_safetensors(filename, float_embeddings, sentences);
-    }
-    else if (filename.ends_with(".ndjson"))
-    {
-        return EmbeddingIO::load_json(filename, float_embeddings, sentences);
-    }
-    else if (filename.ends_with(".jsonl"))
-    {
-        return EmbeddingIO::load_json2(filename, float_embeddings, sentences);
-    }
-    else if (filename.ends_with(".parquet"))
-    {
-        return EmbeddingIO::load_parquet(filename, float_embeddings, sentences);
-    }
-    else
-    {
-        throw std::runtime_error("Unsupported file format");
-    }
-
-    return setEmbeddings(float_embeddings);
-}
-
 std::vector<std::pair<float, size_t>> EmbeddingSearchAVX2::similarity_search(const avx2_vector &query, size_t k)
 {
     if (query.size() != embeddings[0].size())

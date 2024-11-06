@@ -14,7 +14,6 @@ public:
     std::vector<std::pair<float, size_t>> similarity_search(const avx2_vector &query, size_t k) override;
     std::vector<std::pair<float, size_t>> similarity_search(const std::vector<float> &query, size_t k);
     std::vector<std::pair<float, size_t>> similarity_search(const std::vector<float> &query, size_t k, std::vector<std::pair<int, size_t>> &searchIndexes);
-    bool load(const std::string &filename) override;
     std::vector<float> getEmbedding(size_t index) const;
 
 protected:

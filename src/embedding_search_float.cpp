@@ -6,47 +6,20 @@
 #include <eigen3/Eigen/Dense>
 #include <omp.h>
 
-bool EmbeddingSearchFloat::load(const std::string &filename)
+bool EmbeddingSearchFloat::setEmbeddings(const std::vector<std::vector<float>> &input_vectors)
 {
-    if (filename.ends_with(".safetensors"))
-    {
-        return EmbeddingIO::load_safetensors(filename, embeddings, sentences);
-    }
-    else if (filename.ends_with(".ndjson"))
-    {
-        return EmbeddingIO::load_json(filename, embeddings, sentences);
-    }
-    else if (filename.ends_with(".jsonl"))
-    {
-        return EmbeddingIO::load_json2(filename, embeddings, sentences);
-    }
-    else if (filename.ends_with(".parquet"))
-    {
-        return EmbeddingIO::load_parquet(filename, embeddings, sentences);
-    }
-    else
-    {
-        throw std::runtime_error("Unsupported file format");
-    }
-    num_vectors = embeddings.size();
+    std::cout << "setEmb flaot" << std::endl;
+    embeddings = input_vectors;
+    return true;
 }
 
-void EmbeddingSearchFloat::unsetEmbeddings()
-{
-    embeddings.clear();
-}
-
-void EmbeddingSearchFloat::unsetSentences()
-{
-    sentences.clear();
-}
-
-bool EmbeddingSearchFloat::pca_dimension_reduction(int target_dim)
+bool EmbeddingSearchFloat::pca_dimension_reduction(int factor)
 {
     // Convert data to Eigen matrix
     int rows = embeddings.size();
     int cols = embeddings[0].size();
     Eigen::MatrixXf matrix(rows, cols);
+    int target_dim = embeddings.size() / factor;
 
 #pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < rows; ++i)

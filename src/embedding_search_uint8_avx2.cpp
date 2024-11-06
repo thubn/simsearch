@@ -7,11 +7,6 @@
 #include <iostream>
 #include <omp.h>
 
-bool EmbeddingSearchUint8AVX2::load(const std::string &filename)
-{
-    throw std::runtime_error("Direct loading of uint8 embeddings not implemented");
-}
-
 std::vector<std::pair<uint, size_t>> EmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query, size_t k)
 {
     if (query.size() != embeddings[0].size())
@@ -78,14 +73,14 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(const std::vector<std::vector<float
         throw std::runtime_error(error_message);
     }
 
-    size_t num_embeddings = m.size();
+    num_vectors = m.size();
     size_t float_vector_size = m[0].size();
     vector_size = EmbeddingUtils::calculateUint8AVX2VectorSize(float_vector_size);
 
     embeddings.clear();
-    embeddings.resize(num_embeddings, avx2i_vector(vector_size));
+    embeddings.resize(num_vectors, avx2i_vector(vector_size));
 
-    for (size_t i = 0; i < num_embeddings; ++i)
+    for (size_t i = 0; i < num_vectors; ++i)
     {
         EmbeddingUtils::convertSingleFloatToUint8AVX2(
             m[i],

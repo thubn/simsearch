@@ -10,7 +10,6 @@ public:
 
     bool setEmbeddings(const std::vector<std::vector<float>> &input_vectors) override;
     std::vector<std::pair<int32_t, size_t>> similarity_search(const avx2i_vector &query, size_t k) override;
-    bool load(const std::string &filename) override;
     avx2i_vector getEmbeddingAVX2(size_t index) const;
 
 protected:

@@ -20,6 +20,7 @@
 #include <string>
 #include <filesystem>
 #include <nlohmann/json.hpp>
+#include <thread>
 
 using json = nlohmann::json;
 
@@ -85,64 +86,136 @@ struct Searchers
     OptimizedEmbeddingSearchAVX2 oavx2;
     OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
     OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
+    Searchers() : base(), avx2() {}  // Explicit initialization
+    
+    void initBase(const std::string &filename) {
+        if (!base.load(filename, false)) {
+            throw std::runtime_error("Failed to load base embeddings");
+        }
+    }
+
+    void initPca2()
+    {
+        pca2.setEmbeddings(base.getEmbeddings());
+        pca2.pca_dimension_reduction(2);
+    }
+    void initPca2x2()
+    {
+        pca2x2.setEmbeddings(base.getEmbeddings());
+        pca2x2.pca_dimension_reduction(2);
+        pca2x2.pca_dimension_reduction(2);
+    }
+    void initPca4()
+    {
+        pca4.setEmbeddings(base.getEmbeddings());
+        pca4.pca_dimension_reduction(4);
+    }
+    void initPca6()
+    {
+        pca6.setEmbeddings(base.getEmbeddings());
+        pca6.pca_dimension_reduction(6);
+    }
+    void initPca8()
+    {
+        pca8.setEmbeddings(base.getEmbeddings());
+        pca8.pca_dimension_reduction(8);
+    }
+    void initPca16()
+    {
+        pca16.setEmbeddings(base.getEmbeddings());
+        pca16.pca_dimension_reduction(16);
+    }
+    void initPca32()
+    {
+        pca32.setEmbeddings(base.getEmbeddings());
+        pca32.pca_dimension_reduction(32);
+    }
+    void initAvx2()
+    {
+        if (base.getEmbeddings().empty())
+        {
+            throw std::runtime_error("Base embeddings are empty in initAvx2");
+        }
+        std::cout << "Setting AVX2 embeddings..." << std::endl;
+        avx2.setEmbeddings(base.getEmbeddings());
+        std::cout << "AVX2 embeddings set successfully" << std::endl;
+    }
+    void initAvx2_pca8()
+    {
+        avx2_pca8.setEmbeddings(pca8.getEmbeddings());
+    }
+    void initBinary()
+    {
+        binary.setEmbeddings(base.getEmbeddings());
+    }
+    void initBinary_avx2()
+    {
+        binary_avx2.setEmbeddings(base.getEmbeddings());
+    }
+    void initBinary_avx2_pca6()
+    {
+        binary_avx2_pca6.setEmbeddings(pca6.getEmbeddings());
+    }
+    void initUint8_avx2()
+    {
+        uint8_avx2.setEmbeddings(base.getEmbeddings());
+    }
+    void initOavx2()
+    {
+        oavx2.setEmbeddings(base.getEmbeddings());
+    }
+    void initObinary_avx2()
+    {
+        obinary_avx2.setEmbeddings(base.getEmbeddings());
+    }
+    void initOuint_avx2()
+    {
+        ouint8_avx2.setEmbeddings(base.getEmbeddings());
+    }
 };
 
 void initializeSearchers(Searchers &searchers, const std::string &filename)
 {
     // Load base embeddings
-    searchers.base.load(filename);
-    std::cout << "loading base searcher..." << std::endl;
+    searchers.initBase(filename);
 
-    // Initialize PCA variants
-    // searchers.pca2 = searchers.base;
-    // searchers.pca2.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 2);
+    //std::thread tPca2(&Searchers::initPca2, &searchers);
+    //std::thread tPca2x2(&Searchers::initPca2x2, &searchers);
+    //std::thread tPca4(&Searchers::initPca4, &searchers);
+    //std::thread tPca6(&Searchers::initPca6, &searchers);
+    //std::thread tPca8(&Searchers::initPca8, &searchers);
+    //std::thread tPca16(&Searchers::initPca16, &searchers);
+    //std::thread tPca32(&Searchers::initPca32, &searchers);
 
-    // searchers.pca4 = searchers.base;
-    // searchers.pca4.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 4);
-    // searchers.pca4.unsetSentences();
 
-    // searchers.pca2x2 = searchers.pca2;
-    // searchers.pca2x2.pca_dimension_reduction(searchers.pca2.getEmbeddings()[0].size() / 2);
+    std::thread tAvx2(&Searchers::initAvx2, &searchers);
+    std::thread tBinary(&Searchers::initBinary, &searchers);
+    std::thread tBinary_avx2(&Searchers::initBinary_avx2, &searchers);
+    std::thread tUint8_avx2(&Searchers::initUint8_avx2, &searchers);
+    std::thread tOavx2(&Searchers::initOavx2, &searchers);
+    std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
+    std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
 
-    // searchers.pca6 = searchers.base;
-    // searchers.pca6.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 6);
 
-    // searchers.pca8 = searchers.base;
-    // searchers.pca8.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 8);
-    // searchers.pca8.unsetSentences();
+    //tPca8.join();
+    //std::thread tAvx2_pca8(&Searchers::initAvx2_pca8, &searchers);
+    //tPca6.join();
+    //std::thread tBinary_avx2_pca6(&Searchers::initBinary_avx2_pca6, &searchers);
+    //tPca2.join();
+    //tPca2x2.join();
+    //tPca4.join();
+    //tPca16.join();
+    //tPca32.join();
 
-    // searchers.pca16 = searchers.base;
-    // searchers.pca16.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 16);
-    // searchers.pca16.unsetSentences();
-
-    // searchers.pca32 = searchers.base;
-    // searchers.pca32.pca_dimension_reduction(searchers.base.getEmbeddings()[0].size() / 32);
-
-    // Initialize specialized variants
-    std::cout << "loading avx2 searcher..." << std::endl;
-    searchers.avx2.setEmbeddings(searchers.base.getEmbeddings());
-
-    //std::cout << "loading uint8 avx2 searcher..." << std::endl;
-    //searchers.uint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
-
-    //std::cout << "loading optimized uint8 avx2 searcher..." << std::endl;
-    //searchers.ouint8_avx2.setEmbeddings(searchers.base.getEmbeddings());
-
-    // searchers.binary.create_binary_embedding_from_float(searchers.base.getEmbeddings());
-
-    //std::cout << "loading binary avx2 searcher..." << std::endl;
-    //searchers.binary_avx2.create_binary_embedding_from_float(searchers.base.getEmbeddings());
-
-    std::cout << "loading optimized avx2 searcher..." << std::endl;
-    searchers.oavx2.setEmbeddings(searchers.base.getEmbeddings());
-
-    //std::cout << "loading optimized binary avx2 searcher..." << std::endl;
-    //searchers.obinary_avx2.setEmbeddings(searchers.base.getEmbeddings());
-    // searchers.avx2_pca8.setEmbeddings(searchers.pca8.getEmbeddings());
-
-    // searchers.binary_avx2_pca6.create_binary_embedding_from_float(searchers.pca4.getEmbeddings());
-
-    // searchers.pca4.unsetEmbeddings();
+    tAvx2.join();
+    tBinary.join();
+    tBinary_avx2.join();
+    tUint8_avx2.join();
+    tOavx2.join();
+    tObinary_avx2.join();
+    tOuint_avx2.join();
+    //tAvx2_pca8.join();
+    //tBinary_avx2_pca6.join();
 }
 
 std::vector<size_t> generateRandomIndexes(size_t numRuns, size_t maxIndex)
