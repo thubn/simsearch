@@ -188,7 +188,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     //std::thread tUint8_avx2(&Searchers::initUint8_avx2, &searchers);
     std::thread tOavx2(&Searchers::initOavx2, &searchers);
     std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
-    //std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
+    std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
 
 
     //tPca8.join();
@@ -207,7 +207,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     //tUint8_avx2.join();
     tOavx2.join();
     tObinary_avx2.join();
-    //tOuint_avx2.join();
+    tOuint_avx2.join();
     //tAvx2_pca8.join();
     //tBinary_avx2_pca6.join();
 }
