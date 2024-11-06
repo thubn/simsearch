@@ -122,10 +122,10 @@ int32_t OptimizedEmbeddingSearchBinaryAVX2::compute_similarity_avx2(const __m256
     {
         __m256i xor_result = _mm256_xor_si256(vec_a[i], vec_b[i]);
         __m256i all_ones = _mm256_set1_epi32(-1);
-        __m256i match_bits = _mm256_xor_si256(xor_result, all_ones);
+        xor_result = _mm256_xor_si256(xor_result, all_ones);
 
         // Count matching bits using population count
-        uint64_t *match_ptr = (uint64_t *)&match_bits;
+        uint64_t *match_ptr = (uint64_t *)&xor_result;
         total_popcount += __builtin_popcountll(match_ptr[0]);
         total_popcount += __builtin_popcountll(match_ptr[1]);
         total_popcount += __builtin_popcountll(match_ptr[2]);
