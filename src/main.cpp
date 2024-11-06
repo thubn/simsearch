@@ -191,10 +191,10 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     std::thread tAvx2(&Searchers::initAvx2, &searchers);
     std::thread tBinary(&Searchers::initBinary, &searchers);
     std::thread tBinary_avx2(&Searchers::initBinary_avx2, &searchers);
-    std::thread tUint8_avx2(&Searchers::initUint8_avx2, &searchers);
-    std::thread tOavx2(&Searchers::initOavx2, &searchers);
+    //std::thread tUint8_avx2(&Searchers::initUint8_avx2, &searchers);
+    //std::thread tOavx2(&Searchers::initOavx2, &searchers);
     std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
-    std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
+    //std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
 
 
     //tPca8.join();
@@ -210,10 +210,10 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     tAvx2.join();
     tBinary.join();
     tBinary_avx2.join();
-    tUint8_avx2.join();
-    tOavx2.join();
+    //tUint8_avx2.join();
+    //tOavx2.join();
     tObinary_avx2.join();
-    tOuint_avx2.join();
+    //tOuint_avx2.join();
     //tAvx2_pca8.join();
     //tBinary_avx2_pca6.join();
 }
@@ -241,12 +241,12 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
     std::vector<size_t> randomIndexes = generateRandomIndexes(config.runs, searchers.base.getEmbeddings().size() - 1);
 
     // Run base F32 searches
-    std::cout << "Running F32 searches...";
+    std::cout << "Running F32 (currently using avx2 for this!!) searches...";
     std::vector<std::vector<std::pair<float, size_t>>> baseResults(config.runs);
     for (size_t i = 0; i < config.runs; i++)
     {
         auto start = std::chrono::high_resolution_clock::now();
-        baseResults[i] = searchers.base.similarity_search(searchers.base.getEmbeddings()[randomIndexes[i]], config.k);
+        baseResults[i] = searchers.avx2.similarity_search(searchers.avx2.getEmbeddings()[randomIndexes[i]], config.k);
         auto end = std::chrono::high_resolution_clock::now();
         results.times[F32] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     }
@@ -302,15 +302,6 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
             std::cout << name << " is not initialized..." << std::endl;
         }
     };
-
-    if (searchers.pca2.isInitialized())
-    {
-        std::cout << "PCA2 is init " << searchers.pca2.getNumVectors() << std::endl;
-    }
-    else
-    {
-        std::cout << "PCA is NOT init" << searchers.pca2.getNumVectors() << std::endl;
-    }
 
     // Run benchmarks for each searcher type sequentially
     runSearcherBenchmark("PCA2", searchers.pca2, F32_PCA2, [&](size_t idx)

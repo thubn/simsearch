@@ -8,7 +8,6 @@
 
 bool EmbeddingSearchFloat::setEmbeddings(const std::vector<std::vector<float>> &input_vectors)
 {
-    std::cout << "setEmb flaot" << std::endl;
     embeddings = input_vectors;
     return true;
 }

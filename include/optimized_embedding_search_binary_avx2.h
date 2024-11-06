@@ -1,6 +1,7 @@
 #pragma once
 #include "embedding_search_base.h"
 #include "aligned_types.h"
+#include "avx2_popcount.h"
 #include <immintrin.h>
 
 class OptimizedEmbeddingSearchBinaryAVX2 : public OptimizedEmbeddingSearchBase<avx2i_vector, int32_t, __m256i>
@@ -16,6 +17,6 @@ protected:
     bool validateDimensions(const std::vector<std::vector<float>> &input, std::string &error_message) override;
 
 private:
-    int32_t compute_similarity_avx2(const __m256i *vec_a, const __m256i *vec_b) const;
+    int32_t compute_similarity_avx2(const __m256i *vec_a, const __m256i *vec_b, AVX2Popcount &counter) const;
     void convert_float_to_binary_avx2(const std::vector<float> &input, __m256i *output) const;
 };

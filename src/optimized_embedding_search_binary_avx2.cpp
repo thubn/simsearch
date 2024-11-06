@@ -61,10 +61,11 @@ std::vector<std::pair<int32_t, size_t>> OptimizedEmbeddingSearchBinaryAVX2::simi
     similarities.reserve(num_vectors);
 
     const __m256i *query_data = reinterpret_cast<const __m256i *>(query.data());
+    AVX2Popcount counter;
 
     for (size_t i = 0; i < num_vectors; i++)
     {
-        int32_t sim = compute_similarity_avx2(get_embedding_ptr(i), query_data);
+        int32_t sim = compute_similarity_avx2(get_embedding_ptr(i), query_data, counter);
         similarities.emplace_back(sim, i);
     }
 
@@ -114,10 +115,11 @@ void OptimizedEmbeddingSearchBinaryAVX2::convert_float_to_binary_avx2(const std:
     }
 }
 
-int32_t OptimizedEmbeddingSearchBinaryAVX2::compute_similarity_avx2(const __m256i *vec_a, const __m256i *vec_b) const
+int32_t OptimizedEmbeddingSearchBinaryAVX2::compute_similarity_avx2(const __m256i *vec_a, const __m256i *vec_b, AVX2Popcount &counter) const
 {
     int32_t total_popcount = 0;
 
+    /*
     for (size_t i = 0; i < vectors_per_embedding; i++)
     {
         __m256i xor_result = _mm256_xor_si256(vec_a[i], vec_b[i]);
@@ -131,6 +133,18 @@ int32_t OptimizedEmbeddingSearchBinaryAVX2::compute_similarity_avx2(const __m256
         total_popcount += __builtin_popcountll(match_ptr[2]);
         total_popcount += __builtin_popcountll(match_ptr[3]);
     }
+    */
 
-    return total_popcount;
+    __m256i all_ones = _mm256_set1_epi32(-1);
+    __m256i xor_result[4];
+    xor_result[0] = _mm256_xor_si256(vec_a[0], vec_b[0]);
+    xor_result[0] = _mm256_xor_si256(xor_result[0], all_ones);
+    xor_result[1] = _mm256_xor_si256(vec_a[1], vec_b[1]);
+    xor_result[1] = _mm256_xor_si256(xor_result[1], all_ones);
+    xor_result[2] = _mm256_xor_si256(vec_a[2], vec_b[2]);
+    xor_result[2] = _mm256_xor_si256(xor_result[2], all_ones);
+    xor_result[3] = _mm256_xor_si256(vec_a[3], vec_b[3]);
+    xor_result[3] = _mm256_xor_si256(xor_result[3], all_ones);
+
+    return counter.popcnt_AVX2_lookup(reinterpret_cast<const uint8_t *>(xor_result), 4 * sizeof(__m256i));
 }
