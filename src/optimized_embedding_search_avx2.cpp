@@ -194,13 +194,38 @@ float OptimizedEmbeddingSearchAVX2::compute_norm_avx2(const float *vec) const
 inline float OptimizedEmbeddingSearchAVX2::compute_similarity_avx2(const float *vec_a, const float *vec_b, float norm_a, float norm_b) const
 {
     __m256 sum = _mm256_setzero_ps();
+    __m256 a[8];
+    __m256 b[8];
 
     // Compute dot product using AVX2
-    for (size_t i = 0; i < padded_dim; i += 8)
+    for (size_t i = 0; i < padded_dim; i += 8 * 8)
     {
-        __m256 a = _mm256_load_ps(vec_a + i);
-        __m256 b = _mm256_load_ps(vec_b + i);
-        sum = _mm256_fmadd_ps(a, b, sum);
+        a[0] = _mm256_load_ps(vec_a + i);
+        a[1] = _mm256_load_ps(vec_a + i + 8);
+        a[2] = _mm256_load_ps(vec_a + i + 2 * 8);
+        a[3] = _mm256_load_ps(vec_a + i + 3 * 8);
+        a[4] = _mm256_load_ps(vec_a + i + 4 * 8);
+        a[5] = _mm256_load_ps(vec_a + i + 5 * 8);
+        a[6] = _mm256_load_ps(vec_a + i + 6 * 8);
+        a[7] = _mm256_load_ps(vec_a + i + 7 * 8);
+
+        b[0] = _mm256_load_ps(vec_b + i);
+        b[1] = _mm256_load_ps(vec_b + i + 8);
+        b[2] = _mm256_load_ps(vec_b + i + 2 * 8);
+        b[3] = _mm256_load_ps(vec_b + i + 3 * 8);
+        b[4] = _mm256_load_ps(vec_b + i + 4 * 8);
+        b[5] = _mm256_load_ps(vec_b + i + 5 * 8);
+        b[6] = _mm256_load_ps(vec_b + i + 6 * 8);
+        b[7] = _mm256_load_ps(vec_b + i + 7 * 8);
+
+        sum = _mm256_fmadd_ps(a[0], b[0], sum);
+        sum = _mm256_fmadd_ps(a[1], b[1], sum);
+        sum = _mm256_fmadd_ps(a[2], b[2], sum);
+        sum = _mm256_fmadd_ps(a[3], b[3], sum);
+        sum = _mm256_fmadd_ps(a[4], b[4], sum);
+        sum = _mm256_fmadd_ps(a[5], b[5], sum);
+        sum = _mm256_fmadd_ps(a[6], b[6], sum);
+        sum = _mm256_fmadd_ps(a[7], b[7], sum);
     }
 
     // Horizontal sum

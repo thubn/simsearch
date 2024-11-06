@@ -62,6 +62,7 @@ std::vector<std::pair<int32_t, size_t>> OptimizedEmbeddingSearchBinaryAVX2::simi
 
     const __m256i *query_data = reinterpret_cast<const __m256i *>(query.data());
     AVX2Popcount counter;
+    //AVX2PopcountHarleySeal counter;
 
     for (size_t i = 0; i < num_vectors; i++)
     {
@@ -146,5 +147,6 @@ int32_t OptimizedEmbeddingSearchBinaryAVX2::compute_similarity_avx2(const __m256
     xor_result[3] = _mm256_xor_si256(vec_a[3], vec_b[3]);
     xor_result[3] = _mm256_xor_si256(xor_result[3], all_ones);
 
+    //return counter.popcnt_AVX2_lookup(reinterpret_cast<const uint8_t *>(xor_result), 4 * sizeof(__m256i));
     return counter.popcnt_AVX2_lookup(reinterpret_cast<const uint8_t *>(xor_result), 4 * sizeof(__m256i));
 }

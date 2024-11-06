@@ -132,13 +132,7 @@ struct Searchers
     }
     void initAvx2()
     {
-        if (base.getEmbeddings().empty())
-        {
-            throw std::runtime_error("Base embeddings are empty in initAvx2");
-        }
-        std::cout << "Setting AVX2 embeddings..." << std::endl;
         avx2.setEmbeddings(base.getEmbeddings());
-        std::cout << "AVX2 embeddings set successfully" << std::endl;
     }
     void initAvx2_pca8()
     {
@@ -192,7 +186,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     std::thread tBinary(&Searchers::initBinary, &searchers);
     std::thread tBinary_avx2(&Searchers::initBinary_avx2, &searchers);
     //std::thread tUint8_avx2(&Searchers::initUint8_avx2, &searchers);
-    //std::thread tOavx2(&Searchers::initOavx2, &searchers);
+    std::thread tOavx2(&Searchers::initOavx2, &searchers);
     std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
     //std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
 
@@ -211,7 +205,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     tBinary.join();
     tBinary_avx2.join();
     //tUint8_avx2.join();
-    //tOavx2.join();
+    tOavx2.join();
     tObinary_avx2.join();
     //tOuint_avx2.join();
     //tAvx2_pca8.join();
