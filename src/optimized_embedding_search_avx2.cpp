@@ -196,9 +196,9 @@ inline float OptimizedEmbeddingSearchAVX2::compute_similarity_avx2(const float *
     __m256 sum = _mm256_setzero_ps();
     __m256 a[8];
     __m256 b[8];
+    size_t i = 0;
 
-    // Compute dot product using AVX2
-    for (size_t i = 0; i < padded_dim; i += 8 * 8)
+    while (i + 8 * 8 - 1 < padded_dim)
     {
         a[0] = _mm256_load_ps(vec_a + i);
         a[1] = _mm256_load_ps(vec_a + i + 8);
@@ -226,6 +226,16 @@ inline float OptimizedEmbeddingSearchAVX2::compute_similarity_avx2(const float *
         sum = _mm256_fmadd_ps(a[5], b[5], sum);
         sum = _mm256_fmadd_ps(a[6], b[6], sum);
         sum = _mm256_fmadd_ps(a[7], b[7], sum);
+
+        i += 8 * 8;
+    }
+
+    while (i + 7 < padded_dim)
+    {
+        a[0] = _mm256_load_ps(vec_a + i);
+        b[0] = _mm256_load_ps(vec_b + i);
+        sum = _mm256_fmadd_ps(a[0], b[0], sum);
+        i += 8;
     }
 
     // Horizontal sum
