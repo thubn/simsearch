@@ -121,7 +121,7 @@ int32_t OptimizedEmbeddingSearchBinaryAVX2::compute_similarity_avx2(const __m256
 {
     int32_t total_popcount = 0;
 
-   // prefetch 2 cache lines for 4 vectors 10 loops ahead
+    // prefetch 2 cache lines for 4 vectors 10 loops ahead
     _mm_prefetch(vec_a + 4 * 10, _MM_HINT_T0);
     _mm_prefetch(vec_a + 4 * 10 + 2, _MM_HINT_T0);
     __m256i all_ones = _mm256_set1_epi32(-1);

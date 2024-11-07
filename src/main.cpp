@@ -21,6 +21,7 @@
 #include <filesystem>
 #include <nlohmann/json.hpp>
 #include <thread>
+#include <valgrind/callgrind.h>
 
 using json = nlohmann::json;
 
@@ -50,7 +51,7 @@ enum SearcherType
     BINARY_AVX2,
     BINARY_AVX2_PCA6,
     OBINAR_AVX2,
-    BAVX2_F32AVX2,
+    OBAVX2_F32OAVX2,
     UINT8_AVX2,
     OUINT8_AVX2,
     NUM_SEARCHER_TYPES // Used to determine array sizes
@@ -78,7 +79,7 @@ struct Searchers
     OptimizedEmbeddingSearchAVX2 pca16;
     OptimizedEmbeddingSearchAVX2 pca32;
     EmbeddingSearchAVX2 avx2;
-    //EmbeddingSearchAVX2 avx2_pca8;
+    // EmbeddingSearchAVX2 avx2_pca8;
     EmbeddingSearchBinary binary;
     EmbeddingSearchBinaryAVX2 binary_avx2;
     EmbeddingSearchBinaryAVX2 binary_avx2_pca6;
@@ -86,10 +87,12 @@ struct Searchers
     OptimizedEmbeddingSearchAVX2 oavx2;
     OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
     OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
-    Searchers() : base(), avx2() {}  // Explicit initialization
-    
-    void initBase(const std::string &filename) {
-        if (!base.load(filename, false)) {
+    Searchers() : base(), avx2() {} // Explicit initialization
+
+    void initBase(const std::string &filename)
+    {
+        if (!base.load(filename, false))
+        {
             throw std::runtime_error("Failed to load base embeddings");
         }
     }
@@ -183,14 +186,13 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     // Load base embeddings
     searchers.initBase(filename);
 
-    //std::thread tPca2(&Searchers::initPca2, &searchers);
-    //std::thread tPca2x2(&Searchers::initPca2x2, &searchers);
-    //std::thread tPca4(&Searchers::initPca4, &searchers);
-    //std::thread tPca6(&Searchers::initPca6, &searchers);
-    //std::thread tPca8(&Searchers::initPca8, &searchers);
-    //std::thread tPca16(&Searchers::initPca16, &searchers);
-    //std::thread tPca32(&Searchers::initPca32, &searchers);
-
+    // std::thread tPca2(&Searchers::initPca2, &searchers);
+    // std::thread tPca2x2(&Searchers::initPca2x2, &searchers);
+    // std::thread tPca4(&Searchers::initPca4, &searchers);
+    // std::thread tPca6(&Searchers::initPca6, &searchers);
+    // std::thread tPca8(&Searchers::initPca8, &searchers);
+    // std::thread tPca16(&Searchers::initPca16, &searchers);
+    // std::thread tPca32(&Searchers::initPca32, &searchers);
 
     std::thread tAvx2(&Searchers::initAvx2, &searchers);
     std::thread tBinary(&Searchers::initBinary, &searchers);
@@ -200,16 +202,15 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
     std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
 
-
-    //tPca8.join();
-    //std::thread tAvx2_pca8(&Searchers::initAvx2_pca8, &searchers);
-    //tPca6.join();
-    //std::thread tBinary_avx2_pca6(&Searchers::initBinary_avx2_pca6, &searchers);
-    //tPca2.join();
-    //tPca2x2.join();
-    //tPca4.join();
-    //tPca16.join();
-    //tPca32.join();
+    // tPca8.join();
+    // std::thread tAvx2_pca8(&Searchers::initAvx2_pca8, &searchers);
+    // tPca6.join();
+    // std::thread tBinary_avx2_pca6(&Searchers::initBinary_avx2_pca6, &searchers);
+    // tPca2.join();
+    // tPca2x2.join();
+    // tPca4.join();
+    // tPca16.join();
+    // tPca32.join();
 
     tAvx2.join();
     tBinary.join();
@@ -218,8 +219,8 @@ void initializeSearchers(Searchers &searchers, const std::string &filename)
     tOavx2.join();
     tObinary_avx2.join();
     tOuint_avx2.join();
-    //tAvx2_pca8.join();
-    //tBinary_avx2_pca6.join();
+    // tAvx2_pca8.join();
+    // tBinary_avx2_pca6.join();
 }
 
 std::vector<size_t> generateRandomIndexes(size_t numRuns, size_t maxIndex)
@@ -250,7 +251,8 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
     for (size_t i = 0; i < config.runs; i++)
     {
         auto start = std::chrono::high_resolution_clock::now();
-        baseResults[i] = searchers.avx2.similarity_search(searchers.avx2.getEmbeddings()[randomIndexes[i]], config.k);
+        // baseResults[i] = searchers.avx2.similarity_search(searchers.avx2.getEmbeddings()[randomIndexes[i]], config.k);
+        baseResults[i] = searchers.base.similarity_search(searchers.base.getEmbeddings()[randomIndexes[i]], config.k);
         auto end = std::chrono::high_resolution_clock::now();
         results.times[F32] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     }
@@ -265,9 +267,15 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
             for (size_t i = 0; i < config.runs; i++)
             {
                 auto q = getQuery(randomIndexes[i]);
+                CALLGRIND_START_INSTRUMENTATION;
+                CALLGRIND_TOGGLE_COLLECT;
+                CALLGRIND_ZERO_STATS;
                 auto start = std::chrono::high_resolution_clock::now();
                 auto search_results = searcher.similarity_search(q, config.k);
                 auto end = std::chrono::high_resolution_clock::now();
+                CALLGRIND_DUMP_STATS_AT(name.data());
+                CALLGRIND_TOGGLE_COLLECT;
+                CALLGRIND_STOP_INSTRUMENTATION;
 
                 results.times[type] += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
                 results.jaccardIndexes[type] += EmbeddingUtils::calculateJaccardIndex(baseResults[i], search_results);
@@ -359,9 +367,9 @@ BenchmarkResults runBenchmark(Searchers &searchers, const BenchmarkConfig &confi
                          [&](size_t idx)
                          { return searchers.uint8_avx2.getEmbeddings()[idx]; });
 
-    runSearcherBenchmarkTwoStep("BAVX2_F32AVX2", searchers.binary_avx2, searchers.avx2, BAVX2_F32AVX2, [&](size_t idx)
-                                { return searchers.binary_avx2.getEmbeddings()[idx]; }, [&](size_t idx)
-                                { return searchers.avx2.getEmbeddings()[idx]; });
+    runSearcherBenchmarkTwoStep("OBAVX2_F32OAVX2", searchers.obinary_avx2, searchers.oavx2, OBAVX2_F32OAVX2, [&](size_t idx)
+                                { return searchers.obinary_avx2.getEmbeddingAVX2(idx); }, [&](size_t idx)
+                                { return searchers.oavx2.getEmbedding(idx); });
 
     runSearcherBenchmark("OAVX2", searchers.oavx2, F32_OAVX2,
                          [&](size_t idx)
@@ -383,7 +391,7 @@ void printResults(const BenchmarkResults &results, const BenchmarkConfig &config
     const std::vector<std::string> names = {
         "F32", "F32_PCA2", "F32_PCA4", "F32_PCA2x2", "F32_PCA6", "F32_PCA8",
         "F32_PCA16", "F32_PCA32", "F32_AVX2", "F32_AVX2_PCA8", "F32_OAVX2", "BINARY",
-        "BINARY_AVX2", "BINARY_AVX2_PCA6", "OBINARY_AVX2", "BAVX2_F32AVX2", "UINT8_AVX2", "OUINT8_AVX2"};
+        "BINARY_AVX2", "BINARY_AVX2_PCA6", "OBINARY_AVX2", "OBAVX2_F32OAVX2", "UINT8_AVX2", "OUINT8_AVX2"};
 
     std::cout << "Configuration:\n"
               << "Runs: " << config.runs

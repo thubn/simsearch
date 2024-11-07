@@ -193,7 +193,7 @@ public:
             auto uint8_end = std::chrono::high_resolution_clock::now();
             uint8_time = std::chrono::duration_cast<std::chrono::microseconds>(uint8_end - uint8_start).count();
 
-            // Perform Binary AVX2 search with timing
+            // Perform two step Binary AVX2 search with timing
             auto twostep_start = std::chrono::high_resolution_clock::now();
             auto twostep_binary_results = binary_avx2_searcher->similarity_search(queryBinaryAvx2, k * rescoring_factor);
             auto twostep_avx2_results = avx2_searcher->similarity_search(query, k, twostep_binary_results);
