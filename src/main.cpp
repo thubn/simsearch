@@ -6,6 +6,7 @@
 #include "embedding_search_float.h"
 #include "embedding_search_float16.h"
 #include "embedding_search_float_int8.h"
+#include "embedding_search_mapped_float.h"
 #include "embedding_search_uint8_avx2.h"
 #include "embedding_utils.h"
 #include "optimized_embedding_search_avx2.h"
@@ -91,6 +92,7 @@ struct Searchers {
   OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
   EmbeddingSearchFloatInt8 float_int8;
   EmbeddingSearchFloat16 float16;
+  EmbeddingSearchMappedFloat mappedFloat;
   Searchers() : base(), avx2() {} // Explicit initialization
 
   void initBase(const std::string &filename) {
@@ -154,6 +156,7 @@ struct Searchers {
   void initOuint_avx2() { ouint8_avx2.setEmbeddings(base.getEmbeddings()); }
   void initFloatInt8() { float_int8.setEmbeddings(base.getEmbeddings()); }
   void initFloat16() { float16.setEmbeddings(base.getEmbeddings()); }
+  void initMappedFloat() { mappedFloat.setEmbeddings(base.getEmbeddings()); }
 };
 
 void initializeSearchers(Searchers &searchers, const std::string &filename) {
@@ -168,6 +171,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   // std::thread tPca16(&Searchers::initPca16, &searchers);
   // std::thread tPca32(&Searchers::initPca32, &searchers);
 
+  /*
   std::thread tAvx2(&Searchers::initAvx2, &searchers);
   std::thread tBinary(&Searchers::initBinary, &searchers);
   std::thread tBinary_avx2(&Searchers::initBinary_avx2, &searchers);
@@ -176,7 +180,9 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
   std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
   std::thread tFloat_int8(&Searchers::initFloatInt8, &searchers);
-  std::thread tFloat16(&Searchers::initFloat16, &searchers);
+  */
+  // std::thread tFloat16(&Searchers::initFloat16, &searchers);
+  std::thread tMappedFloat(&Searchers::initMappedFloat, &searchers);
   // tPca8.join();
   // std::thread tAvx2_pca8(&Searchers::initAvx2_pca8, &searchers);
   // tPca6.join();
@@ -184,6 +190,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   // &searchers); tPca2.join(); tPca2x2.join(); tPca4.join(); tPca16.join();
   // tPca32.join();
 
+  /*
   tAvx2.join();
   tBinary.join();
   tBinary_avx2.join();
@@ -192,7 +199,9 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   tObinary_avx2.join();
   tOuint_avx2.join();
   tFloat_int8.join();
-  tFloat16.join();
+  */
+  // tFloat16.join();
+  tMappedFloat.join();
   // tAvx2_pca8.join();
   // tBinary_avx2_pca6.join();
 }
@@ -373,9 +382,9 @@ BenchmarkResults runBenchmark(Searchers &searchers,
       "FLOAT_INT8", searchers.float_int8, FLOAT_INT8,
       [&](size_t idx) { return searchers.float_int8.getEmbeddings()[idx]; });
 
-  runSearcherBenchmark(
-      "FLOAT16", searchers.float16, FLOAT16,
-      [&](size_t idx) { return searchers.float16.getEmbeddings()[idx]; });
+  runSearcherBenchmark("FLOAT16", searchers.float16, FLOAT16, [&](size_t idx) {
+    return searchers.float16.getEmbeddings()[idx];
+  });
 
   return results;
 }
