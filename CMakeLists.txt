@@ -37,6 +37,8 @@ add_executable(${PROJECT_NAME}
     src/optimized_embedding_search_uint8_avx2.cpp
     src/optimized_embedding_search_avx2.cpp
     src/optimized_embedding_search_binary_avx2.cpp
+    src/embedding_search_float_int8.cpp
+    src/embedding_search_float16.cpp
 )
 
 # Create the Python module
@@ -52,6 +54,8 @@ pybind11_add_module(embedding_search
     src/optimized_embedding_search_uint8_avx2.cpp
     src/optimized_embedding_search_avx2.cpp
     src/optimized_embedding_search_binary_avx2.cpp
+    src/embedding_search_float_int8.cpp
+    src/embedding_search_float16.cpp
 )
 
 # Link libraries for main executable
@@ -82,7 +86,7 @@ set_target_properties(embedding_search PROPERTIES
 
 # Optionally, you can set different flags for Debug and Release builds
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -g")
 
 # Print include directories for debugging
 get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
