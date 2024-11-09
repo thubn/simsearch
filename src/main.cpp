@@ -57,6 +57,7 @@ enum SearcherType {
   OUINT8_AVX2,
   FLOAT_INT8,
   FLOAT16,
+  MAPPED_FLOAT,
   NUM_SEARCHER_TYPES // Used to determine array sizes
 };
 
@@ -171,7 +172,6 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   // std::thread tPca16(&Searchers::initPca16, &searchers);
   // std::thread tPca32(&Searchers::initPca32, &searchers);
 
-  /*
   std::thread tAvx2(&Searchers::initAvx2, &searchers);
   std::thread tBinary(&Searchers::initBinary, &searchers);
   std::thread tBinary_avx2(&Searchers::initBinary_avx2, &searchers);
@@ -179,8 +179,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   std::thread tOavx2(&Searchers::initOavx2, &searchers);
   std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
   std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
-  std::thread tFloat_int8(&Searchers::initFloatInt8, &searchers);
-  */
+  // std::thread tFloat_int8(&Searchers::initFloatInt8, &searchers);
   // std::thread tFloat16(&Searchers::initFloat16, &searchers);
   std::thread tMappedFloat(&Searchers::initMappedFloat, &searchers);
   // tPca8.join();
@@ -190,7 +189,6 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   // &searchers); tPca2.join(); tPca2x2.join(); tPca4.join(); tPca16.join();
   // tPca32.join();
 
-  /*
   tAvx2.join();
   tBinary.join();
   tBinary_avx2.join();
@@ -198,8 +196,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   tOavx2.join();
   tObinary_avx2.join();
   tOuint_avx2.join();
-  tFloat_int8.join();
-  */
+  // tFloat_int8.join();
   // tFloat16.join();
   tMappedFloat.join();
   // tAvx2_pca8.join();
@@ -386,6 +383,10 @@ BenchmarkResults runBenchmark(Searchers &searchers,
     return searchers.float16.getEmbeddings()[idx];
   });
 
+  runSearcherBenchmark(
+      "MAPPED_FLOAT", searchers.mappedFloat, MAPPED_FLOAT,
+      [&](size_t idx) { return searchers.mappedFloat.getEmbeddings()[idx]; });
+
   return results;
 }
 
@@ -396,7 +397,8 @@ void printResults(const BenchmarkResults &results,
       "F32_PCA6",    "F32_PCA8",         "F32_PCA16",    "F32_PCA32",
       "F32_AVX2",    "F32_AVX2_PCA8",    "F32_OAVX2",    "BINARY",
       "BINARY_AVX2", "BINARY_AVX2_PCA6", "OBINARY_AVX2", "OBAVX2_F32OAVX2",
-      "UINT8_AVX2",  "OUINT8_AVX2",      "FLOAT_INT8",   "FLOAT16"};
+      "UINT8_AVX2",  "OUINT8_AVX2",      "FLOAT_INT8",   "FLOAT16",
+      "MAPPED_FLOAT"};
 
   std::cout << "Configuration:\n"
             << "Runs: " << config.runs << " | k: " << config.k

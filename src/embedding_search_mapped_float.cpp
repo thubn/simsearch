@@ -1,8 +1,11 @@
 #include "embedding_search_mapped_float.h"
 #include "embedding_io.h"
 #include <algorithm>
+#include <bitset>
 #include <cmath>
 #include <eigen3/Eigen/Dense>
+#include <iomanip>
+#include <numeric>
 #include <omp.h>
 #include <stdexcept>
 
@@ -16,8 +19,7 @@ std::vector<PartitionInfo> partitionAndAverage(std::vector<float> &arr,
                                                int n_parts) {
   try {
     // Pre-allocate vector to avoid reallocations
-    std::vector<PartitionInfo> partitions;
-    partitions.reserve(n_parts);
+    std::vector<PartitionInfo> partitions(n_parts); // Pre-size the vector
 
     // Input validation
     if (arr.empty()) {
@@ -34,13 +36,15 @@ std::vector<PartitionInfo> partitionAndAverage(std::vector<float> &arr,
     int part_size = arr.size() / n_parts;
     int remainder = arr.size() % n_parts;
 
-    // Current position in the array
-    size_t current_pos = 0;
-
-    // Process each part
+    // Process each part in parallel
+    omp_set_num_threads(32);
+#pragma omp parallel for
     for (int i = 0; i < n_parts; ++i) {
       // Calculate size of current part (distribute remainder)
       int current_size = part_size + (i < remainder ? 1 : 0);
+
+      // Calculate starting position for this partition
+      size_t current_pos = i * part_size + std::min(i, remainder);
 
       // Calculate average for current part
       float sum = 0.0f;
@@ -50,19 +54,15 @@ std::vector<PartitionInfo> partitionAndAverage(std::vector<float> &arr,
       float average = sum / current_size;
 
       // Store info
-      partitions.push_back(
-          {arr[current_pos], arr[current_pos + current_size - 1], average});
-
-      // Update position
-      current_pos += current_size;
+      partitions[i] = {arr[current_pos], arr[current_pos + current_size - 1],
+                       average};
     }
 
     return partitions;
   } catch (const std::bad_alloc &e) {
-    std::cerr << "Memory allocation failed in partitionAndAverage: " << e.what()
-              << '\n';
+    std::cerr << "Memory allocation failed: " << e.what() << '\n';
     std::cerr << "Available system memory might be insufficient\n";
-    throw; // Re-throw the exception
+    throw;
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << '\n';
     throw;
@@ -113,40 +113,55 @@ void printPartitions(const std::vector<PartitionInfo> &partitions) {
               << "Average: " << std::setw(12) << partitions[i].average
               << " (Hex: " << floatToHex(partitions[i].average) << ")\n";
   }
-  std::cout << "\n";
+  std::cout << std::endl;
+}
 
-  // Print C++ array initialization with hex values
-  std::cout << "C++ array initialization with hex values:\n\n";
+// Custom exception for out-of-range values
+class ValueOutOfRangeException : public std::runtime_error {
+public:
+  ValueOutOfRangeException(float value, float min, float max)
+      : std::runtime_error(
+            "Value " + std::to_string(value) + " is outside the valid range [" +
+            std::to_string(min) + ", " + std::to_string(max) + "]") {}
+};
 
-  // Print starts array
-  std::cout << "float starts[] = {";
-  for (size_t i = 0; i < partitions.size(); ++i) {
-    std::cout << std::setw(12) << partitions[i].start << "f /*"
-              << floatToHex(partitions[i].start) << "*/";
-    if (i < partitions.size() - 1)
-      std::cout << ", ";
+// Binary search function to find partition index for a value
+uint8_t findPartitionIndex(const std::vector<PartitionInfo> &partitions,
+                           float value) {
+  if (partitions.empty()) {
+    throw std::invalid_argument("Partition vector is empty");
   }
-  std::cout << "};\n";
 
-  // Print ends array
-  std::cout << "float ends[] = {";
-  for (size_t i = 0; i < partitions.size(); ++i) {
-    std::cout << std::setw(12) << partitions[i].end << "f /*"
-              << floatToHex(partitions[i].end) << "*/";
-    if (i < partitions.size() - 1)
-      std::cout << ", ";
+  // Check range
+  if (value < partitions[0].start || value > partitions.back().end) {
+    throw ValueOutOfRangeException(value, partitions[0].start,
+                                   partitions.back().end);
   }
-  std::cout << "};\n";
 
-  // Print averages array
-  std::cout << "float averages[] = {";
-  for (size_t i = 0; i < partitions.size(); ++i) {
-    std::cout << std::setw(12) << partitions[i].average << "f /*"
-              << floatToHex(partitions[i].average) << "*/";
-    if (i < partitions.size() - 1)
-      std::cout << ", ";
+  int left = 0;
+  int right = partitions.size() - 1;
+
+  while (left <= right) {
+    int mid = left + (right - left) / 2;
+
+    // Check if value is in current partition
+    if (value >= partitions[mid].start && value <= partitions[mid].end) {
+      return static_cast<uint8_t>(mid);
+    }
+
+    // If value is less than partition start, search left half
+    if (value < partitions[mid].start) {
+      right = mid - 1;
+    }
+    // If value is greater than partition end, search right half
+    else {
+      left = mid + 1;
+    }
   }
-  std::cout << "};\n";
+
+  // This should never happen if partitions are contiguous
+  throw std::runtime_error(
+      "Value falls between partitions - possible gap in partition definitions");
 }
 
 bool EmbeddingSearchMappedFloat::setEmbeddings(
@@ -155,21 +170,29 @@ bool EmbeddingSearchMappedFloat::setEmbeddings(
   vector_dim = input_vectors[0].size();
 
   try {
-    std::cout << "setembeddings1" << std::endl;
     std::vector<float> flat_input = flattenMatrix(input_vectors);
-    std::cout << "setembeddings2" << std::endl;
     std::vector<PartitionInfo> partitions =
-        partitionAndAverage(flat_input, 256);
-    std::cout << "setembeddings3" << std::endl;
+        partitionAndAverage(flat_input, 16);
     printPartitions(partitions);
-    std::cout << "setembeddings4" << std::endl;
+
+    embeddings.resize(num_vectors, std::vector<uint8_t>(vector_dim));
+
+    for (int i = 0; i < num_vectors; i++) {
+      for (int j = 0; j < vector_dim; j++) {
+        embeddings[i][j] = findPartitionIndex(partitions, input_vectors[i][j]);
+      }
+    }
+    for (int i = 0; i < partitions.size(); i++) {
+      mapped_floats[i] = partitions[i].average;
+    }
+
   } catch (const std::bad_alloc &e) {
     std::cerr << "Memory allocation failed in setEmbeddings: " << e.what()
               << '\n';
     std::cerr << "Available system memory might be insufficient\n";
     throw; // Re-throw the exception
   }
-  exit(0);
+  //exit(0);
 
   return true;
 }
@@ -202,7 +225,7 @@ float EmbeddingSearchMappedFloat::cosine_similarity(
   float dot_product = 0.0f;
 
   for (size_t i = 0; i < a.size(); ++i) {
-    dot_product += a[i] * b[i];
+    dot_product += mapped_floats[a[i]] * mapped_floats[b[i]];
   }
 
   return dot_product;
