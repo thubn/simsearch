@@ -18,10 +18,6 @@ struct PartitionInfo {
 std::vector<PartitionInfo> partitionAndAverage(std::vector<float> &arr,
                                                int n_parts) {
   try {
-    // Pre-allocate vector to avoid reallocations
-    std::vector<PartitionInfo> partitions(n_parts); // Pre-size the vector
-
-    // Input validation
     if (arr.empty()) {
       throw std::invalid_argument("Input array is empty");
     }
@@ -32,37 +28,84 @@ std::vector<PartitionInfo> partitionAndAverage(std::vector<float> &arr,
     // Sort the array
     std::sort(arr.begin(), arr.end());
 
-    // Calculate the size of each part
-    int part_size = arr.size() / n_parts;
-    int remainder = arr.size() % n_parts;
+    // Calculate dynamic partition sizes
+    std::vector<size_t> partition_sizes(n_parts);
+    float center = (n_parts - 1) / 2.0f;
+    double total_weights = 0.0; // Changed to double for better precision
+    std::vector<double> weights(n_parts); // Store weights separately
 
-    // Process each part in parallel
-    omp_set_num_threads(32);
-#pragma omp parallel for
-    for (int i = 0; i < n_parts; ++i) {
-      // Calculate size of current part (distribute remainder)
-      int current_size = part_size + (i < remainder ? 1 : 0);
+    // First pass: calculate weights
+    for (int i = 0; i < n_parts; i++) {
+      float distance = (i - center) / center;
+      // cubic
+      // double weight = 1.0 - (distance * distance * distance * 0.95); // Changed to double
+      // gauss
+      double weight = std::exp(-distance * distance * 8.0f);
+      weights[i] = weight;
+      total_weights += weight;
+    }
 
-      // Calculate starting position for this partition
-      size_t current_pos = i * part_size + std::min(i, remainder);
+    // Second pass: convert weights to actual sizes
+    size_t elements_assigned = 0;
+    for (int i = 0; i < n_parts - 1; i++) {
+      // Calculate size and ensure it's at least 1
+      double proportion = weights[i] / total_weights;
+      partition_sizes[i] =
+          std::max(size_t(1), static_cast<size_t>(arr.size() * proportion));
 
-      // Calculate average for current part
-      float sum = 0.0f;
-      for (int j = 0; j < current_size; ++j) {
-        sum += arr[current_pos + j];
+      // Prevent overshooting total size
+      if (elements_assigned + partition_sizes[i] >= arr.size()) {
+        partition_sizes[i] = arr.size() - elements_assigned;
+        // Zero out remaining partitions
+        for (int j = i + 1; j < n_parts; j++) {
+          partition_sizes[j] = 0;
+        }
+        break;
       }
-      float average = sum / current_size;
+      elements_assigned += partition_sizes[i];
+    }
 
-      // Store info
-      partitions[i] = {arr[current_pos], arr[current_pos + current_size - 1],
+    // Last partition gets remaining elements
+    if (elements_assigned < arr.size()) {
+      partition_sizes[n_parts - 1] = arr.size() - elements_assigned;
+    }
+
+    // Pre-allocate result vector
+    std::vector<PartitionInfo> partitions(n_parts);
+
+    // Process each partition
+    size_t start_pos = 0;
+    for (int i = 0; i < n_parts; ++i) {
+      if (partition_sizes[i] == 0) {
+        // Skip empty partitions
+        continue;
+      }
+
+      // Calculate sum for current partition
+      float sum = 0.0f;
+      for (size_t j = 0; j < partition_sizes[i]; ++j) {
+        sum += arr[start_pos + j];
+      }
+
+      float average = sum / partition_sizes[i];
+
+      // Store partition info
+      partitions[i] = {arr[start_pos],                          // start
+                       arr[start_pos + partition_sizes[i] - 1], // end
                        average};
+
+      // Print partition details
+      std::cout << "Partition " << std::setw(2) << i << ": "
+                << "size = " << std::setw(6) << partition_sizes[i]
+                << " elements, range [" << std::fixed << std::setprecision(2)
+                << partitions[i].start << ", " << partitions[i].end
+                << "], avg = " << partitions[i].average << "\n";
+
+      // Update start position for next partition
+      start_pos += partition_sizes[i];
     }
 
     return partitions;
-  } catch (const std::bad_alloc &e) {
-    std::cerr << "Memory allocation failed: " << e.what() << '\n';
-    std::cerr << "Available system memory might be insufficient\n";
-    throw;
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << '\n';
     throw;
@@ -192,7 +235,7 @@ bool EmbeddingSearchMappedFloat::setEmbeddings(
     std::cerr << "Available system memory might be insufficient\n";
     throw; // Re-throw the exception
   }
-  //exit(0);
+  // exit(0);
 
   return true;
 }
