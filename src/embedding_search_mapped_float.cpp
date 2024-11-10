@@ -37,7 +37,7 @@ double calculateWeight(double relative_pos, DistributionType dist_type) {
   case DistributionType::CUBIC:
     return 1.0 - (relative_pos * relative_pos * relative_pos * 0.5);
   case DistributionType::GAUSSIAN:
-    return std::exp(-relative_pos * relative_pos * 8.0);
+    return std::exp(-relative_pos * relative_pos * 10.0);
   case DistributionType::COSINE:
     return std::cos(relative_pos * M_PI_2) * 0.5 + 0.5;
   default:
@@ -79,6 +79,7 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
       pos_parts = 1;
     pos_parts = n_parts - neg_parts;
 
+    /*
     std::cout << "Distribution info:\n";
     std::cout << "Distribution type: " << static_cast<int>(dist_type) << "\n";
     std::cout << "Total elements: " << arr.size() << "\n";
@@ -86,6 +87,7 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
               << " partitions)\n";
     std::cout << "Positive elements: " << pos_count << " (" << pos_parts
               << " partitions)\n\n";
+    */
 
     // Calculate weights and sizes for both sides
     std::vector<size_t> partition_sizes(n_parts);
@@ -98,8 +100,8 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
       // Calculate weights
       for (int i = 0; i < neg_parts; i++) {
         double relative_pos = (double(i) / double(neg_parts - 1)) - 1.0;
-        std::cout << "neg relative_pos: " << i << " " << relative_pos
-                  << std::endl;
+        // std::cout << "neg relative_pos: " << i << " " << relative_pos <<
+        // std::endl;
         weights[i] = calculateWeight(relative_pos, dist_type);
         total_weight += weights[i];
       }
@@ -126,8 +128,8 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
       // Calculate weights
       for (int i = 0; i < pos_parts; i++) {
         double relative_pos = double(i) / double(pos_parts - 1);
-        std::cout << "pos relative_pos: " << i << " " << relative_pos
-                  << std::endl;
+        // std::cout << "pos relative_pos: " << i << " " << relative_pos <<
+        // std::endl;
         weights[i] = calculateWeight(relative_pos, dist_type);
         total_weight += weights[i];
       }
@@ -165,12 +167,14 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
       partitions[i] = {arr[start_pos], arr[start_pos + partition_sizes[i] - 1],
                        average};
 
+      /*
       // Print partition details
       std::cout << "Partition " << std::setw(2) << i << ": "
                 << "size = " << std::setw(10) << partition_sizes[i]
                 << " elements, range [" << std::fixed << std::setprecision(6)
                 << partitions[i].start << ", " << partitions[i].end
                 << "], avg = " << partitions[i].average << "\n";
+      */
 
       start_pos += partition_sizes[i];
     }
@@ -286,10 +290,11 @@ bool EmbeddingSearchMappedFloat::setEmbeddings(
     std::vector<float> flat_input = flattenMatrix(input_vectors);
     std::vector<PartitionInfo> partitions =
         partitionAndAverage(flat_input, 256, DistributionType::GAUSSIAN);
-    printPartitions(partitions);
+    // printPartitions(partitions);
 
     embeddings.resize(num_vectors, std::vector<uint8_t>(vector_dim));
 
+#pragma omp parallel for
     for (int i = 0; i < num_vectors; i++) {
       for (int j = 0; j < vector_dim; j++) {
         embeddings[i][j] = findPartitionIndex(partitions, input_vectors[i][j]);
@@ -298,6 +303,15 @@ bool EmbeddingSearchMappedFloat::setEmbeddings(
     for (int i = 0; i < partitions.size(); i++) {
       mapped_floats[i] = partitions[i].average;
     }
+
+    /*
+    Map results for float multiplication
+    for (int i = 0; i < MUL_RESULTS_SIZE; i++) {
+      for (int j = 0; j < MUL_RESULTS_SIZE; j++) {
+        mapped_floats_mul_result[i][j] = mapped_floats[i] * mapped_floats[j];
+      }
+    }
+    */
 
   } catch (const std::bad_alloc &e) {
     std::cerr << "Memory allocation failed in setEmbeddings: " << e.what()
@@ -337,7 +351,7 @@ float EmbeddingSearchMappedFloat::cosine_similarity(
     const std::vector<uint8_t> &a, const std::vector<uint8_t> &b) {
   float dot_product = 0.0f;
 
-  for (size_t i = 0; i < a.size(); ++i) {
+  for (size_t i = 0; i < a.size(); i++) {
     dot_product += mapped_floats[a[i]] * mapped_floats[b[i]];
   }
 
