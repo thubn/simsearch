@@ -15,8 +15,39 @@ struct PartitionInfo {
   float average;
 };
 
-std::vector<PartitionInfo> partitionAndAverage(std::vector<float> &arr,
-                                               int n_parts) {
+// Distribution function type for easier switching
+enum class DistributionType {
+  UNIFORM,
+  LINEAR,
+  QUADRATIC,
+  CUBIC,
+  GAUSSIAN,
+  COSINE
+};
+
+// Calculate weight based on relative position and distribution type
+double calculateWeight(double relative_pos, DistributionType dist_type) {
+  switch (dist_type) {
+  case DistributionType::UNIFORM:
+    return 1.0;
+  case DistributionType::LINEAR:
+    return 1.0 - (std::abs(relative_pos) * 0.5);
+  case DistributionType::QUADRATIC:
+    return 1.0 - (relative_pos * relative_pos * 0.75);
+  case DistributionType::CUBIC:
+    return 1.0 - (relative_pos * relative_pos * relative_pos * 0.5);
+  case DistributionType::GAUSSIAN:
+    return std::exp(-relative_pos * relative_pos * 8.0);
+  case DistributionType::COSINE:
+    return std::cos(relative_pos * M_PI_2) * 0.5 + 0.5;
+  default:
+    return 1.0;
+  }
+}
+
+std::vector<PartitionInfo>
+partitionAndAverage(std::vector<float> &arr, int n_parts,
+                    DistributionType dist_type = DistributionType::QUADRATIC) {
   try {
     if (arr.empty()) {
       throw std::invalid_argument("Input array is empty");
@@ -28,80 +59,119 @@ std::vector<PartitionInfo> partitionAndAverage(std::vector<float> &arr,
     // Sort the array
     std::sort(arr.begin(), arr.end());
 
-    // Calculate dynamic partition sizes
+    // Find indices for zero crossing
+    auto zero_it = std::lower_bound(arr.begin(), arr.end(), 0.0f);
+    size_t zero_index = std::distance(arr.begin(), zero_it);
+
+    // Calculate number of negative and positive values
+    size_t neg_count = zero_index;
+    size_t pos_count = arr.size() - zero_index;
+
+    // Determine partition split based on data distribution
+    int neg_parts = static_cast<int>(
+        (static_cast<double>(neg_count) / arr.size()) * n_parts);
+    int pos_parts = n_parts - neg_parts;
+
+    // Ensure at least one partition for each side if there's data
+    if (neg_count > 0 && neg_parts == 0)
+      neg_parts = 1;
+    if (pos_count > 0 && pos_parts == 0)
+      pos_parts = 1;
+    pos_parts = n_parts - neg_parts;
+
+    std::cout << "Distribution info:\n";
+    std::cout << "Distribution type: " << static_cast<int>(dist_type) << "\n";
+    std::cout << "Total elements: " << arr.size() << "\n";
+    std::cout << "Negative elements: " << neg_count << " (" << neg_parts
+              << " partitions)\n";
+    std::cout << "Positive elements: " << pos_count << " (" << pos_parts
+              << " partitions)\n\n";
+
+    // Calculate weights and sizes for both sides
     std::vector<size_t> partition_sizes(n_parts);
-    float center = (n_parts - 1) / 2.0f;
-    double total_weights = 0.0; // Changed to double for better precision
-    std::vector<double> weights(n_parts); // Store weights separately
 
-    // First pass: calculate weights
-    for (int i = 0; i < n_parts; i++) {
-      float distance = (i - center) / center;
-      // cubic
-      // double weight = 1.0 - (distance * distance * distance * 0.95); // Changed to double
-      // gauss
-      double weight = std::exp(-distance * distance * 8.0f);
-      weights[i] = weight;
-      total_weights += weight;
-    }
+    // Handle negative partitions
+    if (neg_parts > 0) {
+      std::vector<double> weights(neg_parts);
+      double total_weight = 0.0;
 
-    // Second pass: convert weights to actual sizes
-    size_t elements_assigned = 0;
-    for (int i = 0; i < n_parts - 1; i++) {
-      // Calculate size and ensure it's at least 1
-      double proportion = weights[i] / total_weights;
-      partition_sizes[i] =
-          std::max(size_t(1), static_cast<size_t>(arr.size() * proportion));
-
-      // Prevent overshooting total size
-      if (elements_assigned + partition_sizes[i] >= arr.size()) {
-        partition_sizes[i] = arr.size() - elements_assigned;
-        // Zero out remaining partitions
-        for (int j = i + 1; j < n_parts; j++) {
-          partition_sizes[j] = 0;
-        }
-        break;
+      // Calculate weights
+      for (int i = 0; i < neg_parts; i++) {
+        double relative_pos = (double(i) / double(neg_parts - 1)) - 1.0;
+        std::cout << "neg relative_pos: " << i << " " << relative_pos
+                  << std::endl;
+        weights[i] = calculateWeight(relative_pos, dist_type);
+        total_weight += weights[i];
       }
-      elements_assigned += partition_sizes[i];
+
+      // Convert weights to sizes
+      size_t elements_assigned = 0;
+      for (int i = 0; i < neg_parts - 1; i++) {
+        double proportion = weights[i] / total_weight;
+        partition_sizes[i] =
+            std::max(size_t(1), static_cast<size_t>(neg_count * proportion));
+        elements_assigned += partition_sizes[i];
+      }
+      // Last negative partition gets remaining elements
+      if (elements_assigned < neg_count) {
+        partition_sizes[neg_parts - 1] = neg_count - elements_assigned;
+      }
     }
 
-    // Last partition gets remaining elements
-    if (elements_assigned < arr.size()) {
-      partition_sizes[n_parts - 1] = arr.size() - elements_assigned;
+    // Handle positive partitions
+    if (pos_parts > 0) {
+      std::vector<double> weights(pos_parts);
+      double total_weight = 0.0;
+
+      // Calculate weights
+      for (int i = 0; i < pos_parts; i++) {
+        double relative_pos = double(i) / double(pos_parts - 1);
+        std::cout << "pos relative_pos: " << i << " " << relative_pos
+                  << std::endl;
+        weights[i] = calculateWeight(relative_pos, dist_type);
+        total_weight += weights[i];
+      }
+
+      // Convert weights to sizes
+      size_t elements_assigned = 0;
+      for (int i = 0; i < pos_parts - 1; i++) {
+        double proportion = weights[i] / total_weight;
+        partition_sizes[i + neg_parts] =
+            std::max(size_t(1), static_cast<size_t>(pos_count * proportion));
+        elements_assigned += partition_sizes[i + neg_parts];
+      }
+      // Last positive partition gets remaining elements
+      if (elements_assigned < pos_count) {
+        partition_sizes[n_parts - 1] = pos_count - elements_assigned;
+      }
     }
 
-    // Pre-allocate result vector
+    // Create and fill partitions
     std::vector<PartitionInfo> partitions(n_parts);
-
-    // Process each partition
     size_t start_pos = 0;
+
     for (int i = 0; i < n_parts; ++i) {
       if (partition_sizes[i] == 0) {
-        // Skip empty partitions
         continue;
       }
 
-      // Calculate sum for current partition
-      float sum = 0.0f;
+      double sum = 0.0f;
       for (size_t j = 0; j < partition_sizes[i]; ++j) {
-        sum += arr[start_pos + j];
+        sum += double(arr[start_pos + j]);
       }
 
-      float average = sum / partition_sizes[i];
+      float average = partition_sizes[i] > 0 ? sum / partition_sizes[i] : 0.0f;
 
-      // Store partition info
-      partitions[i] = {arr[start_pos],                          // start
-                       arr[start_pos + partition_sizes[i] - 1], // end
+      partitions[i] = {arr[start_pos], arr[start_pos + partition_sizes[i] - 1],
                        average};
 
       // Print partition details
       std::cout << "Partition " << std::setw(2) << i << ": "
-                << "size = " << std::setw(6) << partition_sizes[i]
-                << " elements, range [" << std::fixed << std::setprecision(2)
+                << "size = " << std::setw(10) << partition_sizes[i]
+                << " elements, range [" << std::fixed << std::setprecision(6)
                 << partitions[i].start << ", " << partitions[i].end
                 << "], avg = " << partitions[i].average << "\n";
 
-      // Update start position for next partition
       start_pos += partition_sizes[i];
     }
 
@@ -215,7 +285,7 @@ bool EmbeddingSearchMappedFloat::setEmbeddings(
   try {
     std::vector<float> flat_input = flattenMatrix(input_vectors);
     std::vector<PartitionInfo> partitions =
-        partitionAndAverage(flat_input, 16);
+        partitionAndAverage(flat_input, 256, DistributionType::GAUSSIAN);
     printPartitions(partitions);
 
     embeddings.resize(num_vectors, std::vector<uint8_t>(vector_dim));
