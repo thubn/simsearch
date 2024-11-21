@@ -15,7 +15,7 @@ bool EmbeddingSearchFloatInt8::setEmbeddings(
 
   for (int i = 0; i < num_vectors; i++) {
     for (int j = 0; j < vector_dim; j++) {
-        embeddings[i][j] = SimplifiedFloat(input_vectors[i][j]);
+      embeddings[i][j] = SimplifiedFloat(input_vectors[i][j]);
     }
   }
 
@@ -45,8 +45,9 @@ EmbeddingSearchFloatInt8::similarity_search(
                                                similarities.begin() + k);
 }
 
-float EmbeddingSearchFloatInt8::cosine_similarity(const std::vector<SimplifiedFloat> &a,
-                                                  const std::vector<SimplifiedFloat> &b) {
+float EmbeddingSearchFloatInt8::cosine_similarity(
+    const std::vector<SimplifiedFloat> &a,
+    const std::vector<SimplifiedFloat> &b) {
   float dot_product = 0.0f;
 
   for (size_t i = 0; i < a.size(); ++i) {

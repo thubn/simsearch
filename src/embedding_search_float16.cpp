@@ -22,9 +22,8 @@ bool EmbeddingSearchFloat16::setEmbeddings(
   return true;
 }
 
-std::vector<std::pair<float, size_t>>
-EmbeddingSearchFloat16::similarity_search(const std::vector<std::bfloat16_t> &query,
-                                          size_t k) {
+std::vector<std::pair<float, size_t>> EmbeddingSearchFloat16::similarity_search(
+    const std::vector<std::bfloat16_t> &query, size_t k) {
   if (query.size() != embeddings[0].size()) {
     throw std::runtime_error("Query vector size does not match embedding size");
   }
@@ -45,8 +44,9 @@ EmbeddingSearchFloat16::similarity_search(const std::vector<std::bfloat16_t> &qu
                                                similarities.begin() + k);
 }
 
-float EmbeddingSearchFloat16::cosine_similarity(const std::vector<std::bfloat16_t> &a,
-                                                const std::vector<std::bfloat16_t> &b) {
+float EmbeddingSearchFloat16::cosine_similarity(
+    const std::vector<std::bfloat16_t> &a,
+    const std::vector<std::bfloat16_t> &b) {
   float dot_product = 0.0f;
 
   for (size_t i = 0; i < a.size(); ++i) {
