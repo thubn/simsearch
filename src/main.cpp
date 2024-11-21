@@ -58,6 +58,7 @@ enum SearcherType {
   FLOAT_INT8,
   FLOAT16,
   MAPPED_FLOAT,
+  MAPPED_FLOAT2,
   NUM_SEARCHER_TYPES // Used to determine array sizes
 };
 
@@ -94,6 +95,7 @@ struct Searchers {
   EmbeddingSearchFloatInt8 float_int8;
   EmbeddingSearchFloat16 float16;
   EmbeddingSearchMappedFloat mappedFloat;
+  EmbeddingSearchMappedFloat mappedFloat2;
   Searchers() : base(), avx2() {} // Explicit initialization
 
   void initBase(const std::string &filename) {
@@ -157,7 +159,12 @@ struct Searchers {
   void initOuint_avx2() { ouint8_avx2.setEmbeddings(base.getEmbeddings()); }
   void initFloatInt8() { float_int8.setEmbeddings(base.getEmbeddings()); }
   void initFloat16() { float16.setEmbeddings(base.getEmbeddings()); }
-  void initMappedFloat() { mappedFloat.setEmbeddings(base.getEmbeddings()); }
+  void initMappedFloat() {
+    mappedFloat.setEmbeddings(base.getEmbeddings(), 10.0);
+  }
+  void initMappedFloat2() {
+    mappedFloat2.setEmbeddings(base.getEmbeddings(), 10.5);
+  }
 };
 
 void initializeSearchers(Searchers &searchers, const std::string &filename) {
@@ -182,6 +189,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   // std::thread tFloat_int8(&Searchers::initFloatInt8, &searchers);
   // std::thread tFloat16(&Searchers::initFloat16, &searchers);
   std::thread tMappedFloat(&Searchers::initMappedFloat, &searchers);
+  std::thread tMappedFloat2(&Searchers::initMappedFloat2, &searchers);
   // tPca8.join();
   // std::thread tAvx2_pca8(&Searchers::initAvx2_pca8, &searchers);
   // tPca6.join();
@@ -199,6 +207,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   // tFloat_int8.join();
   // tFloat16.join();
   tMappedFloat.join();
+  tMappedFloat2.join();
   // tAvx2_pca8.join();
   // tBinary_avx2_pca6.join();
 }
@@ -387,18 +396,22 @@ BenchmarkResults runBenchmark(Searchers &searchers,
       "MAPPED_FLOAT", searchers.mappedFloat, MAPPED_FLOAT,
       [&](size_t idx) { return searchers.mappedFloat.getEmbeddings()[idx]; });
 
+  runSearcherBenchmark(
+      "MAPPED_FLOAT2", searchers.mappedFloat, MAPPED_FLOAT2,
+      [&](size_t idx) { return searchers.mappedFloat2.getEmbeddings()[idx]; });
+
   return results;
 }
 
 void printResults(const BenchmarkResults &results,
                   const BenchmarkConfig &config, const Searchers &searchers) {
   const std::vector<std::string> names = {
-      "F32",         "F32_PCA2",         "F32_PCA4",     "F32_PCA2x2",
-      "F32_PCA6",    "F32_PCA8",         "F32_PCA16",    "F32_PCA32",
-      "F32_AVX2",    "F32_AVX2_PCA8",    "F32_OAVX2",    "BINARY",
-      "BINARY_AVX2", "BINARY_AVX2_PCA6", "OBINARY_AVX2", "OBAVX2_F32OAVX2",
-      "UINT8_AVX2",  "OUINT8_AVX2",      "FLOAT_INT8",   "FLOAT16",
-      "MAPPED_FLOAT"};
+      "F32",          "F32_PCA2",         "F32_PCA4",     "F32_PCA2x2",
+      "F32_PCA6",     "F32_PCA8",         "F32_PCA16",    "F32_PCA32",
+      "F32_AVX2",     "F32_AVX2_PCA8",    "F32_OAVX2",    "BINARY",
+      "BINARY_AVX2",  "BINARY_AVX2_PCA6", "OBINARY_AVX2", "OBAVX2_F32OAVX2",
+      "UINT8_AVX2",   "OUINT8_AVX2",      "FLOAT_INT8",   "FLOAT16",
+      "MAPPED_FLOAT", "MAPPED_FLOAT2"};
 
   std::cout << "Configuration:\n"
             << "Runs: " << config.runs << " | k: " << config.k

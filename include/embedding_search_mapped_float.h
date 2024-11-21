@@ -20,6 +20,8 @@ public:
 
   bool setEmbeddings(
       const std::vector<std::vector<float>> &float_embeddings) override;
+  bool setEmbeddings(const std::vector<std::vector<float>> &float_embeddings,
+                     double distib_factor);
 
 private:
   // static const u_int8_t MUL_RESULTS_SIZE = 64;

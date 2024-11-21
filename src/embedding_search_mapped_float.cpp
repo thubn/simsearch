@@ -26,7 +26,8 @@ enum class DistributionType {
 };
 
 // Calculate weight based on relative position and distribution type
-double calculateWeight(double relative_pos, DistributionType dist_type) {
+double calculateWeight(double relative_pos, DistributionType dist_type,
+                       double factor = 10.0) {
   switch (dist_type) {
   case DistributionType::UNIFORM:
     return 1.0;
@@ -37,7 +38,7 @@ double calculateWeight(double relative_pos, DistributionType dist_type) {
   case DistributionType::CUBIC:
     return 1.0 - (relative_pos * relative_pos * relative_pos * 0.5);
   case DistributionType::GAUSSIAN:
-    return std::exp(-relative_pos * relative_pos * 10.0);
+    return std::exp(-relative_pos * relative_pos * factor);
   case DistributionType::COSINE:
     return std::cos(relative_pos * M_PI_2) * 0.5 + 0.5;
   default:
@@ -47,7 +48,8 @@ double calculateWeight(double relative_pos, DistributionType dist_type) {
 
 std::vector<PartitionInfo>
 partitionAndAverage(std::vector<float> &arr, int n_parts,
-                    DistributionType dist_type = DistributionType::QUADRATIC) {
+                    DistributionType dist_type = DistributionType::QUADRATIC,
+                    double factor = 10.0) {
   try {
     if (arr.empty()) {
       throw std::invalid_argument("Input array is empty");
@@ -102,7 +104,7 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
         double relative_pos = (double(i) / double(neg_parts - 1)) - 1.0;
         // std::cout << "neg relative_pos: " << i << " " << relative_pos <<
         // std::endl;
-        weights[i] = calculateWeight(relative_pos, dist_type);
+        weights[i] = calculateWeight(relative_pos, dist_type, factor);
         total_weight += weights[i];
       }
 
@@ -130,7 +132,7 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
         double relative_pos = double(i) / double(pos_parts - 1);
         // std::cout << "pos relative_pos: " << i << " " << relative_pos <<
         // std::endl;
-        weights[i] = calculateWeight(relative_pos, dist_type);
+        weights[i] = calculateWeight(relative_pos, dist_type, factor);
         total_weight += weights[i];
       }
 
@@ -282,14 +284,17 @@ uint8_t findPartitionIndex(const std::vector<PartitionInfo> &partitions,
 }
 
 bool EmbeddingSearchMappedFloat::setEmbeddings(
-    const std::vector<std::vector<float>> &input_vectors) {
+    const std::vector<std::vector<float>> &input_vectors){return false;}
+
+bool EmbeddingSearchMappedFloat::setEmbeddings(
+    const std::vector<std::vector<float>> &input_vectors, double distrib_factor) {
   num_vectors = input_vectors.size();
   vector_dim = input_vectors[0].size();
 
   try {
     std::vector<float> flat_input = flattenMatrix(input_vectors);
     std::vector<PartitionInfo> partitions =
-        partitionAndAverage(flat_input, 256, DistributionType::GAUSSIAN);
+        partitionAndAverage(flat_input, 256, DistributionType::GAUSSIAN, distrib_factor);
     // printPartitions(partitions);
 
     embeddings.resize(num_vectors, std::vector<uint8_t>(vector_dim));
