@@ -59,10 +59,10 @@ bool EmbeddingSearchAVX2::setEmbeddings(
     throw std::runtime_error(error_message);
   }
 
-  vector_size = m[0].size() / 8;
+  vector_dim = m[0].size() / 8;
   num_vectors = m.size();
   embeddings.clear();
-  EmbeddingUtils::convertEmbeddingsToAVX2(m, embeddings, vector_size);
+  EmbeddingUtils::convertEmbeddingsToAVX2(m, embeddings, vector_dim);
   return true;
 }
 

@@ -11,12 +11,12 @@
 namespace EmbeddingUtils {
 // Convert a single float vector to AVX2 format
 void convertSingleEmbeddingToAVX2(const std::vector<float> &input,
-                                  avx2_vector &output, size_t vector_size);
+                                  avx2_vector &output, size_t vector_dim);
 
 // Convert multiple float vectors to AVX2 format in parallel
 void convertEmbeddingsToAVX2(const std::vector<std::vector<float>> &input,
                              std::vector<avx2_vector> &output,
-                             size_t vector_size);
+                             size_t vector_dim);
 
 // Validate input dimensions for AVX2 conversion
 bool validateAVX2Dimensions(const std::vector<std::vector<float>> &input,
@@ -25,13 +25,13 @@ bool validateAVX2Dimensions(const std::vector<std::vector<float>> &input,
 size_t calculateBinaryAVX2VectorSize(size_t float_vector_size);
 
 void convertSingleFloatToBinaryAVX2(const std::vector<float> &input,
-                                    avx2i_vector &output, size_t vector_size);
+                                    avx2i_vector &output, size_t vector_dim);
 
 bool validateBinaryAVX2Dimensions(const std::vector<std::vector<float>> &input,
                                   std::string &error_message);
 
 void convertSingleFloatToUint8AVX2(const std::vector<float> &input,
-                                   avx2i_vector &output, size_t vector_size);
+                                   avx2i_vector &output, size_t vector_dim);
 
 bool validateUint8AVX2Dimensions(const std::vector<std::vector<float>> &input,
                                  std::string &error_message);

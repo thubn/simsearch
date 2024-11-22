@@ -63,14 +63,14 @@ bool EmbeddingSearchUint8AVX2::setEmbeddings(
 
   num_vectors = m.size();
   size_t float_vector_size = m[0].size();
-  vector_size = EmbeddingUtils::calculateUint8AVX2VectorSize(float_vector_size);
+  vector_dim = EmbeddingUtils::calculateUint8AVX2VectorSize(float_vector_size);
 
   embeddings.clear();
-  embeddings.resize(num_vectors, avx2i_vector(vector_size));
+  embeddings.resize(num_vectors, avx2i_vector(vector_dim));
 
   for (size_t i = 0; i < num_vectors; ++i) {
     EmbeddingUtils::convertSingleFloatToUint8AVX2(m[i], embeddings[i],
-                                                  vector_size);
+                                                  vector_dim);
   }
 
   return true;

@@ -8,8 +8,7 @@
 
 bool EmbeddingSearchFloat16::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {
-  num_vectors = input_vectors.size();
-  vector_dim = input_vectors[0].size();
+  initializeDimensions(input_vectors);
 
   embeddings.resize(num_vectors, std::vector<std::bfloat16_t>(vector_dim));
 

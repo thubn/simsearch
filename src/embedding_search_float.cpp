@@ -8,8 +8,7 @@
 
 bool EmbeddingSearchFloat::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {
-  num_vectors = input_vectors.size();
-  vector_dim = input_vectors[0].size();
+  initializeDimensions(input_vectors);
   embeddings = input_vectors;
   return true;
 }
@@ -67,7 +66,7 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int factor) {
   }
   embeddings.resize(embeddings.size(), std::vector<float>(target_dim));
   embeddings = std::move(result);
-  vector_size = target_dim;
+  vector_dim = target_dim;
   return true;
 }
 

@@ -8,7 +8,7 @@
 std::vector<std::pair<int, size_t>>
 EmbeddingSearchBinary::similarity_search(const std::vector<uint64_t> &query,
                                          size_t k) {
-  if (query.size() != vector_size) {
+  if (query.size() != vector_dim) {
     throw std::runtime_error("Query vector size does not match embedding size");
   }
 
@@ -52,9 +52,9 @@ bool EmbeddingSearchBinary::setEmbeddings(
   num_vectors = float_data.size();
   size_t float_vector_size = float_data[0].size();
 
-  vector_size =
+  vector_dim =
       (float_vector_size + 63) / 64; // Round up to nearest multiple of 64
-  embeddings.resize(num_vectors, std::vector<uint64_t>(vector_size, 0));
+  embeddings.resize(num_vectors, std::vector<uint64_t>(vector_dim, 0));
 
   for (size_t i = 0; i < num_vectors; ++i) {
     for (size_t j = 0; j < float_vector_size; ++j) {

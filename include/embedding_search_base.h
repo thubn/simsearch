@@ -13,7 +13,7 @@ class EmbeddingSearchBase {
 protected:
   std::vector<VectorType> embeddings;
   std::vector<std::string> sentences;
-  size_t vector_size = 0;
+  //size_t vector_dim = 0;
   size_t num_vectors = 0;
   size_t vector_dim = 0;
   size_t padded_dim = 0;
@@ -72,7 +72,7 @@ public:
     sentences = s;
     return true;
   }
-  size_t getVectorSize() const { return vector_size; }
+  size_t getVectorSize() const { return vector_dim; }
   size_t getNumVectors() const { return num_vectors; }
   size_t getVectorDim() const { return vector_dim; }
   size_t getPaddedDim() const { return padded_dim; }

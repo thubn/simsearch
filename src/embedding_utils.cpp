@@ -6,8 +6,8 @@
 
 namespace EmbeddingUtils {
 void convertSingleEmbeddingToAVX2(const std::vector<float> &input,
-                                  avx2_vector &output, size_t vector_size) {
-  for (size_t j = 0; j < vector_size; j++) {
+                                  avx2_vector &output, size_t vector_dim) {
+  for (size_t j = 0; j < vector_dim; j++) {
     size_t k = j * 8; // Each AVX2 vector holds 8 floats
     // Since we're using aligned vectors, we can use aligned load
     output[j] = _mm256_loadu_ps(&input[k]);
@@ -16,13 +16,13 @@ void convertSingleEmbeddingToAVX2(const std::vector<float> &input,
 
 void convertEmbeddingsToAVX2(const std::vector<std::vector<float>> &input,
                              std::vector<avx2_vector> &output,
-                             size_t vector_size) {
+                             size_t vector_dim) {
   size_t num_embeddings = input.size();
-  output.resize(num_embeddings, avx2_vector(vector_size));
+  output.resize(num_embeddings, avx2_vector(vector_dim));
 
 #pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < num_embeddings; i++) {
-    convertSingleEmbeddingToAVX2(input[i], output[i], vector_size);
+    convertSingleEmbeddingToAVX2(input[i], output[i], vector_dim);
   }
 }
 
@@ -46,9 +46,9 @@ size_t calculateBinaryAVX2VectorSize(size_t float_vector_size) {
 }
 
 void convertSingleFloatToBinaryAVX2(const std::vector<float> &input,
-                                    avx2i_vector &output, size_t vector_size) {
+                                    avx2i_vector &output, size_t vector_dim) {
   // Implementation for binary conversion
-  for (size_t j = 0; j < vector_size; j++) {
+  for (size_t j = 0; j < vector_dim; j++) {
     uint64_t temp_bits[4] = {0, 0, 0, 0};
     size_t base_idx = j * 256;
 
@@ -82,8 +82,8 @@ bool validateBinaryAVX2Dimensions(const std::vector<std::vector<float>> &input,
 }
 
 void convertSingleFloatToUint8AVX2(const std::vector<float> &input,
-                                   avx2i_vector &output, size_t vector_size) {
-  for (size_t j = 0; j < vector_size; j++) {
+                                   avx2i_vector &output, size_t vector_dim) {
+  for (size_t j = 0; j < vector_dim; j++) {
     size_t k = j * 32;
 
     // Create temporary array for int8 values

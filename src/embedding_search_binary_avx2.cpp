@@ -9,7 +9,7 @@
 std::vector<std::pair<int, size_t>>
 EmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
                                              size_t k) {
-  if (query.size() != vector_size) {
+  if (query.size() != vector_dim) {
     throw std::runtime_error("Query vector size does not match embedding size");
   }
 
@@ -39,9 +39,9 @@ bool EmbeddingSearchBinaryAVX2::setEmbeddings(
   num_vectors = float_data.size();
   size_t float_vector_size = float_data[0].size();
 
-  vector_size = (float_vector_size + 255) /
+  vector_dim = (float_vector_size + 255) /
                 256; // Round up to nearest multiple of 256 bits
-  embeddings.resize(num_vectors, avx2i_vector(vector_size));
+  embeddings.resize(num_vectors, avx2i_vector(vector_dim));
 
   for (size_t i = 0; i < num_vectors; ++i) {
     for (size_t j = 0; j < float_vector_size; ++j) {

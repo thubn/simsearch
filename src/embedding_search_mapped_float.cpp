@@ -291,8 +291,7 @@ bool EmbeddingSearchMappedFloat::setEmbeddings(
 bool EmbeddingSearchMappedFloat::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors,
     double distrib_factor) {
-  num_vectors = input_vectors.size();
-  vector_dim = input_vectors[0].size();
+  initializeDimensions(input_vectors);
 
   try {
     std::vector<float> flat_input = flattenMatrix(input_vectors);
