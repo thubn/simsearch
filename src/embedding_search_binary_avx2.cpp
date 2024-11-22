@@ -17,7 +17,7 @@ EmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
   similarities.reserve(embeddings.size());
 
   for (size_t i = 0; i < embeddings.size(); ++i) {
-    int sim = binary_cosine_similarity(query, embeddings[i]);
+    int sim = cosine_similarity(query, embeddings[i]);
     similarities.emplace_back(sim, i);
   }
 
@@ -66,8 +66,8 @@ bool EmbeddingSearchBinaryAVX2::validateDimensions(
   return EmbeddingUtils::validateBinaryAVX2Dimensions(input, error_message);
 }
 
-int EmbeddingSearchBinaryAVX2::binary_cosine_similarity(const avx2i_vector &a,
-                                                        const avx2i_vector &b) {
+int EmbeddingSearchBinaryAVX2::cosine_similarity(const avx2i_vector &a,
+                                                 const avx2i_vector &b) {
   int dot_product = 0;
   for (size_t i = 0; i < a.size(); ++i) {
     __m256i result = _mm256_xor_si256(a[i], b[i]);

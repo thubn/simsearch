@@ -29,6 +29,5 @@ private:
   std::vector<float> norms;
   // Private method declarations
   float compute_norm_avx2(const float *vec) const;
-  float compute_similarity_avx2(const float *vec_a, const float *vec_b,
-                                float norm_a, float norm_b) const;
+  float cosine_similarity_optimized(const float *vec_a, const float *vec_b) const override;
 };

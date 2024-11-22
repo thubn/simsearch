@@ -83,6 +83,8 @@ public:
   virtual void unsetSentences() { sentences.clear(); }
 
 protected:
+  virtual SimilarityType cosine_similarity(const VectorType &a,
+                                           const VectorType &b) = 0;
   // Common initialization logic
   bool initializeDimensions(const std::vector<std::vector<RawType>> &input) {
     if (input.empty() || input[0].empty()) {
@@ -126,6 +128,16 @@ public:
   }
 
 protected:
+  SimilarityType cosine_similarity(const VectorType &a,
+                                   const VectorType &b) override {
+    throw std::runtime_error(
+        "Default cosine function not implemented for optimized searchers. Use "
+        "cosine_similarity_optimized instead");
+  }
+
+  virtual SimilarityType
+  cosine_similarity_optimized(const StorageType *vec_a,
+                              const StorageType *vec_b) const = 0;
   // Common allocation method
   bool allocateAlignedMemory(size_t total_size) {
     embedding_data.reset(static_cast<StorageType *>(std::aligned_alloc(

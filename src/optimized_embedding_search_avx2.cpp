@@ -93,8 +93,8 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
   results.reserve(num_vectors);
 
   for (size_t i = 0; i < num_vectors; i++) {
-    float similarity = compute_similarity_avx2(
-        get_embedding_ptr(i), query_aligned.data(), norms[i], query_norm);
+    float similarity =
+        cosine_similarity_optimized(get_embedding_ptr(i), query_aligned.data());
     results.emplace_back(similarity, i);
   }
 
@@ -131,9 +131,8 @@ OptimizedEmbeddingSearchAVX2::similarity_search(
   results.reserve(searchIndexes.size());
 
   for (size_t i = 0; i < searchIndexes.size(); i++) {
-    float similarity = compute_similarity_avx2(
-        get_embedding_ptr(searchIndexes[i].second), query_aligned.data(),
-        norms[searchIndexes[i].second], query_norm);
+    float similarity = cosine_similarity_optimized(
+        get_embedding_ptr(searchIndexes[i].second), query_aligned.data());
     results.emplace_back(similarity, searchIndexes[i].second);
   }
 
@@ -171,8 +170,8 @@ float OptimizedEmbeddingSearchAVX2::compute_norm_avx2(const float *vec) const {
   return std::sqrt(_mm_cvtss_f32(sum_128));
 }
 
-inline float OptimizedEmbeddingSearchAVX2::compute_similarity_avx2(
-    const float *vec_a, const float *vec_b, float norm_a, float norm_b) const {
+inline float OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
+    const float *vec_a, const float *vec_b) const {
   __m256 sum = _mm256_setzero_ps();
   __m256 a[8];
   __m256 b[8];
@@ -230,5 +229,5 @@ inline float OptimizedEmbeddingSearchAVX2::compute_similarity_avx2(
   sum_128 = _mm_hadd_ps(sum_128, sum_128);
 
   float dot_product = _mm_cvtss_f32(sum_128);
-  return dot_product / (norm_a * norm_b);
+  return dot_product;
 }

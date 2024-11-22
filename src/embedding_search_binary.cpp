@@ -16,7 +16,7 @@ EmbeddingSearchBinary::similarity_search(const std::vector<uint64_t> &query,
   similarities.reserve(embeddings.size());
 
   for (size_t i = 0; i < embeddings.size(); ++i) {
-    int sim = binary_cosine_similarity(query, embeddings[i]);
+    int sim = cosine_similarity(query, embeddings[i]);
     similarities.emplace_back(sim, i);
   }
 
@@ -69,8 +69,8 @@ bool EmbeddingSearchBinary::setEmbeddings(
   return true;
 }
 
-int EmbeddingSearchBinary::binary_cosine_similarity(
-    const std::vector<uint64_t> &a, const std::vector<uint64_t> &b) {
+int EmbeddingSearchBinary::cosine_similarity(const std::vector<uint64_t> &a,
+                                             const std::vector<uint64_t> &b) {
   int dot_product = 0;
   for (size_t i = 0; i < a.size(); ++i) {
     // Count matching bits using XOR and NOT

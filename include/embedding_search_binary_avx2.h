@@ -16,5 +16,5 @@ public:
       const std::vector<std::vector<float>> &float_embeddings) override;
 
 private:
-  int binary_cosine_similarity(const avx2i_vector &a, const avx2i_vector &b);
+  int cosine_similarity(const avx2i_vector &a, const avx2i_vector &b);
 };

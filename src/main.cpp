@@ -5,7 +5,7 @@
 #include "embedding_search_binary_avx2.h"
 #include "embedding_search_float.h"
 #include "embedding_search_float16.h"
-#include "embedding_search_float_int8.h"
+//#include "embedding_search_float_int8.h"
 #include "embedding_search_mapped_float.h"
 #include "embedding_search_uint8_avx2.h"
 #include "embedding_utils.h"
@@ -92,7 +92,7 @@ struct Searchers {
   OptimizedEmbeddingSearchAVX2 oavx2;
   OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
   OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
-  EmbeddingSearchFloatInt8 float_int8;
+  //EmbeddingSearchFloatInt8 float_int8;
   EmbeddingSearchFloat16 float16;
   EmbeddingSearchMappedFloat mappedFloat;
   EmbeddingSearchMappedFloat mappedFloat2;
@@ -157,7 +157,7 @@ struct Searchers {
   void initOavx2() { oavx2.setEmbeddings(base.getEmbeddings()); }
   void initObinary_avx2() { obinary_avx2.setEmbeddings(base.getEmbeddings()); }
   void initOuint_avx2() { ouint8_avx2.setEmbeddings(base.getEmbeddings()); }
-  void initFloatInt8() { float_int8.setEmbeddings(base.getEmbeddings()); }
+  //void initFloatInt8() { float_int8.setEmbeddings(base.getEmbeddings()); }
   void initFloat16() { float16.setEmbeddings(base.getEmbeddings()); }
   void initMappedFloat() {
     mappedFloat.setEmbeddings(base.getEmbeddings(), 10.0);
@@ -384,9 +384,9 @@ BenchmarkResults runBenchmark(Searchers &searchers,
       "O UINT8 AVX2", searchers.ouint8_avx2, OUINT8_AVX2,
       [&](size_t idx) { return searchers.ouint8_avx2.getEmbeddingAVX2(idx); });
 
-  runSearcherBenchmark(
+  /*runSearcherBenchmark(
       "FLOAT_INT8", searchers.float_int8, FLOAT_INT8,
-      [&](size_t idx) { return searchers.float_int8.getEmbeddings()[idx]; });
+      [&](size_t idx) { return searchers.float_int8.getEmbeddings()[idx]; });*/
 
   runSearcherBenchmark("FLOAT16", searchers.float16, FLOAT16, [&](size_t idx) {
     return searchers.float16.getEmbeddings()[idx];

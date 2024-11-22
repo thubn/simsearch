@@ -61,7 +61,7 @@ OptimizedEmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query,
   const __m256i *query_data = reinterpret_cast<const __m256i *>(query.data());
 
   for (size_t i = 0; i < num_vectors; i++) {
-    uint32_t sim = compute_similarity_avx2(get_embedding_ptr(i), query_data);
+    uint32_t sim = cosine_similarity_optimized(get_embedding_ptr(i), query_data);
     similarities.emplace_back(sim, i);
   }
 
@@ -93,7 +93,7 @@ void OptimizedEmbeddingSearchUint8AVX2::convert_float_to_uint8_avx2(
   }
 }
 
-uint32_t OptimizedEmbeddingSearchUint8AVX2::compute_similarity_avx2(
+uint32_t OptimizedEmbeddingSearchUint8AVX2::cosine_similarity_optimized(
     const __m256i *vec_a, const __m256i *vec_b) const {
   __m256i sum_lo = _mm256_setzero_si256();
   __m256i sum_hi = _mm256_setzero_si256();

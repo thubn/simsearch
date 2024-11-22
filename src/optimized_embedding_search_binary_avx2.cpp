@@ -59,12 +59,11 @@ OptimizedEmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
   similarities.reserve(num_vectors);
 
   const __m256i *query_data = reinterpret_cast<const __m256i *>(query.data());
-  AVX2Popcount counter;
-  // AVX2PopcountHarleySeal counter;
+  // counter = AVX2Popcount();
+  //  AVX2PopcountHarleySeal counter;
 
   for (size_t i = 0; i < num_vectors; i++) {
-    int32_t sim =
-        compute_similarity_avx2(get_embedding_ptr(i), query_data, counter);
+    int32_t sim = cosine_similarity_optimized(get_embedding_ptr(i), query_data);
     similarities.emplace_back(sim, i);
   }
 
@@ -103,8 +102,8 @@ void OptimizedEmbeddingSearchBinaryAVX2::convert_float_to_binary_avx2(
 }
 
 // currently hardcoded for 1024bit vectors
-int32_t OptimizedEmbeddingSearchBinaryAVX2::compute_similarity_avx2(
-    const __m256i *vec_a, const __m256i *vec_b, AVX2Popcount &counter) const {
+int32_t OptimizedEmbeddingSearchBinaryAVX2::cosine_similarity_optimized(
+    const __m256i *vec_a, const __m256i *vec_b) const {
   int32_t total_popcount = 0;
 
   // prefetch 2 cache lines for 4 vectors 10 loops ahead
