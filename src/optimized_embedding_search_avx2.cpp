@@ -12,19 +12,19 @@ bool OptimizedEmbeddingSearchAVX2::setEmbeddings(
   }
 
   try {
-    // Store sentences
-    // sentences = input_sentences;
+    std::string error_message;
+    if (!validateDimensions(input_vectors, error_message))
+      throw std::runtime_error(error_message);
 
-    // Initialize dimensions
-    num_vectors = input_vectors.size();
-    vector_dim = input_vectors[0].size();
+    if (!initializeDimensions(input_vectors))
+      return false;
     padded_dim = ((vector_dim + 7) / 8) * 8;
     vectors_per_embedding = padded_dim;
 
     // Allocate aligned memory for embeddings
     size_t total_size = num_vectors * padded_dim;
-    embedding_data.reset(static_cast<float *>(std::aligned_alloc(
-        config_.memory.alignmentSize, total_size * sizeof(float))));
+    if (!allocateAlignedMemory(total_size))
+      return false;
 
     // Initialize norms
     norms.resize(num_vectors);
