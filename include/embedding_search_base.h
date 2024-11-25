@@ -13,7 +13,7 @@ class EmbeddingSearchBase {
 protected:
   std::vector<VectorType> embeddings;
   std::vector<std::string> sentences;
-  //size_t vector_dim = 0;
+  // size_t vector_dim = 0;
   size_t num_vectors = 0;
   size_t vector_dim = 0;
   size_t padded_dim = 0;
@@ -41,6 +41,7 @@ public:
     std::vector<std::vector<float>> temp_embeddings;
     std::vector<std::string> temp_sentences;
     bool result = false;
+    auto start = std::chrono::high_resolution_clock::now();
     if (filename.ends_with(".safetensors")) {
       result = EmbeddingIO::load_safetensors(filename, temp_embeddings,
                                              temp_sentences);
@@ -56,6 +57,12 @@ public:
     } else {
       throw std::runtime_error("Unsupported file format");
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto time =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count() /
+        1000;
+    std::cout << "loading took " << time << "ms" << std::endl;
     num_vectors = temp_embeddings.size();
     this->setEmbeddings(temp_embeddings);
     if (set_sentences) {

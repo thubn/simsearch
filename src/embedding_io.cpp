@@ -7,6 +7,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -316,85 +317,133 @@ bool load_parquet(const std::string &filename,
                   std::vector<std::string> &sentences,
                   int /* num_threads unused */) {
   try {
-    // Open the file
+    // Standard initialization
+    arrow::MemoryPool *pool = arrow::default_memory_pool();
     std::shared_ptr<arrow::io::ReadableFile> infile;
     PARQUET_ASSIGN_OR_THROW(infile, arrow::io::ReadableFile::Open(filename));
 
-    // Create a ParquetFileReader instance
-    std::unique_ptr<parquet::arrow::FileReader> reader;
-    PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(
-        infile, arrow::default_memory_pool(), &reader));
+    auto reader_properties = parquet::ReaderProperties(pool);
+    reader_properties.enable_buffered_stream();
+    reader_properties.set_buffer_size(4 * 1024 * 1024); // 4MB buffer
 
-    // Get the file metadata
+    std::unique_ptr<parquet::arrow::FileReader> reader;
+    PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(infile, pool, &reader));
+
+    // Get metadata
     std::shared_ptr<arrow::Schema> schema;
     PARQUET_THROW_NOT_OK(reader->GetSchema(&schema));
-
     auto file_metadata = reader->parquet_reader()->metadata();
     int64_t num_rows = file_metadata->num_rows();
     int num_row_groups = file_metadata->num_row_groups();
     const int embedding_dim = 1024;
 
-    std::cout << "Total rows: " << num_rows
-              << ", Row groups: " << num_row_groups << std::endl;
-
-    // Pre-allocate vectors with the known total size
+    // Pre-allocate the final vectors
     embeddings.clear();
     sentences.clear();
-    embeddings.reserve(num_rows);
-    sentences.reserve(num_rows);
+    embeddings.resize(num_rows, std::vector<float>(embedding_dim));
+    sentences.resize(num_rows);
 
-    // Create column selection vector
+    // Create column selection vectors
     std::vector<int> text_column{schema->GetFieldIndex("formatted_text")};
     std::vector<int> embedding_columns;
+    embedding_columns.reserve(embedding_dim);
     for (int i = 0; i < embedding_dim; i++) {
-      std::string col_name = "embedding_" + std::to_string(i);
-      embedding_columns.push_back(schema->GetFieldIndex(col_name));
+      embedding_columns.push_back(
+          schema->GetFieldIndex("embedding_" + std::to_string(i)));
     }
 
-    // Process each row group sequentially
-    for (int row_group = 0; row_group < num_row_groups; row_group++) {
-      // Get number of rows in this group
-      int64_t rows_in_group = file_metadata->RowGroup(row_group)->num_rows();
-
-      // Read text column for this row group
+    // Structure to hold batch data
+    struct BatchData {
       std::shared_ptr<arrow::Table> text_batch;
-      PARQUET_THROW_NOT_OK(
-          reader->ReadRowGroup(row_group, text_column, &text_batch));
-      auto text_array = std::static_pointer_cast<arrow::StringArray>(
-          text_batch->column(0)->chunk(0));
-
-      // Read embedding columns for this row group
       std::shared_ptr<arrow::Table> embedding_batch;
+      int64_t rows_in_group;
+      int64_t base_idx;
+    };
+
+    // Async reading function
+    auto read_row_group = [&](int row_group) -> BatchData {
+      BatchData batch;
+      batch.rows_in_group = file_metadata->RowGroup(row_group)->num_rows();
+
+      // Calculate base index for this row group
+      batch.base_idx = 0;
+      for (int i = 0; i < row_group; i++) {
+        batch.base_idx += file_metadata->RowGroup(i)->num_rows();
+      }
+
       PARQUET_THROW_NOT_OK(
-          reader->ReadRowGroup(row_group, embedding_columns, &embedding_batch));
+          reader->ReadRowGroup(row_group, text_column, &batch.text_batch));
+      PARQUET_THROW_NOT_OK(reader->ReadRowGroup(row_group, embedding_columns,
+                                                &batch.embedding_batch));
 
-      // Process each row in the group
-      for (int64_t i = 0; i < rows_in_group; i++) {
-        // Process text
-        std::string text = text_array->IsNull(i)
-                               ? ""
-                               : text_array->GetString(i).substr(0, 128);
-        std::replace(text.begin(), text.end(), '\n', ' ');
-        sentences.push_back(text);
+      return batch;
+    };
 
-        // Process embedding
-        std::vector<float> current_embedding;
-        current_embedding.reserve(embedding_dim);
+    // Process function
+    auto process_batch = [&](const BatchData &batch) {
+      // Process text column
+      auto text_array = std::static_pointer_cast<arrow::StringArray>(
+          batch.text_batch->column(0)->chunk(0));
 
-        for (int j = 0; j < embedding_dim; j++) {
-          auto embedding_array = std::static_pointer_cast<arrow::FloatArray>(
-              embedding_batch->column(j)->chunk(0));
-          current_embedding.push_back(
-              embedding_array->IsNull(i) ? 0.0f : embedding_array->Value(i));
+      // Process entire text column
+      for (int64_t i = 0; i < batch.rows_in_group; i++) {
+        if (text_array->IsNull(i)) {
+          sentences[batch.base_idx + i].clear();
+        } else {
+          std::string text = text_array->GetString(i);
+          if (text.length() > 128) {
+            text.resize(128);
+          }
+          std::replace(text.begin(), text.end(), '\n', ' ');
+          sentences[batch.base_idx + i] = std::move(text);
         }
+      }
 
-        embeddings.push_back(std::move(current_embedding));
+      // Process embeddings column by column
+      for (int col = 0; col < embedding_dim; col++) {
+        auto column_array = std::static_pointer_cast<arrow::FloatArray>(
+            batch.embedding_batch->column(col)->chunk(0));
+
+        // Process entire column
+        for (int64_t row = 0; row < batch.rows_in_group; row++) {
+          embeddings[batch.base_idx + row][col] =
+              column_array->IsNull(row) ? 0.0f : column_array->Value(row);
+        }
+      }
+    };
+
+    // Main async processing loop
+    std::future<BatchData> next_batch;
+
+    // Start first async read
+    if (num_row_groups > 0) {
+      next_batch = std::async(std::launch::async, read_row_group, 0);
+    }
+
+    // Process row groups with async I/O
+    for (int row_group = 0; row_group < num_row_groups; row_group++) {
+      // Get current batch
+      BatchData current_batch = next_batch.get();
+
+      // Start next async read if there are more row groups
+      if (row_group + 1 < num_row_groups) {
+        next_batch =
+            std::async(std::launch::async, read_row_group, row_group + 1);
+      }
+
+      // Process current batch while next batch is being read
+      process_batch(current_batch);
+
+      if (row_group % 100 == 0) {
+        std::cout << "Processed row group " << row_group << " of "
+                  << num_row_groups << std::endl;
       }
     }
 
     std::cout << "Loaded " << embeddings.size() << " embeddings of dimension "
               << embedding_dim << " from " << filename << std::endl;
     return true;
+
   } catch (const std::exception &e) {
     std::cerr << "Error in load_parquet: " << e.what() << std::endl;
     return false;
