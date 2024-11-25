@@ -390,10 +390,7 @@ bool load_parquet(const std::string &filename,
         if (text_array->IsNull(i)) {
           sentences[batch.base_idx + i].clear();
         } else {
-          std::string text = text_array->GetString(i);
-          if (text.length() > 128) {
-            text.resize(128);
-          }
+          std::string text = text_array->GetString(i).substr(0,128);
           std::replace(text.begin(), text.end(), '\n', ' ');
           sentences[batch.base_idx + i] = std::move(text);
         }
