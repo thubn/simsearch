@@ -317,7 +317,7 @@ bool load_parquet(const std::string &filename,
                   std::vector<std::string> &sentences,
                   int /* num_threads unused */) {
   try {
-    // Configuration and initialization
+    // Standard initialization
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     std::shared_ptr<arrow::io::ReadableFile> infile;
     PARQUET_ASSIGN_OR_THROW(infile, arrow::io::ReadableFile::Open(filename));
@@ -329,7 +329,7 @@ bool load_parquet(const std::string &filename,
     std::unique_ptr<parquet::arrow::FileReader> reader;
     PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(infile, pool, &reader));
 
-    // Get metadata and setup
+    // Get metadata
     std::shared_ptr<arrow::Schema> schema;
     PARQUET_THROW_NOT_OK(reader->GetSchema(&schema));
     auto file_metadata = reader->parquet_reader()->metadata();
@@ -337,12 +337,13 @@ bool load_parquet(const std::string &filename,
     int num_row_groups = file_metadata->num_row_groups();
     const int embedding_dim = 1024;
 
+    // Pre-allocate the final vectors
     embeddings.clear();
     sentences.clear();
-    embeddings.reserve(num_rows);
-    sentences.reserve(num_rows);
+    embeddings.resize(num_rows, std::vector<float>(embedding_dim));
+    sentences.resize(num_rows);
 
-    // Prepare column indices
+    // Create column selection vectors
     std::vector<int> text_column{schema->GetFieldIndex("formatted_text")};
     std::vector<int> embedding_columns;
     embedding_columns.reserve(embedding_dim);
@@ -356,12 +357,19 @@ bool load_parquet(const std::string &filename,
       std::shared_ptr<arrow::Table> text_batch;
       std::shared_ptr<arrow::Table> embedding_batch;
       int64_t rows_in_group;
+      int64_t base_idx;
     };
 
     // Async reading function
     auto read_row_group = [&](int row_group) -> BatchData {
       BatchData batch;
       batch.rows_in_group = file_metadata->RowGroup(row_group)->num_rows();
+
+      // Calculate base index for this row group
+      batch.base_idx = 0;
+      for (int i = 0; i < row_group; i++) {
+        batch.base_idx += file_metadata->RowGroup(i)->num_rows();
+      }
 
       PARQUET_THROW_NOT_OK(
           reader->ReadRowGroup(row_group, text_column, &batch.text_batch));
@@ -373,36 +381,34 @@ bool load_parquet(const std::string &filename,
 
     // Process function
     auto process_batch = [&](const BatchData &batch) {
+      // Process text column
       auto text_array = std::static_pointer_cast<arrow::StringArray>(
           batch.text_batch->column(0)->chunk(0));
 
-      std::vector<float> current_embedding;
-      current_embedding.reserve(embedding_dim);
-      std::string text_buffer;
-      text_buffer.reserve(256);
-
+      // Process entire text column
       for (int64_t i = 0; i < batch.rows_in_group; i++) {
-        // Process text
         if (text_array->IsNull(i)) {
-          sentences.emplace_back();
+          sentences[batch.base_idx + i].clear();
         } else {
-          text_buffer = text_array->GetString(i);
-          if (text_buffer.length() > 128) {
-            text_buffer.resize(128);
+          std::string text = text_array->GetString(i);
+          if (text.length() > 128) {
+            text.resize(128);
           }
-          std::replace(text_buffer.begin(), text_buffer.end(), '\n', ' ');
-          sentences.emplace_back(std::move(text_buffer));
+          std::replace(text.begin(), text.end(), '\n', ' ');
+          sentences[batch.base_idx + i] = std::move(text);
         }
+      }
 
-        // Process embedding
-        current_embedding.clear();
-        for (int j = 0; j < embedding_dim; j++) {
-          auto embedding_array = std::static_pointer_cast<arrow::FloatArray>(
-              batch.embedding_batch->column(j)->chunk(0));
-          current_embedding.push_back(
-              embedding_array->IsNull(i) ? 0.0f : embedding_array->Value(i));
+      // Process embeddings column by column
+      for (int col = 0; col < embedding_dim; col++) {
+        auto column_array = std::static_pointer_cast<arrow::FloatArray>(
+            batch.embedding_batch->column(col)->chunk(0));
+
+        // Process entire column
+        for (int64_t row = 0; row < batch.rows_in_group; row++) {
+          embeddings[batch.base_idx + row][col] =
+              column_array->IsNull(row) ? 0.0f : column_array->Value(row);
         }
-        embeddings.emplace_back(std::move(current_embedding));
       }
     };
 
