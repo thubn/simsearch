@@ -228,6 +228,66 @@ inline float OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
   sum_128 = _mm_hadd_ps(sum_128, sum_128);
   sum_128 = _mm_hadd_ps(sum_128, sum_128);
 
-  float dot_product = _mm_cvtss_f32(sum_128);
-  return dot_product;
+  return _mm_cvtss_f32(sum_128);
 }
+
+/*inline float OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
+    const float *vec_a, const float *vec_b) const {
+  __m256 sum = _mm256_setzero_ps();
+  size_t i = 0;
+
+  while (i + 8 * 8 - 1 < padded_dim) {
+    sum = _mm256_fmadd_ps(_mm256_load_ps(vec_a + i), _mm256_load_ps(vec_b + i),
+                          sum);
+    sum = _mm256_fmadd_ps(_mm256_load_ps(vec_a + i + 8),
+                          _mm256_load_ps(vec_b + i + 8), sum);
+    sum = _mm256_fmadd_ps(_mm256_load_ps(vec_a + i + 16),
+                          _mm256_load_ps(vec_b + i + 16), sum);
+    sum = _mm256_fmadd_ps(_mm256_load_ps(vec_a + i + 24),
+                          _mm256_load_ps(vec_b + i + 24), sum);
+    sum = _mm256_fmadd_ps(_mm256_load_ps(vec_a + i + 32),
+                          _mm256_load_ps(vec_b + i + 32), sum);
+    sum = _mm256_fmadd_ps(_mm256_load_ps(vec_a + i + 40),
+                          _mm256_load_ps(vec_b + i + 40), sum);
+    sum = _mm256_fmadd_ps(_mm256_load_ps(vec_a + i + 48),
+                          _mm256_load_ps(vec_b + i + 48), sum);
+    sum = _mm256_fmadd_ps(_mm256_load_ps(vec_a + i + 56),
+                          _mm256_load_ps(vec_b + i + 56), sum);
+
+    i += 8 * 8;
+    if (i % (8 * 8 * 4) == 0) {
+      // Prefetch next 16 cache lines for 32 vectors 2 loops ahead
+      _mm_prefetch(vec_a + i + 8 * 8 * 2, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 2, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 3, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 4, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 5, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 6, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 7, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 8, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 9, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 10, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 11, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 12, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 13, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 14, _MM_HINT_T0);
+      _mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 15, _MM_HINT_T0);
+    }
+  }
+
+  while (i + 7 < padded_dim) {
+    sum = _mm256_fmadd_ps(_mm256_load_ps(vec_a + i), _mm256_load_ps(vec_b + i),
+                          sum);
+    i += 8;
+  }
+
+  // Horizontal sum
+  __m128 hi = _mm256_extractf128_ps(sum, 1);
+  __m128 lo = _mm256_castps256_ps128(sum);
+  __m128 sum_128 = _mm_add_ps(hi, lo);
+  sum_128 = _mm_hadd_ps(sum_128, sum_128);
+  sum_128 = _mm_hadd_ps(sum_128, sum_128);
+
+  return _mm_cvtss_f32(sum_128);
+}*/

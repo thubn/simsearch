@@ -52,6 +52,8 @@ std::vector<std::pair<uint32_t, size_t>>
 OptimizedEmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query,
                                                      size_t k) {
   if (query.size() != vectors_per_embedding) {
+    std::cerr << "expected dimension: " << vectors_per_embedding
+              << "\ngot dimension: " << query.size() << std::endl;
     throw std::runtime_error("Query vector size does not match embedding size");
   }
 
@@ -61,7 +63,8 @@ OptimizedEmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query,
   const __m256i *query_data = reinterpret_cast<const __m256i *>(query.data());
 
   for (size_t i = 0; i < num_vectors; i++) {
-    uint32_t sim = cosine_similarity_optimized(get_embedding_ptr(i), query_data);
+    uint32_t sim =
+        cosine_similarity_optimized(get_embedding_ptr(i), query_data);
     similarities.emplace_back(sim, i);
   }
 

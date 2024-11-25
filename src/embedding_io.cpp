@@ -313,7 +313,8 @@ bool load_json2(const std::string &filename,
 
 bool load_parquet(const std::string &filename,
                   std::vector<std::vector<float>> &embeddings,
-                  std::vector<std::string> &sentences, int num_threads) {
+                  std::vector<std::string> &sentences,
+                  int /* num_threads unused */) {
   try {
     // Open the file
     std::shared_ptr<arrow::io::ReadableFile> infile;
@@ -336,20 +337,11 @@ bool load_parquet(const std::string &filename,
     std::cout << "Total rows: " << num_rows
               << ", Row groups: " << num_row_groups << std::endl;
 
-    // Create vectors for each thread to avoid contention
-    // Limit number of threads to reduce resource usage
-    num_threads = std::min(num_threads, omp_get_max_threads());
-    omp_set_num_threads(num_threads);
-
-    std::vector<std::vector<std::vector<float>>> thread_embeddings(num_threads);
-    std::vector<std::vector<std::string>> thread_sentences(num_threads);
-
-    // Pre-calculate expected size for each thread
-    size_t expected_size = num_rows / num_threads + 1;
-    for (int i = 0; i < num_threads; i++) {
-      thread_embeddings[i].reserve(expected_size);
-      thread_sentences[i].reserve(expected_size);
-    }
+    // Pre-allocate vectors with the known total size
+    embeddings.clear();
+    sentences.clear();
+    embeddings.reserve(num_rows);
+    sentences.reserve(num_rows);
 
     // Create column selection vector
     std::vector<int> text_column{schema->GetFieldIndex("formatted_text")};
@@ -359,75 +351,45 @@ bool load_parquet(const std::string &filename,
       embedding_columns.push_back(schema->GetFieldIndex(col_name));
     }
 
-// Process row groups with limited parallelism
-#pragma omp parallel num_threads(num_threads)
-    {
-      int thread_id = omp_get_thread_num();
+    // Process each row group sequentially
+    for (int row_group = 0; row_group < num_row_groups; row_group++) {
+      // Get number of rows in this group
+      int64_t rows_in_group = file_metadata->RowGroup(row_group)->num_rows();
 
-#pragma omp for schedule(dynamic, 1)
-      for (int row_group = 0; row_group < num_row_groups; row_group++) {
-        // Get number of rows in this group
-        int64_t rows_in_group = file_metadata->RowGroup(row_group)->num_rows();
+      // Read text column for this row group
+      std::shared_ptr<arrow::Table> text_batch;
+      PARQUET_THROW_NOT_OK(
+          reader->ReadRowGroup(row_group, text_column, &text_batch));
+      auto text_array = std::static_pointer_cast<arrow::StringArray>(
+          text_batch->column(0)->chunk(0));
 
-        // Read text column for this row group
-        std::shared_ptr<arrow::Table> text_batch;
-#pragma omp critical
-        {
-          PARQUET_THROW_NOT_OK(
-              reader->ReadRowGroup(row_group, text_column, &text_batch));
+      // Read embedding columns for this row group
+      std::shared_ptr<arrow::Table> embedding_batch;
+      PARQUET_THROW_NOT_OK(
+          reader->ReadRowGroup(row_group, embedding_columns, &embedding_batch));
+
+      // Process each row in the group
+      for (int64_t i = 0; i < rows_in_group; i++) {
+        // Process text
+        std::string text = text_array->IsNull(i)
+                               ? ""
+                               : text_array->GetString(i).substr(0, 128);
+        std::replace(text.begin(), text.end(), '\n', ' ');
+        sentences.push_back(text);
+
+        // Process embedding
+        std::vector<float> current_embedding;
+        current_embedding.reserve(embedding_dim);
+
+        for (int j = 0; j < embedding_dim; j++) {
+          auto embedding_array = std::static_pointer_cast<arrow::FloatArray>(
+              embedding_batch->column(j)->chunk(0));
+          current_embedding.push_back(
+              embedding_array->IsNull(i) ? 0.0f : embedding_array->Value(i));
         }
-        auto text_array = std::static_pointer_cast<arrow::StringArray>(
-            text_batch->column(0)->chunk(0));
 
-        // Read embedding columns for this row group
-        std::shared_ptr<arrow::Table> embedding_batch;
-#pragma omp critical
-        {
-          PARQUET_THROW_NOT_OK(reader->ReadRowGroup(
-              row_group, embedding_columns, &embedding_batch));
-        }
-
-        // Process each row in the group
-        for (int64_t i = 0; i < rows_in_group; i++) {
-          // Get text
-          thread_sentences[thread_id].push_back(
-              text_array->IsNull(i) ? ""
-                                    : text_array->GetString(i).substr(0, 128));
-
-          // Get embedding values
-          std::vector<float> current_embedding;
-          current_embedding.reserve(embedding_dim);
-
-          for (int j = 0; j < embedding_dim; j++) {
-            auto embedding_array = std::static_pointer_cast<arrow::FloatArray>(
-                embedding_batch->column(j)->chunk(0));
-            current_embedding.push_back(
-                embedding_array->IsNull(i) ? 0.0f : embedding_array->Value(i));
-          }
-
-          thread_embeddings[thread_id].push_back(std::move(current_embedding));
-        }
+        embeddings.push_back(std::move(current_embedding));
       }
-    }
-
-    // Combine results from all threads
-    size_t total_size = 0;
-    for (const auto &thread_vec : thread_embeddings) {
-      total_size += thread_vec.size();
-    }
-
-    embeddings.clear();
-    sentences.clear();
-    embeddings.reserve(total_size);
-    sentences.reserve(total_size);
-
-    for (int i = 0; i < num_threads; i++) {
-      embeddings.insert(embeddings.end(),
-                        std::make_move_iterator(thread_embeddings[i].begin()),
-                        std::make_move_iterator(thread_embeddings[i].end()));
-      sentences.insert(sentences.end(),
-                       std::make_move_iterator(thread_sentences[i].begin()),
-                       std::make_move_iterator(thread_sentences[i].end()));
     }
 
     std::cout << "Loaded " << embeddings.size() << " embeddings of dimension "

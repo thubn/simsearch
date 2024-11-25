@@ -52,6 +52,8 @@ std::vector<std::pair<int32_t, size_t>>
 OptimizedEmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
                                                       size_t k) {
   if (query.size() != vectors_per_embedding) {
+    std::cerr << "expected dimension: " << vectors_per_embedding
+              << "\ngot dimension: " << query.size() << std::endl;
     throw std::runtime_error("Query vector size does not match embedding size");
   }
 

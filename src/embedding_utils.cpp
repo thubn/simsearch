@@ -9,7 +9,7 @@ void convertSingleEmbeddingToAVX2(const std::vector<float> &input,
                                   avx2_vector &output, size_t vector_dim) {
   for (size_t j = 0; j < vector_dim; j++) {
     size_t k = j * 8; // Each AVX2 vector holds 8 floats
-    // Since we're using aligned vectors, we can use aligned load
+    // Unaligned load, input vector can be unaligned
     output[j] = _mm256_loadu_ps(&input[k]);
   }
 }
