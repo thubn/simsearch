@@ -60,6 +60,24 @@ pybind11_add_module(embedding_search
     src/embedding_search_mapped_float.cpp
 )
 
+# Create the Python module
+pybind11_add_module(embedding_search_benchmark
+    src/embedding_search_benchmark_bindings.cpp
+    src/embedding_io.cpp
+    src/embedding_search_avx2.cpp
+    src/embedding_search_binary.cpp
+    src/embedding_search_float.cpp
+    src/embedding_search_binary_avx2.cpp
+    src/embedding_search_uint8_avx2.cpp
+    src/embedding_utils.cpp
+    src/optimized_embedding_search_uint8_avx2.cpp
+    src/optimized_embedding_search_avx2.cpp
+    src/optimized_embedding_search_binary_avx2.cpp
+    src/embedding_search_float_int8.cpp
+    src/embedding_search_float16.cpp
+    src/embedding_search_mapped_float.cpp
+)
+
 # Link libraries for main executable
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
@@ -71,7 +89,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # Link libraries for Python module
-target_link_libraries(embedding_search
+target_link_libraries(embedding_search_benchmark
     PRIVATE
         Eigen3::Eigen
         nlohmann_json::nlohmann_json
@@ -82,6 +100,12 @@ target_link_libraries(embedding_search
 
 # Set Python module properties
 set_target_properties(embedding_search PROPERTIES
+    PREFIX ""  # Removes lib prefix on Unix
+    SUFFIX ".so"  # Sets correct extension on Unix
+)
+
+# Set Python module properties
+set_target_properties(embedding_search_benchmark PROPERTIES
     PREFIX ""  # Removes lib prefix on Unix
     SUFFIX ".so"  # Sets correct extension on Unix
 )

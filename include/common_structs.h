@@ -83,16 +83,13 @@ class Searchers {
 public:
   EmbeddingSearchFloat base;
   OptimizedEmbeddingSearchAVX2 pca2;
-  EmbeddingSearchFloat pca2x2;
   OptimizedEmbeddingSearchAVX2 pca4;
-  EmbeddingSearchFloat pca6;
   OptimizedEmbeddingSearchAVX2 pca8;
   OptimizedEmbeddingSearchAVX2 pca16;
   OptimizedEmbeddingSearchAVX2 pca32;
   EmbeddingSearchAVX2 avx2;
   EmbeddingSearchBinary binary;
   EmbeddingSearchBinaryAVX2 binary_avx2;
-  EmbeddingSearchBinaryAVX2 binary_avx2_pca6;
   EmbeddingSearchUint8AVX2 uint8_avx2;
   OptimizedEmbeddingSearchAVX2 oavx2;
   OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
@@ -114,20 +111,11 @@ public:
     temp.pca_dimension_reduction(2);
     pca2.setEmbeddings(temp.getEmbeddings());
   }
-  void initPca2x2() {
-    pca2x2.setEmbeddings(base.getEmbeddings());
-    pca2x2.pca_dimension_reduction(2);
-    pca2x2.pca_dimension_reduction(2);
-  }
   void initPca4() {
     EmbeddingSearchFloat temp;
     temp.setEmbeddings(base.getEmbeddings());
     temp.pca_dimension_reduction(4);
     pca4.setEmbeddings(temp.getEmbeddings());
-  }
-  void initPca6() {
-    pca6.setEmbeddings(base.getEmbeddings());
-    pca6.pca_dimension_reduction(6);
   }
   void initPca8() {
     EmbeddingSearchFloat temp;
@@ -148,20 +136,12 @@ public:
     pca32.setEmbeddings(temp.getEmbeddings());
   }
   void initAvx2() { avx2.setEmbeddings(base.getEmbeddings()); }
-  /*void initAvx2_pca8()
-  {
-      avx2_pca8.setEmbeddings(pca8.getEmbeddings());
-  }*/
   void initBinary() { binary.setEmbeddings(base.getEmbeddings()); }
   void initBinary_avx2() { binary_avx2.setEmbeddings(base.getEmbeddings()); }
-  void initBinary_avx2_pca6() {
-    binary_avx2_pca6.setEmbeddings(pca6.getEmbeddings());
-  }
   void initUint8_avx2() { uint8_avx2.setEmbeddings(base.getEmbeddings()); }
   void initOavx2() { oavx2.setEmbeddings(base.getEmbeddings()); }
   void initObinary_avx2() { obinary_avx2.setEmbeddings(base.getEmbeddings()); }
   void initOuint_avx2() { ouint8_avx2.setEmbeddings(base.getEmbeddings()); }
-  // void initFloatInt8() { float_int8.setEmbeddings(base.getEmbeddings()); }
   void initFloat16() { float16.setEmbeddings(base.getEmbeddings()); }
   void initMappedFloat() {
     mappedFloat.setEmbeddings(base.getEmbeddings(), 10.0);
@@ -176,9 +156,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   searchers.initBase(filename);
 
   std::thread tPca2(&Searchers::initPca2, &searchers);
-  // std::thread tPca2x2(&Searchers::initPca2x2, &searchers);
   std::thread tPca4(&Searchers::initPca4, &searchers);
-  // std::thread tPca6(&Searchers::initPca6, &searchers);
   std::thread tPca8(&Searchers::initPca8, &searchers);
   std::thread tPca16(&Searchers::initPca16, &searchers);
   std::thread tPca32(&Searchers::initPca32, &searchers);
@@ -190,16 +168,11 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   std::thread tOavx2(&Searchers::initOavx2, &searchers);
   std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
   std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
-  // std::thread tFloat_int8(&Searchers::initFloatInt8, &searchers);
   // std::thread tFloat16(&Searchers::initFloat16, &searchers);
   std::thread tMappedFloat(&Searchers::initMappedFloat, &searchers);
   std::thread tMappedFloat2(&Searchers::initMappedFloat2, &searchers);
    tPca8.join();
-  // std::thread tAvx2_pca8(&Searchers::initAvx2_pca8, &searchers);
-  // tPca6.join();
-  // std::thread tBinary_avx2_pca6(&Searchers::initBinary_avx2_pca6,&searchers);
   tPca2.join();
-  // tPca2x2.join();
   tPca4.join();
   tPca16.join();
   tPca32.join();
@@ -211,12 +184,9 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   tOavx2.join();
   tObinary_avx2.join();
   tOuint_avx2.join();
-  // tFloat_int8.join();
   // tFloat16.join();
   tMappedFloat.join();
   tMappedFloat2.join();
-  // tAvx2_pca8.join();
-  // tBinary_avx2_pca6.join();
 }
 
 } // namespace simsearch
