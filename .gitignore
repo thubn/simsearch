@@ -3,6 +3,7 @@ data/
 obj/
 build/
 build_/
+benchmarks/
 json.json
 json2.json
 float8_test

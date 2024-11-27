@@ -26,7 +26,6 @@
 #include <string>
 #include <thread>
 #include <unordered_set>
-#include <valgrind/callgrind.h>
 #include <vector>
 
 using json = nlohmann::json;
@@ -87,15 +86,9 @@ runBenchmark(simsearch::Searchers &searchers,
       SearchMethodStats<float> stats(name);
       for (size_t i = 0; i < config.runs; i++) {
         auto q = getQuery(randomIndexes[i]);
-        CALLGRIND_START_INSTRUMENTATION;
-        CALLGRIND_TOGGLE_COLLECT;
-        CALLGRIND_ZERO_STATS;
         auto start = std::chrono::high_resolution_clock::now();
         auto search_results = searcher.similarity_search(q, config.k);
         auto end = std::chrono::high_resolution_clock::now();
-        CALLGRIND_DUMP_STATS_AT(name.data());
-        CALLGRIND_TOGGLE_COLLECT;
-        CALLGRIND_STOP_INSTRUMENTATION;
         auto time =
             std::chrono::duration_cast<std::chrono::microseconds>(end - start)
                 .count();
@@ -125,15 +118,9 @@ runBenchmark(simsearch::Searchers &searchers,
       SearchMethodStats<uint32_t> stats(name);
       for (size_t i = 0; i < config.runs; i++) {
         auto q = getQuery(randomIndexes[i]);
-        CALLGRIND_START_INSTRUMENTATION;
-        CALLGRIND_TOGGLE_COLLECT;
-        CALLGRIND_ZERO_STATS;
         auto start = std::chrono::high_resolution_clock::now();
         auto search_results = searcher.similarity_search(q, config.k);
         auto end = std::chrono::high_resolution_clock::now();
-        CALLGRIND_DUMP_STATS_AT(name.data());
-        CALLGRIND_TOGGLE_COLLECT;
-        CALLGRIND_STOP_INSTRUMENTATION;
         auto time =
             std::chrono::duration_cast<std::chrono::microseconds>(end - start)
                 .count();
@@ -163,15 +150,9 @@ runBenchmark(simsearch::Searchers &searchers,
       SearchMethodStats<int> stats(name);
       for (size_t i = 0; i < config.runs; i++) {
         auto q = getQuery(randomIndexes[i]);
-        CALLGRIND_START_INSTRUMENTATION;
-        CALLGRIND_TOGGLE_COLLECT;
-        CALLGRIND_ZERO_STATS;
         auto start = std::chrono::high_resolution_clock::now();
         auto search_results = searcher.similarity_search(q, config.k);
         auto end = std::chrono::high_resolution_clock::now();
-        CALLGRIND_DUMP_STATS_AT(name.data());
-        CALLGRIND_TOGGLE_COLLECT;
-        CALLGRIND_STOP_INSTRUMENTATION;
         auto time =
             std::chrono::duration_cast<std::chrono::microseconds>(end - start)
                 .count();
@@ -243,14 +224,6 @@ runBenchmark(simsearch::Searchers &searchers,
       [&](size_t idx) { return searchers.pca4.getEmbedding(idx); });
 
   runFloatSearcherBenchmark(
-      "PCA2x2", searchers.pca2x2, simsearch::F32_PCA2x2,
-      [&](size_t idx) { return searchers.pca2x2.getEmbeddings()[idx]; });
-
-  runFloatSearcherBenchmark(
-      "PCA6", searchers.pca6, simsearch::F32_PCA6,
-      [&](size_t idx) { return searchers.pca6.getEmbeddings()[idx]; });
-
-  runFloatSearcherBenchmark(
       "PCA8", searchers.pca8, simsearch::F32_PCA8,
       [&](size_t idx) { return searchers.pca8.getEmbedding(idx); });
 
@@ -266,10 +239,6 @@ runBenchmark(simsearch::Searchers &searchers,
       "AVX2", searchers.avx2, simsearch::F32_AVX2,
       [&](size_t idx) { return searchers.avx2.getEmbeddings()[idx]; });
 
-  /*runSearcherBenchmark("AVX2_PCA8", searchers.avx2_pca8, F32_AVX2_PCA8,
-                       [&](size_t idx)
-                       { return searchers.avx2_pca8.getEmbeddings()[idx]; });*/
-
   runIntSearcherBenchmark(
       "Binary", searchers.binary, simsearch::BINARY,
       [&](size_t idx) { return searchers.binary.getEmbeddings()[idx]; });
@@ -277,11 +246,6 @@ runBenchmark(simsearch::Searchers &searchers,
   runIntSearcherBenchmark(
       "Binary AVX2", searchers.binary_avx2, simsearch::BINARY_AVX2,
       [&](size_t idx) { return searchers.binary_avx2.getEmbeddings()[idx]; });
-
-  /*runFloatSearcherBenchmark("Binary AVX2 PCA6", searchers.binary_avx2_pca6,
-                       simsearch::BINARY_AVX2_PCA6, [&](size_t idx) {
-                         return searchers.binary_avx2_pca6.getEmbeddings()[idx];
-                       });*/
 
   runUint32SearcherBenchmark(
       "UINT8 AVX2", searchers.uint8_avx2, simsearch::UINT8_AVX2,
@@ -304,14 +268,6 @@ runBenchmark(simsearch::Searchers &searchers,
   runUint32SearcherBenchmark(
       "O UINT8 AVX2", searchers.ouint8_avx2, simsearch::OUINT8_AVX2,
       [&](size_t idx) { return searchers.ouint8_avx2.getEmbeddingAVX2(idx); });
-
-  /*runSearcherBenchmark(
-      "FLOAT_INT8", searchers.float_int8, FLOAT_INT8,
-      [&](size_t idx) { return searchers.float_int8.getEmbeddings()[idx]; });*/
-
-  /*runSearcherBenchmark(
-      "FLOAT16", searchers.float16, simsearch::FLOAT16,
-      [&](size_t idx) { return searchers.float16.getEmbeddings()[idx]; });*/
 
   runFloatSearcherBenchmark(
       "MAPPED_FLOAT", searchers.mappedFloat, simsearch::MAPPED_FLOAT,
