@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <eigen3/Eigen/Dense>
-#include <omp.h>
+#include <embedding_utils.h>
 #include <stdexcept>
 
 bool EmbeddingSearchFloat::setEmbeddings(
@@ -20,7 +20,6 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int factor) {
   Eigen::MatrixXf matrix(rows, cols);
   int target_dim = cols / factor;
 
-  // #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < rows; ++i) {
     for (int j = 0; j < cols; ++j) {
       matrix(i, j) = embeddings[i][j];
@@ -64,6 +63,14 @@ bool EmbeddingSearchFloat::pca_dimension_reduction(int factor) {
       result[i][j] = reduced(i, j);
     }
   }
+
+  for (std::vector<float> &vec : result) {
+    float norm = EmbeddingUtils::calcNorm(vec);
+    for (float &el : vec) {
+      el = el / norm;
+    }
+  }
+
   embeddings.resize(embeddings.size(), std::vector<float>(target_dim));
   embeddings = std::move(result);
   vector_dim = target_dim;
