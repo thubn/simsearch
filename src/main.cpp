@@ -7,7 +7,7 @@
 #include "embedding_search_float16.h"
 // #include "embedding_search_float_int8.h"
 #include "common_structs.h"
-#include "embedding_search_mapped_float.h"
+//#include "embedding_search_mapped_float.h"
 #include "embedding_search_uint8_avx2.h"
 #include "embedding_utils.h"
 #include "optimized_embedding_search_avx2.h"
@@ -269,13 +269,13 @@ runBenchmark(simsearch::Searchers &searchers,
       "O UINT8 AVX2", searchers.ouint8_avx2, simsearch::OUINT8_AVX2,
       [&](size_t idx) { return searchers.ouint8_avx2.getEmbeddingAVX2(idx); });
 
-  runFloatSearcherBenchmark(
+  /*runFloatSearcherBenchmark(
       "MAPPED_FLOAT", searchers.mappedFloat, simsearch::MAPPED_FLOAT,
-      [&](size_t idx) { return searchers.mappedFloat.getEmbeddings()[idx]; });
+      [&](size_t idx) { return searchers.mappedFloat.getEmbeddings()[idx]; });*/
 
-  runFloatSearcherBenchmark(
-      "MAPPED_FLOAT2", searchers.mappedFloat, simsearch::MAPPED_FLOAT2,
-      [&](size_t idx) { return searchers.mappedFloat2.getEmbeddings()[idx]; });
+  /*runFloatSearcherBenchmark(
+      "MAPPED_FLOAT2", searchers.mappedFloat2, simsearch::MAPPED_FLOAT2,
+      [&](size_t idx) { return searchers.base.getEmbeddings()[idx]; });*/
 
   long timestamp = std::time(nullptr);
   std::string strTimestmap = std::to_string(timestamp);

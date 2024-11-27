@@ -1,22 +1,13 @@
-#include "embedding_search_mapped_float.h"
-#include "embedding_io.h"
+#include "optimized_embedding_search_mapped_float.h"
+#include "embedding_utils.h"
 #include <algorithm>
-#include <bitset>
-#include <cmath>
-#include <eigen3/Eigen/Dense>
-#include <iomanip>
+#include <cstring>
 #include <numeric>
-#include <omp.h>
-#include <stdexcept>
 
-// Distribution function type for easier switching
-enum class DistributionType {
-  UNIFORM,
-  LINEAR,
-  QUADRATIC,
-  CUBIC,
-  GAUSSIAN,
-  COSINE
+struct PartitionInfo {
+  float start;
+  float end;
+  float average;
 };
 
 // Calculate weight based on relative position and distribution type
@@ -40,7 +31,7 @@ double calculateWeight(double relative_pos, DistributionType dist_type,
   }
 }
 
-std::vector<EmbeddingSearchMappedFloat::PartitionInfo>
+std::vector<PartitionInfo>
 partitionAndAverage(std::vector<float> &arr, int n_parts,
                     DistributionType dist_type = DistributionType::QUADRATIC,
                     double factor = 10.0) {
@@ -145,7 +136,7 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
     }
 
     // Create and fill partitions
-    std::vector<EmbeddingSearchMappedFloat::PartitionInfo> partitions(n_parts);
+    std::vector<PartitionInfo> partitions(n_parts);
     size_t start_pos = 0;
 
     for (int i = 0; i < n_parts; ++i) {
@@ -214,8 +205,7 @@ std::string floatToHex(float value) {
   return ss.str();
 }
 
-void printPartitions(
-    const std::vector<EmbeddingSearchMappedFloat::PartitionInfo> &partitions) {
+void printPartitions(const std::vector<PartitionInfo> &partitions) {
   // Print human-readable results
   std::cout << std::fixed
             << std::setprecision(6); // Increased from 2 to 6 decimal places
@@ -240,9 +230,8 @@ public:
 };
 
 // Binary search function to find partition index for a value
-uint8_t findPartitionIndex(
-    const std::vector<EmbeddingSearchMappedFloat::PartitionInfo> &partitions,
-    float value) {
+uint8_t findPartitionIndex(const std::vector<PartitionInfo> &partitions,
+                           float value) {
   if (partitions.empty()) {
     throw std::invalid_argument("Partition vector is empty");
   }
@@ -279,198 +268,197 @@ uint8_t findPartitionIndex(
       "Value falls between partitions - possible gap in partition definitions");
 }
 
-bool EmbeddingSearchMappedFloat::setEmbeddings(
+bool OptimizedEmbeddingSearchMappedFloat::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {
-  return false;
+  return setEmbeddings(input_vectors, 10.0, DistributionType::GAUSSIAN);
 }
 
-bool EmbeddingSearchMappedFloat::setEmbeddings(
-    const std::vector<std::vector<float>> &input_vectors,
-    double distrib_factor) {
-  initializeDimensions(input_vectors);
+bool OptimizedEmbeddingSearchMappedFloat::setEmbeddings(
+    const std::vector<std::vector<float>> &input_vectors, double distrib_factor,
+    DistributionType dist_type = DistributionType::GAUSSIAN) {
+  std::string error_message;
+  if (!validateDimensions(input_vectors, error_message)) {
+    throw std::runtime_error(error_message);
+  }
 
-  try {
-    std::vector<float> flat_input = flattenMatrix(input_vectors);
-    partitions = partitionAndAverage(
-        flat_input, 256, DistributionType::GAUSSIAN, distrib_factor);
-    // printPartitions(partitions);
+  if (!initializeDimensions(input_vectors)) {
+    return false;
+  }
 
-    embeddings.resize(num_vectors, std::vector<uint8_t>(vector_dim));
+  std::vector<float> flat_input = flattenMatrix(input_vectors);
+  std::vector<PartitionInfo> partitions = partitionAndAverage(
+      flat_input, 256, DistributionType::GAUSSIAN, distrib_factor);
+  // printPartitions(partitions);
+
+  std::vector<std::vector<uint8_t>> intermediate_embeddings;
+  intermediate_embeddings.resize(num_vectors, std::vector<uint8_t>(vector_dim));
 
 #pragma omp parallel for
-    for (int i = 0; i < num_vectors; i++) {
-      for (int j = 0; j < vector_dim; j++) {
-        embeddings[i][j] = findPartitionIndex(partitions, input_vectors[i][j]);
-      }
+  for (int i = 0; i < num_vectors; i++) {
+    for (int j = 0; j < vector_dim; j++) {
+      intermediate_embeddings[i][j] = findPartitionIndex(partitions, input_vectors[i][j]);
     }
-    for (int i = 0; i < partitions.size(); i++) {
-      mapped_floats[i] = partitions[i].average;
-    }
-
-    /*
-    Map results for float multiplication
-    for (int i = 0; i < MUL_RESULTS_SIZE; i++) {
-      for (int j = 0; j < MUL_RESULTS_SIZE; j++) {
-        mapped_floats_mul_result[i][j] = mapped_floats[i] * mapped_floats[j];
-      }
-    }
-    */
-
-  } catch (const std::bad_alloc &e) {
-    std::cerr << "Memory allocation failed in setEmbeddings: " << e.what()
-              << '\n';
-    std::cerr << "Available system memory might be insufficient\n";
-    throw; // Re-throw the exception
   }
-  // exit(0);
+  for (int i = 0; i < partitions.size(); i++) {
+    mapped_floats[i] = partitions[i].average;
+  }
+
+  // Calculate padding for int8 values (32 values per AVX2 vector)
+  padded_dim = ((vector_dim + 31) / 32) * 32;
+  vectors_per_embedding =
+      padded_dim / 32; // Number of __m256i vectors needed per embedding
+
+  // Allocate aligned memory for int8 indices
+  size_t total_size = num_vectors * padded_dim;
+  if (!allocateAlignedMemory(total_size)) {
+    return false;
+  }
+
+  // Compute mapped float values
+  //computeMappedFloats(input_vectors, distrib_factor, dist_type);
+
+// Convert and store each vector as int8 indices
+#pragma omp parallel for
+  for (size_t i = 0; i < num_vectors; i++) {
+    uint8_t *dest = get_embedding_ptr(i);
+    dest = intermediate_embeddings[i].data();
+    //convertToMappedFormat(input_vectors[i], dest);
+  }
 
   return true;
 }
 
-std::vector<std::pair<float, size_t>>
-EmbeddingSearchMappedFloat::similarity_search(const std::vector<float> &query,
-                                              size_t k) {
-  std::vector<uint8_t> q(query.size());
-  for (int i = 0; i < query.size(); i++) {
-    q[i] = findPartitionIndex(partitions, query[i]);
+void OptimizedEmbeddingSearchMappedFloat::convertToMappedFormat(
+    const std::vector<float> &input, uint8_t *output) const {
+  for (size_t i = 0; i < input.size(); i++) {
+    // Binary search through partition boundaries to find appropriate index
+    size_t idx =
+        std::lower_bound(mapped_floats, mapped_floats + 256, input[i]) -
+        mapped_floats;
+    output[i] = static_cast<uint8_t>(std::min(idx, static_cast<size_t>(255)));
   }
-  return similarity_search(q, k);
+
+  // Zero-pad remaining elements if necessary
+  if (padded_dim > input.size()) {
+    std::memset(output + input.size(), 0, padded_dim - input.size());
+  }
 }
 
 std::vector<std::pair<float, size_t>>
-EmbeddingSearchMappedFloat::similarity_search(const std::vector<uint8_t> &query,
-                                              size_t k) {
-  if (query.size() != embeddings[0].size()) {
-    throw std::runtime_error("Query vector size does not match embedding size");
+OptimizedEmbeddingSearchMappedFloat::similarity_search(const avx2_vector &query,
+                                                       size_t k) {
+  throw std::runtime_error(
+      "AVX2 vector input not supported in optimized version");
+}
+
+std::vector<std::pair<float, size_t>>
+OptimizedEmbeddingSearchMappedFloat::similarity_search(
+    const std::vector<float> &query, size_t k) {
+  if (query.size() != vector_dim) {
+    throw std::invalid_argument("Invalid query dimension");
   }
 
-  std::vector<std::pair<float, size_t>> similarities;
-  similarities.reserve(embeddings.size());
+  // Convert query to int8 indices
+  auto query_aligned = aligned_vector<uint8_t>(padded_dim);
+  convertToMappedFormat(query, query_aligned.data());
 
-  for (size_t i = 0; i < embeddings.size(); ++i) {
-    if (i % 64 == 0) {
-      for (int j = 0; j + 63 < 256; j += 64) {
-        _mm_prefetch((const char *)&mapped_floats[j], _MM_HINT_T0);
-        _mm_prefetch((const char *)&mapped_floats[j + 16], _MM_HINT_T0);
-        _mm_prefetch((const char *)&mapped_floats[j + 32], _MM_HINT_T0);
-        _mm_prefetch((const char *)&mapped_floats[j + 48], _MM_HINT_T0);
+  // Calculate similarities
+  std::vector<std::pair<float, size_t>> results;
+  results.reserve(num_vectors);
+
+  for (size_t i = 0; i < num_vectors; i++) {
+    float similarity =
+        cosine_similarity_optimized(get_embedding_ptr(i), query_aligned.data());
+    results.emplace_back(similarity, i);
+  }
+
+  // Partial sort to get top-k results
+  if (results.size() > k) {
+    std::partial_sort(
+        results.begin(), results.begin() + k, results.end(),
+        [](const auto &a, const auto &b) { return a.first > b.first; });
+    results.resize(k);
+  }
+
+  return results;
+}
+
+float OptimizedEmbeddingSearchMappedFloat::cosine_similarity_optimized(
+    const uint8_t *vec_a, const uint8_t *vec_b) const {
+  __m256 sum = _mm256_setzero_ps();
+
+  for (size_t i = 0; i < padded_dim; i += 32) {
+    // Load 32 int8 indices
+    __m256i indices_a =
+        _mm256_load_si256(reinterpret_cast<const __m256i *>(vec_a + i));
+    __m256i indices_b =
+        _mm256_load_si256(reinterpret_cast<const __m256i *>(vec_b + i));
+
+    // Process in chunks of 8 int8s
+    for (int j = 0; j < 4; j++) {
+      // Extract 8 indices from each vector
+      __m128i chunk_a = _mm256_extracti128_si256(indices_a, j / 2);
+      __m128i chunk_b = _mm256_extracti128_si256(indices_b, j / 2);
+      if (j % 2) {
+        chunk_a = _mm_unpackhi_epi8(chunk_a, chunk_a);
+        chunk_b = _mm_unpackhi_epi8(chunk_b, chunk_b);
+      } else {
+        chunk_a = _mm_unpacklo_epi8(chunk_a, chunk_a);
+        chunk_b = _mm_unpacklo_epi8(chunk_b, chunk_b);
       }
+
+      // Convert 8 indices to 32-bit integers
+      __m256i indices_a_32 = _mm256_cvtepi8_epi32(chunk_a);
+      __m256i indices_b_32 = _mm256_cvtepi8_epi32(chunk_b);
+
+      // Gather mapped float values using indices
+      __m256 values_a = _mm256_i32gather_ps(mapped_floats, indices_a_32, 4);
+      __m256 values_b = _mm256_i32gather_ps(mapped_floats, indices_b_32, 4);
+
+      // Multiply and accumulate
+      sum = _mm256_fmadd_ps(values_a, values_b, sum);
     }
-    /*_mm_prefetch((const char *)&embeddings[i][512], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][576], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][640], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][704], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][768], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][832], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][896], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][960], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][0], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][64], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][128], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][192], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][256], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][320], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][384], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][448], _MM_HINT_T0);*/
-    float sim = cosine_similarity(query, embeddings[i]);
-    similarities.emplace_back(sim, i);
+
+    // Prefetch next cache lines
+    _mm_prefetch(vec_a + i + 64, _MM_HINT_T0);
+    _mm_prefetch(vec_b + i + 64, _MM_HINT_T0);
   }
-
-  std::partial_sort(
-      similarities.begin(), similarities.begin() + k, similarities.end(),
-      [](const auto &a, const auto &b) { return a.first > b.first; });
-
-  return std::vector<std::pair<float, size_t>>(similarities.begin(),
-                                               similarities.begin() + k);
-}
-
-/*float EmbeddingSearchMappedFloat::cosine_similarity(
-    const std::vector<uint8_t> &a, const std::vector<uint8_t> &b) {
-  float dot_product = 0.0f;
-
-  for (size_t i = 0; i < a.size(); i++) {
-    dot_product += mapped_floats[a[i]] * mapped_floats[b[i]];
-  }
-
-  return dot_product;
-}*/
-
-float EmbeddingSearchMappedFloat::cosine_similarity(
-    const std::vector<uint8_t> &a, const std::vector<uint8_t> &b) {
-  float dot_product = 0.0f;
-  const size_t n = a.size();
-  size_t i = 0;
-  __m256 sum0 = _mm256_setzero_ps();
-  __m256 sum1 = _mm256_setzero_ps();
-  __m256 sum2 = _mm256_setzero_ps();
-  __m256 sum3 = _mm256_setzero_ps();
-
-  // Process 32 elements at a time
-  for (; i + 31 < n; i += 32) {
-
-    // Load and convert first set while prefetch is happening
-    __m256i indices_a0 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&a[i]));
-    __m256i indices_b0 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i]));
-    __m256i indices_a1 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&a[i + 8]));
-    __m256i indices_b1 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i + 8]));
-
-    // Start gathers for first set
-    __m256 values_a0 = _mm256_i32gather_ps(mapped_floats, indices_a0, 4);
-    __m256 values_b0 = _mm256_i32gather_ps(mapped_floats, indices_b0, 4);
-
-    // Load and convert second set while first gathers are happening
-    __m256i indices_a2 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&a[i + 16]));
-    __m256i indices_b2 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i + 16]));
-    __m256i indices_a3 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&a[i + 24]));
-    __m256i indices_b3 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i + 24]));
-
-    // Start gathers for second set
-    __m256 values_a1 = _mm256_i32gather_ps(mapped_floats, indices_a1, 4);
-    __m256 values_b1 = _mm256_i32gather_ps(mapped_floats, indices_b1, 4);
-
-    // First set multiply-add while second gathers are happening
-    sum0 = _mm256_fmadd_ps(values_a0, values_b0, sum0);
-
-    // Continue gathers
-    __m256 values_a2 = _mm256_i32gather_ps(mapped_floats, indices_a2, 4);
-    __m256 values_b2 = _mm256_i32gather_ps(mapped_floats, indices_b2, 4);
-
-    // Second set multiply-add
-    sum1 = _mm256_fmadd_ps(values_a1, values_b1, sum1);
-
-    // Final gathers
-    __m256 values_a3 = _mm256_i32gather_ps(mapped_floats, indices_a3, 4);
-    __m256 values_b3 = _mm256_i32gather_ps(mapped_floats, indices_b3, 4);
-
-    // Final multiply-adds
-    sum2 = _mm256_fmadd_ps(values_a2, values_b2, sum2);
-    sum3 = _mm256_fmadd_ps(values_a3, values_b3, sum3);
-  }
-
-  // Combine sums
-  __m256 sum =
-      _mm256_add_ps(_mm256_add_ps(sum0, sum1), _mm256_add_ps(sum2, sum3));
 
   // Horizontal sum
   __m128 sum128 =
       _mm_add_ps(_mm256_castps256_ps128(sum), _mm256_extractf128_ps(sum, 1));
   sum128 = _mm_hadd_ps(sum128, sum128);
   sum128 = _mm_hadd_ps(sum128, sum128);
-  dot_product = _mm_cvtss_f32(sum128);
 
-  // Handle remaining elements
-  for (; i < n; i++) {
-    dot_product += mapped_floats[a[i]] * mapped_floats[b[i]];
+  return _mm_cvtss_f32(sum128);
+}
+
+std::vector<float>
+OptimizedEmbeddingSearchMappedFloat::getEmbedding(size_t index) const {
+  if (index >= num_vectors) {
+    throw std::out_of_range("Embedding index out of range");
   }
 
-  return dot_product;
-  ;
+  std::vector<float> result(vector_dim);
+  const uint8_t *embedding_indices = get_embedding_ptr(index);
+
+  // Convert indices back to float values
+  for (size_t i = 0; i < vector_dim; i++) {
+    result[i] = mapped_floats[static_cast<uint8_t>(embedding_indices[i])];
+  }
+
+  return result;
+}
+
+bool OptimizedEmbeddingSearchMappedFloat::validateDimensions(
+    const std::vector<std::vector<float>> &input, std::string &error_message) {
+  if (input.empty()) {
+    error_message = "Input vector is empty";
+    return false;
+  }
+  if (input[0].empty()) {
+    error_message = "Input vectors cannot be empty";
+    return false;
+  }
+  return true;
 }

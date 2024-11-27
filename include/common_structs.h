@@ -11,10 +11,11 @@
 #include "embedding_search_uint8_avx2.h"
 #include "optimized_embedding_search_avx2.h"
 #include "optimized_embedding_search_binary_avx2.h"
+//#include "optimized_embedding_search_mapped_float.h"
 #include "optimized_embedding_search_uint8_avx2.h"
 #include <string>
-#include <vector>
 #include <thread>
+#include <vector>
 
 namespace simsearch {
 
@@ -96,7 +97,7 @@ public:
   OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
   EmbeddingSearchFloat16 float16;
   EmbeddingSearchMappedFloat mappedFloat;
-  EmbeddingSearchMappedFloat mappedFloat2;
+  //OptimizedEmbeddingSearchMappedFloat mappedFloat2;
 
   Searchers() = default;
 
@@ -146,9 +147,9 @@ public:
   void initMappedFloat() {
     mappedFloat.setEmbeddings(base.getEmbeddings(), 10.0);
   }
-  void initMappedFloat2() {
-    mappedFloat2.setEmbeddings(base.getEmbeddings(), 10.5);
-  }
+  /*void initMappedFloat2() {
+    mappedFloat2.setEmbeddings(base.getEmbeddings());
+  }*/
 };
 
 void initializeSearchers(Searchers &searchers, const std::string &filename) {
@@ -170,8 +171,8 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
   // std::thread tFloat16(&Searchers::initFloat16, &searchers);
   std::thread tMappedFloat(&Searchers::initMappedFloat, &searchers);
-  std::thread tMappedFloat2(&Searchers::initMappedFloat2, &searchers);
-   tPca8.join();
+  //std::thread tMappedFloat2(&Searchers::initMappedFloat2, &searchers);
+  tPca8.join();
   tPca2.join();
   tPca4.join();
   tPca16.join();
@@ -186,7 +187,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   tOuint_avx2.join();
   // tFloat16.join();
   tMappedFloat.join();
-  tMappedFloat2.join();
+  //tMappedFloat2.join();
 }
 
 } // namespace simsearch
