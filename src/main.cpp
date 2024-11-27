@@ -6,14 +6,17 @@
 #include "embedding_search_float.h"
 #include "embedding_search_float16.h"
 // #include "embedding_search_float_int8.h"
+#include "common_structs.h"
 #include "embedding_search_mapped_float.h"
 #include "embedding_search_uint8_avx2.h"
 #include "embedding_utils.h"
 #include "optimized_embedding_search_avx2.h"
 #include "optimized_embedding_search_binary_avx2.h"
 #include "optimized_embedding_search_uint8_avx2.h"
+#include "stats_exporter.h"
 #include <algorithm>
 #include <chrono>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <immintrin.h>
@@ -28,190 +31,6 @@
 
 using json = nlohmann::json;
 
-// Benchmark configuration
-struct BenchmarkConfig {
-  size_t k;
-  size_t runs;
-  size_t rescoring_factor;
-};
-
-// Searcher types enum
-enum SearcherType {
-  F32,
-  F32_PCA2,
-  F32_PCA4,
-  F32_PCA2x2,
-  F32_PCA6,
-  F32_PCA8,
-  F32_PCA16,
-  F32_PCA32,
-  F32_AVX2,
-  F32_AVX2_PCA8,
-  F32_OAVX2,
-  BINARY,
-  BINARY_AVX2,
-  BINARY_AVX2_PCA6,
-  OBINAR_AVX2,
-  OBAVX2_F32OAVX2,
-  UINT8_AVX2,
-  OUINT8_AVX2,
-  FLOAT_INT8,
-  FLOAT16,
-  MAPPED_FLOAT,
-  MAPPED_FLOAT2,
-  NUM_SEARCHER_TYPES // Used to determine array sizes
-};
-
-// Struct to hold benchmark results
-struct BenchmarkResults {
-  std::vector<int64_t> times;
-  std::vector<double> jaccardIndexes;
-  std::vector<double> NDCG;
-
-  BenchmarkResults()
-      : times(NUM_SEARCHER_TYPES, -1), jaccardIndexes(NUM_SEARCHER_TYPES, 0),
-        NDCG(NUM_SEARCHER_TYPES, 0) {}
-};
-
-// Struct to hold all searchers
-struct Searchers {
-  EmbeddingSearchFloat base;
-  OptimizedEmbeddingSearchAVX2 pca2;
-  EmbeddingSearchFloat pca2x2;
-  OptimizedEmbeddingSearchAVX2 pca4;
-  EmbeddingSearchFloat pca6;
-  OptimizedEmbeddingSearchAVX2 pca8;
-  OptimizedEmbeddingSearchAVX2 pca16;
-  OptimizedEmbeddingSearchAVX2 pca32;
-  EmbeddingSearchAVX2 avx2;
-  // EmbeddingSearchAVX2 avx2_pca8;
-  EmbeddingSearchBinary binary;
-  EmbeddingSearchBinaryAVX2 binary_avx2;
-  EmbeddingSearchBinaryAVX2 binary_avx2_pca6;
-  EmbeddingSearchUint8AVX2 uint8_avx2;
-  OptimizedEmbeddingSearchAVX2 oavx2;
-  OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
-  OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
-  // EmbeddingSearchFloatInt8 float_int8;
-  EmbeddingSearchFloat16 float16;
-  EmbeddingSearchMappedFloat mappedFloat;
-  EmbeddingSearchMappedFloat mappedFloat2;
-  Searchers() : base(), avx2() {} // Explicit initialization
-
-  void initBase(const std::string &filename) {
-    if (!base.load(filename, true)) {
-      throw std::runtime_error("Failed to load base embeddings");
-    }
-  }
-
-  void initPca2() {
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(2);
-    pca2.setEmbeddings(temp.getEmbeddings());
-  }
-  void initPca2x2() {
-    pca2x2.setEmbeddings(base.getEmbeddings());
-    pca2x2.pca_dimension_reduction(2);
-    pca2x2.pca_dimension_reduction(2);
-  }
-  void initPca4() {
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(4);
-    pca4.setEmbeddings(temp.getEmbeddings());
-  }
-  void initPca6() {
-    pca6.setEmbeddings(base.getEmbeddings());
-    pca6.pca_dimension_reduction(6);
-  }
-  void initPca8() {
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(8);
-    pca8.setEmbeddings(temp.getEmbeddings());
-  }
-  void initPca16() {
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(16);
-    pca16.setEmbeddings(temp.getEmbeddings());
-  }
-  void initPca32() {
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(32);
-    pca32.setEmbeddings(temp.getEmbeddings());
-  }
-  void initAvx2() { avx2.setEmbeddings(base.getEmbeddings()); }
-  /*void initAvx2_pca8()
-  {
-      avx2_pca8.setEmbeddings(pca8.getEmbeddings());
-  }*/
-  void initBinary() { binary.setEmbeddings(base.getEmbeddings()); }
-  void initBinary_avx2() { binary_avx2.setEmbeddings(base.getEmbeddings()); }
-  void initBinary_avx2_pca6() {
-    binary_avx2_pca6.setEmbeddings(pca6.getEmbeddings());
-  }
-  void initUint8_avx2() { uint8_avx2.setEmbeddings(base.getEmbeddings()); }
-  void initOavx2() { oavx2.setEmbeddings(base.getEmbeddings()); }
-  void initObinary_avx2() { obinary_avx2.setEmbeddings(base.getEmbeddings()); }
-  void initOuint_avx2() { ouint8_avx2.setEmbeddings(base.getEmbeddings()); }
-  // void initFloatInt8() { float_int8.setEmbeddings(base.getEmbeddings()); }
-  void initFloat16() { float16.setEmbeddings(base.getEmbeddings()); }
-  void initMappedFloat() {
-    mappedFloat.setEmbeddings(base.getEmbeddings(), 10.0);
-  }
-  void initMappedFloat2() {
-    mappedFloat2.setEmbeddings(base.getEmbeddings(), 10.5);
-  }
-};
-
-void initializeSearchers(Searchers &searchers, const std::string &filename) {
-  // Load base embeddings
-  searchers.initBase(filename);
-
-  // std::thread tPca2(&Searchers::initPca2, &searchers);
-  // std::thread tPca2x2(&Searchers::initPca2x2, &searchers);
-  // std::thread tPca4(&Searchers::initPca4, &searchers);
-  // std::thread tPca6(&Searchers::initPca6, &searchers);
-  // std::thread tPca8(&Searchers::initPca8, &searchers);
-  // std::thread tPca16(&Searchers::initPca16, &searchers);
-  // std::thread tPca32(&Searchers::initPca32, &searchers);
-
-  // std::thread tAvx2(&Searchers::initAvx2, &searchers);
-  // std::thread tBinary(&Searchers::initBinary, &searchers);
-  // std::thread tBinary_avx2(&Searchers::initBinary_avx2, &searchers);
-  // std::thread tUint8_avx2(&Searchers::initUint8_avx2, &searchers);
-  std::thread tOavx2(&Searchers::initOavx2, &searchers);
-  std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
-  std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
-  // std::thread tFloat_int8(&Searchers::initFloatInt8, &searchers);
-  // std::thread tFloat16(&Searchers::initFloat16, &searchers);
-  // std::thread tMappedFloat(&Searchers::initMappedFloat, &searchers);
-  // std::thread tMappedFloat2(&Searchers::initMappedFloat2, &searchers);
-  // tPca8.join();
-  // std::thread tAvx2_pca8(&Searchers::initAvx2_pca8, &searchers);
-  // tPca6.join();
-  // std::thread tBinary_avx2_pca6(&Searchers::initBinary_avx2_pca6,
-  // &searchers); tPca2.join(); tPca2x2.join(); tPca4.join(); tPca16.join();
-  // tPca32.join();
-
-  // tAvx2.join();
-  // tBinary.join();
-  // tBinary_avx2.join();
-  // tUint8_avx2.join();
-  tOavx2.join();
-  tObinary_avx2.join();
-  tOuint_avx2.join();
-  // tFloat_int8.join();
-  // tFloat16.join();
-  // tMappedFloat.join();
-  // tMappedFloat2.join();
-  // tAvx2_pca8.join();
-  // tBinary_avx2_pca6.join();
-}
-
 std::vector<size_t> generateRandomIndexes(size_t numRuns, size_t maxIndex) {
   std::vector<size_t> indexes(numRuns);
   std::random_device rd;
@@ -225,9 +44,15 @@ std::vector<size_t> generateRandomIndexes(size_t numRuns, size_t maxIndex) {
   return indexes;
 }
 
-BenchmarkResults runBenchmark(Searchers &searchers,
-                              const BenchmarkConfig &config) {
-  BenchmarkResults results;
+simsearch::BenchmarkResults
+runBenchmark(simsearch::Searchers &searchers,
+             const simsearch::BenchmarkConfig &config) {
+  simsearch::BenchmarkResults results;
+
+  // Create vectors to store different types of results
+  std::vector<SearchMethodStats<float>> floatResults;
+  std::vector<SearchMethodStats<uint32_t>> uint32Results;
+  std::vector<SearchMethodStats<int>> intResults;
 
   // Generate random indexes first
   std::vector<size_t> randomIndexes = generateRandomIndexes(
@@ -236,25 +61,30 @@ BenchmarkResults runBenchmark(Searchers &searchers,
   // Run base F32 searches
   std::cout << "Running F32 searches...";
   std::vector<std::vector<std::pair<float, size_t>>> baseResults(config.runs);
+  SearchMethodStats<float> baseStats("F32_base");
   for (size_t i = 0; i < config.runs; i++) {
+
     auto start = std::chrono::high_resolution_clock::now();
-    // baseResults[i] =
-    // searchers.avx2.similarity_search(searchers.avx2.getEmbeddings()[randomIndexes[i]],
-    // config.k);
-    baseResults[i] = searchers.base.similarity_search(
+    auto result = searchers.base.similarity_search(
         searchers.base.getEmbeddings()[randomIndexes[i]], config.k);
     auto end = std::chrono::high_resolution_clock::now();
-    results.times[F32] +=
+    auto time =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start)
             .count();
+    baseResults[i] = result;
+    results.times[simsearch::F32] += time;
+    baseStats.times.push_back(time);
+    baseStats.results.push_back(result);
   }
   std::cout << " ✓" << std::endl;
 
   // Lambda to run benchmark for a specific searcher type
-  auto runSearcherBenchmark = [&](const std::string &name, auto &searcher,
-                                  SearcherType type, const auto &getQuery) {
+  auto runFloatSearcherBenchmark = [&](const std::string &name, auto &searcher,
+                                       simsearch::SearcherType type,
+                                       const auto &getQuery) {
     if (searcher.isInitialized()) {
       std::cout << "Running " << name << " searches...";
+      SearchMethodStats<float> stats(name);
       for (size_t i = 0; i < config.runs; i++) {
         auto q = getQuery(randomIndexes[i]);
         CALLGRIND_START_INSTRUMENTATION;
@@ -266,14 +96,96 @@ BenchmarkResults runBenchmark(Searchers &searchers,
         CALLGRIND_DUMP_STATS_AT(name.data());
         CALLGRIND_TOGGLE_COLLECT;
         CALLGRIND_STOP_INSTRUMENTATION;
-
-        results.times[type] +=
+        auto time =
             std::chrono::duration_cast<std::chrono::microseconds>(end - start)
                 .count();
-        results.jaccardIndexes[type] += EmbeddingUtils::calculateJaccardIndex(
-            baseResults[i], search_results);
-        results.NDCG[type] +=
+        auto jaccard = EmbeddingUtils::calculateJaccardIndex(baseResults[i],
+                                                             search_results);
+        auto ndcg =
             EmbeddingUtils::calculateNDCG(baseResults[i], search_results);
+        results.times[type] += time;
+        results.jaccardIndexes[type] += jaccard;
+        results.NDCG[type] += ndcg;
+        stats.times.push_back(time);
+        stats.jaccard_indexes.push_back(jaccard);
+        stats.ndcg_scores.push_back(ndcg);
+        stats.results.push_back(search_results);
+      }
+      std::cout << " ✓" << std::endl;
+    } else {
+      std::cout << name << " is not initialized..." << std::endl;
+    }
+  };
+
+  auto runUint32SearcherBenchmark = [&](const std::string &name, auto &searcher,
+                                        simsearch::SearcherType type,
+                                        const auto &getQuery) {
+    if (searcher.isInitialized()) {
+      std::cout << "Running " << name << " searches...";
+      SearchMethodStats<uint32_t> stats(name);
+      for (size_t i = 0; i < config.runs; i++) {
+        auto q = getQuery(randomIndexes[i]);
+        CALLGRIND_START_INSTRUMENTATION;
+        CALLGRIND_TOGGLE_COLLECT;
+        CALLGRIND_ZERO_STATS;
+        auto start = std::chrono::high_resolution_clock::now();
+        auto search_results = searcher.similarity_search(q, config.k);
+        auto end = std::chrono::high_resolution_clock::now();
+        CALLGRIND_DUMP_STATS_AT(name.data());
+        CALLGRIND_TOGGLE_COLLECT;
+        CALLGRIND_STOP_INSTRUMENTATION;
+        auto time =
+            std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                .count();
+        auto jaccard = EmbeddingUtils::calculateJaccardIndex(baseResults[i],
+                                                             search_results);
+        auto ndcg =
+            EmbeddingUtils::calculateNDCG(baseResults[i], search_results);
+        results.times[type] += time;
+        results.jaccardIndexes[type] += jaccard;
+        results.NDCG[type] += ndcg;
+        stats.times.push_back(time);
+        stats.jaccard_indexes.push_back(jaccard);
+        stats.ndcg_scores.push_back(ndcg);
+        stats.results.push_back(search_results);
+      }
+      std::cout << " ✓" << std::endl;
+    } else {
+      std::cout << name << " is not initialized..." << std::endl;
+    }
+  };
+
+  auto runIntSearcherBenchmark = [&](const std::string &name, auto &searcher,
+                                     simsearch::SearcherType type,
+                                     const auto &getQuery) {
+    if (searcher.isInitialized()) {
+      std::cout << "Running " << name << " searches...";
+      SearchMethodStats<int> stats(name);
+      for (size_t i = 0; i < config.runs; i++) {
+        auto q = getQuery(randomIndexes[i]);
+        CALLGRIND_START_INSTRUMENTATION;
+        CALLGRIND_TOGGLE_COLLECT;
+        CALLGRIND_ZERO_STATS;
+        auto start = std::chrono::high_resolution_clock::now();
+        auto search_results = searcher.similarity_search(q, config.k);
+        auto end = std::chrono::high_resolution_clock::now();
+        CALLGRIND_DUMP_STATS_AT(name.data());
+        CALLGRIND_TOGGLE_COLLECT;
+        CALLGRIND_STOP_INSTRUMENTATION;
+        auto time =
+            std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                .count();
+        auto jaccard = EmbeddingUtils::calculateJaccardIndex(baseResults[i],
+                                                             search_results);
+        auto ndcg =
+            EmbeddingUtils::calculateNDCG(baseResults[i], search_results);
+        results.times[type] += time;
+        results.jaccardIndexes[type] += jaccard;
+        results.NDCG[type] += ndcg;
+        stats.times.push_back(time);
+        stats.jaccard_indexes.push_back(jaccard);
+        stats.ndcg_scores.push_back(ndcg);
+        stats.results.push_back(search_results);
       }
       std::cout << " ✓" << std::endl;
     } else {
@@ -283,11 +195,12 @@ BenchmarkResults runBenchmark(Searchers &searchers,
 
   auto runSearcherBenchmarkTwoStep = [&](const std::string &name,
                                          auto &searcher, auto &searcherRescore,
-                                         SearcherType type,
+                                         simsearch::SearcherType type,
                                          const auto &getQuery,
                                          const auto &getQueryRescore) {
     if (searcher.isInitialized() && searcherRescore.isInitialized()) {
       std::cout << "Running " << name << " 2step searches...";
+      SearchMethodStats<int> stats(name);
       for (size_t i = 0; i < config.runs; i++) {
         auto q = getQuery(randomIndexes[i]);
         auto q_rescore = getQueryRescore(randomIndexes[i]);
@@ -298,13 +211,21 @@ BenchmarkResults runBenchmark(Searchers &searchers,
             q_rescore, config.k, search_results);
         auto end = std::chrono::high_resolution_clock::now();
 
-        results.times[type] +=
+        auto time =
             std::chrono::duration_cast<std::chrono::microseconds>(end - start)
                 .count();
-        results.jaccardIndexes[type] += EmbeddingUtils::calculateJaccardIndex(
-            baseResults[i], rescore_results);
-        results.NDCG[type] +=
+        auto jaccard = EmbeddingUtils::calculateJaccardIndex(baseResults[i],
+                                                             rescore_results);
+        auto ndcg =
             EmbeddingUtils::calculateNDCG(baseResults[i], rescore_results);
+
+        results.times[type] += time;
+        results.jaccardIndexes[type] += jaccard;
+        results.NDCG[type] += ndcg;
+        stats.times.push_back(time);
+        stats.jaccard_indexes.push_back(jaccard);
+        stats.ndcg_scores.push_back(ndcg);
+        stats.results.push_back(search_results);
       }
       std::cout << " ✓" << std::endl;
     } else {
@@ -313,98 +234,106 @@ BenchmarkResults runBenchmark(Searchers &searchers,
   };
 
   // Run benchmarks for each searcher type sequentially
-  runSearcherBenchmark("PCA2", searchers.pca2, F32_PCA2, [&](size_t idx) {
-    return searchers.pca2.getEmbedding(idx);
-  });
+  runFloatSearcherBenchmark(
+      "PCA2", searchers.pca2, simsearch::F32_PCA2,
+      [&](size_t idx) { return searchers.pca2.getEmbedding(idx); });
 
-  runSearcherBenchmark("PCA4", searchers.pca4, F32_PCA4, [&](size_t idx) {
-    return searchers.pca4.getEmbedding(idx);
-  });
+  runFloatSearcherBenchmark(
+      "PCA4", searchers.pca4, simsearch::F32_PCA4,
+      [&](size_t idx) { return searchers.pca4.getEmbedding(idx); });
 
-  runSearcherBenchmark("PCA2x2", searchers.pca2x2, F32_PCA2x2, [&](size_t idx) {
-    return searchers.pca2x2.getEmbeddings()[idx];
-  });
+  runFloatSearcherBenchmark(
+      "PCA2x2", searchers.pca2x2, simsearch::F32_PCA2x2,
+      [&](size_t idx) { return searchers.pca2x2.getEmbeddings()[idx]; });
 
-  runSearcherBenchmark("PCA6", searchers.pca6, F32_PCA6, [&](size_t idx) {
-    return searchers.pca6.getEmbeddings()[idx];
-  });
+  runFloatSearcherBenchmark(
+      "PCA6", searchers.pca6, simsearch::F32_PCA6,
+      [&](size_t idx) { return searchers.pca6.getEmbeddings()[idx]; });
 
-  runSearcherBenchmark("PCA8", searchers.pca8, F32_PCA8, [&](size_t idx) {
-    return searchers.pca8.getEmbedding(idx);
-  });
+  runFloatSearcherBenchmark(
+      "PCA8", searchers.pca8, simsearch::F32_PCA8,
+      [&](size_t idx) { return searchers.pca8.getEmbedding(idx); });
 
-  runSearcherBenchmark("PCA16", searchers.pca16, F32_PCA16, [&](size_t idx) {
-    return searchers.pca16.getEmbedding(idx);
-  });
+  runFloatSearcherBenchmark(
+      "PCA16", searchers.pca16, simsearch::F32_PCA16,
+      [&](size_t idx) { return searchers.pca16.getEmbedding(idx); });
 
-  runSearcherBenchmark("PCA32", searchers.pca32, F32_PCA32, [&](size_t idx) {
-    return searchers.pca32.getEmbedding(idx);
-  });
+  runFloatSearcherBenchmark(
+      "PCA32", searchers.pca32, simsearch::F32_PCA32,
+      [&](size_t idx) { return searchers.pca32.getEmbedding(idx); });
 
-  runSearcherBenchmark("AVX2", searchers.avx2, F32_AVX2, [&](size_t idx) {
-    return searchers.avx2.getEmbeddings()[idx];
-  });
+  runFloatSearcherBenchmark(
+      "AVX2", searchers.avx2, simsearch::F32_AVX2,
+      [&](size_t idx) { return searchers.avx2.getEmbeddings()[idx]; });
 
   /*runSearcherBenchmark("AVX2_PCA8", searchers.avx2_pca8, F32_AVX2_PCA8,
                        [&](size_t idx)
                        { return searchers.avx2_pca8.getEmbeddings()[idx]; });*/
 
-  runSearcherBenchmark("Binary", searchers.binary, BINARY, [&](size_t idx) {
-    return searchers.binary.getEmbeddings()[idx];
-  });
+  runIntSearcherBenchmark(
+      "Binary", searchers.binary, simsearch::BINARY,
+      [&](size_t idx) { return searchers.binary.getEmbeddings()[idx]; });
 
-  runSearcherBenchmark(
-      "Binary AVX2", searchers.binary_avx2, BINARY_AVX2,
+  runIntSearcherBenchmark(
+      "Binary AVX2", searchers.binary_avx2, simsearch::BINARY_AVX2,
       [&](size_t idx) { return searchers.binary_avx2.getEmbeddings()[idx]; });
 
-  runSearcherBenchmark("Binary AVX2 PCA6", searchers.binary_avx2_pca6,
-                       BINARY_AVX2_PCA6, [&](size_t idx) {
+  /*runFloatSearcherBenchmark("Binary AVX2 PCA6", searchers.binary_avx2_pca6,
+                       simsearch::BINARY_AVX2_PCA6, [&](size_t idx) {
                          return searchers.binary_avx2_pca6.getEmbeddings()[idx];
-                       });
+                       });*/
 
-  runSearcherBenchmark(
-      "UINT8 AVX2", searchers.uint8_avx2, UINT8_AVX2,
+  runUint32SearcherBenchmark(
+      "UINT8 AVX2", searchers.uint8_avx2, simsearch::UINT8_AVX2,
       [&](size_t idx) { return searchers.uint8_avx2.getEmbeddings()[idx]; });
 
   runSearcherBenchmarkTwoStep(
       "OBAVX2_F32OAVX2", searchers.obinary_avx2, searchers.oavx2,
-      OBAVX2_F32OAVX2,
+      simsearch::OBAVX2_F32OAVX2,
       [&](size_t idx) { return searchers.obinary_avx2.getEmbeddingAVX2(idx); },
       [&](size_t idx) { return searchers.oavx2.getEmbedding(idx); });
 
-  runSearcherBenchmark("OAVX2", searchers.oavx2, F32_OAVX2, [&](size_t idx) {
-    return searchers.oavx2.getEmbedding(idx);
-  });
+  runFloatSearcherBenchmark(
+      "OAVX2", searchers.oavx2, simsearch::F32_OAVX2,
+      [&](size_t idx) { return searchers.oavx2.getEmbedding(idx); });
 
-  runSearcherBenchmark(
-      "O Binary AVX2", searchers.obinary_avx2, OBINAR_AVX2,
+  runIntSearcherBenchmark(
+      "O Binary AVX2", searchers.obinary_avx2, simsearch::OBINAR_AVX2,
       [&](size_t idx) { return searchers.obinary_avx2.getEmbeddingAVX2(idx); });
 
-  runSearcherBenchmark(
-      "O UINT8 AVX2", searchers.ouint8_avx2, OUINT8_AVX2,
+  runUint32SearcherBenchmark(
+      "O UINT8 AVX2", searchers.ouint8_avx2, simsearch::OUINT8_AVX2,
       [&](size_t idx) { return searchers.ouint8_avx2.getEmbeddingAVX2(idx); });
 
   /*runSearcherBenchmark(
       "FLOAT_INT8", searchers.float_int8, FLOAT_INT8,
       [&](size_t idx) { return searchers.float_int8.getEmbeddings()[idx]; });*/
 
-  runSearcherBenchmark("FLOAT16", searchers.float16, FLOAT16, [&](size_t idx) {
-    return searchers.float16.getEmbeddings()[idx];
-  });
+  /*runSearcherBenchmark(
+      "FLOAT16", searchers.float16, simsearch::FLOAT16,
+      [&](size_t idx) { return searchers.float16.getEmbeddings()[idx]; });*/
 
-  runSearcherBenchmark(
-      "MAPPED_FLOAT", searchers.mappedFloat, MAPPED_FLOAT,
+  runFloatSearcherBenchmark(
+      "MAPPED_FLOAT", searchers.mappedFloat, simsearch::MAPPED_FLOAT,
       [&](size_t idx) { return searchers.mappedFloat.getEmbeddings()[idx]; });
 
-  runSearcherBenchmark(
-      "MAPPED_FLOAT2", searchers.mappedFloat, MAPPED_FLOAT2,
+  runFloatSearcherBenchmark(
+      "MAPPED_FLOAT2", searchers.mappedFloat, simsearch::MAPPED_FLOAT2,
       [&](size_t idx) { return searchers.mappedFloat2.getEmbeddings()[idx]; });
+
+  long timestamp = std::time(nullptr);
+  std::string strTimestmap = std::to_string(timestamp);
+  std::string filename = "random_emb_search_results_" + strTimestmap + ".json";
+  // Export results
+  exportQuerySearchResults(floatResults, uint32Results, intResults, filename,
+                           config, searchers);
 
   return results;
 }
 
-void printResults(const BenchmarkResults &results,
-                  const BenchmarkConfig &config, const Searchers &searchers) {
+void printResults(const simsearch::BenchmarkResults &results,
+                  const simsearch::BenchmarkConfig &config,
+                  const simsearch::Searchers &searchers) {
   const std::vector<std::string> names = {
       "F32",          "F32_PCA2",         "F32_PCA4",     "F32_PCA2x2",
       "F32_PCA6",     "F32_PCA8",         "F32_PCA16",    "F32_PCA32",
@@ -443,12 +372,6 @@ void printResults(const BenchmarkResults &results,
     }
   }
 }
-
-struct Query {
-  std::string query;
-  std::string formatted_query;
-  std::vector<float> embedding;
-};
 
 std::vector<Query> loadQueries(const std::string &filename) {
   std::vector<Query> queries;
@@ -502,40 +425,20 @@ void printSearchResults(
   std::cout << "-------------------\n";
 }
 
-void runQuerySearch(Searchers &searchers, const std::string &query_file,
-                    size_t k, size_t rescoring_factor = 10) {
+void runQuerySearch(simsearch::Searchers &searchers,
+                    const std::string &query_file, size_t k,
+                    size_t rescoring_factor = 10) {
   // Load and validate queries
   std::vector<Query> queries = loadQueries(query_file);
   if (queries.empty()) {
     throw std::runtime_error("No queries loaded");
   }
 
-  // Separate structures for different result types
-  struct FloatMethodResults {
-    std::vector<int64_t> times;
-    std::vector<double> jaccardIndexes;
-    std::vector<double> ndcgScores;
-    std::vector<std::vector<std::pair<float, size_t>>> results;
-  };
-
-  struct IntMethodResults {
-    std::vector<int64_t> times;
-    std::vector<double> jaccardIndexes;
-    std::vector<double> ndcgScores;
-    std::vector<std::vector<std::pair<int32_t, size_t>>> results;
-  };
-
-  struct UIntMethodResults {
-    std::vector<int64_t> times;
-    std::vector<double> jaccardIndexes;
-    std::vector<double> ndcgScores;
-    std::vector<std::vector<std::pair<uint32_t, size_t>>> results;
-  };
-
-  // Initialize results storage for each method
-  FloatMethodResults f32Results, avx2Results, twostep;
-  IntMethodResults binaryResults;
-  UIntMethodResults uint8Results;
+  SearchMethodStats<float> f32Results{"F32_base"};
+  SearchMethodStats<float> avx2Results{"AVX2_optimized"};
+  SearchMethodStats<int> binaryResults{"Binary_AVX2"};
+  SearchMethodStats<uint32_t> uint8Results{"UINT8_AVX2"};
+  SearchMethodStats<float> twostepResults{"Two_Step"};
 
   // Process each query
   for (size_t i = 0; i < queries.size(); i++) {
@@ -587,10 +490,10 @@ void runQuerySearch(Searchers &searchers, const std::string &query_file,
           std::chrono::duration_cast<std::chrono::microseconds>(end - start)
               .count());
       avx2Results.results.push_back(results);
-      avx2Results.jaccardIndexes.push_back(
+      avx2Results.jaccard_indexes.push_back(
           EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
                                                 results));
-      avx2Results.ndcgScores.push_back(
+      avx2Results.ndcg_scores.push_back(
           EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
     }
 
@@ -605,10 +508,10 @@ void runQuerySearch(Searchers &searchers, const std::string &query_file,
           std::chrono::duration_cast<std::chrono::microseconds>(end - start)
               .count());
       binaryResults.results.push_back(results);
-      binaryResults.jaccardIndexes.push_back(
+      binaryResults.jaccard_indexes.push_back(
           EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
                                                 results));
-      binaryResults.ndcgScores.push_back(
+      binaryResults.ndcg_scores.push_back(
           EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
     }
 
@@ -622,10 +525,10 @@ void runQuerySearch(Searchers &searchers, const std::string &query_file,
           std::chrono::duration_cast<std::chrono::microseconds>(end - start)
               .count());
       uint8Results.results.push_back(results);
-      uint8Results.jaccardIndexes.push_back(
+      uint8Results.jaccard_indexes.push_back(
           EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
                                                 results));
-      uint8Results.ndcgScores.push_back(
+      uint8Results.ndcg_scores.push_back(
           EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
     }
 
@@ -638,13 +541,14 @@ void runQuerySearch(Searchers &searchers, const std::string &query_file,
                                                        results_binary);
       auto end = std::chrono::high_resolution_clock::now();
 
-      twostep.times.push_back(
+      twostepResults.times.push_back(
           std::chrono::duration_cast<std::chrono::microseconds>(end - start)
               .count());
-      twostep.results.push_back(results);
-      twostep.jaccardIndexes.push_back(EmbeddingUtils::calculateJaccardIndex(
-          f32Results.results.back(), results));
-      twostep.ndcgScores.push_back(
+      twostepResults.results.push_back(results);
+      twostepResults.jaccard_indexes.push_back(
+          EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
+                                                results));
+      twostepResults.ndcg_scores.push_back(
           EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
     }
 
@@ -671,13 +575,14 @@ void runQuerySearch(Searchers &searchers, const std::string &query_file,
 
     printResults("F32 (base)", f32Results.results, f32Results.times);
     printResults("OAVX2", avx2Results.results, avx2Results.times,
-                 avx2Results.jaccardIndexes, avx2Results.ndcgScores);
+                 avx2Results.jaccard_indexes, avx2Results.ndcg_scores);
     printResults("OBinary AVX2", binaryResults.results, binaryResults.times,
-                 binaryResults.jaccardIndexes, binaryResults.ndcgScores);
+                 binaryResults.jaccard_indexes, binaryResults.ndcg_scores);
     printResults("OUINT8 AVX2", uint8Results.results, uint8Results.times,
-                 uint8Results.jaccardIndexes, uint8Results.ndcgScores);
-    printResults("Two-step bin+float", twostep.results, twostep.times,
-                 twostep.jaccardIndexes, twostep.ndcgScores);
+                 uint8Results.jaccard_indexes, uint8Results.ndcg_scores);
+    printResults("Two-step bin+float", twostepResults.results,
+                 twostepResults.times, twostepResults.jaccard_indexes,
+                 twostepResults.ndcg_scores);
   }
 
   std::cout << "Configuration:\n"
@@ -713,14 +618,23 @@ void runQuerySearch(Searchers &searchers, const std::string &query_file,
       };
 
   printAggregateStats("F32 (base)", f32Results.times);
-  printAggregateStats("AVX2", avx2Results.times, avx2Results.jaccardIndexes,
-                      avx2Results.ndcgScores);
+  printAggregateStats("AVX2", avx2Results.times, avx2Results.jaccard_indexes,
+                      avx2Results.ndcg_scores);
   printAggregateStats("Binary AVX2", binaryResults.times,
-                      binaryResults.jaccardIndexes, binaryResults.ndcgScores);
+                      binaryResults.jaccard_indexes, binaryResults.ndcg_scores);
   printAggregateStats("UINT8 AVX2", uint8Results.times,
-                      uint8Results.jaccardIndexes, uint8Results.ndcgScores);
-  printAggregateStats("Two-step bin+float", twostep.times,
-                      twostep.jaccardIndexes, twostep.ndcgScores);
+                      uint8Results.jaccard_indexes, uint8Results.ndcg_scores);
+  printAggregateStats("Two-step bin+float", twostepResults.times,
+                      twostepResults.jaccard_indexes,
+                      twostepResults.ndcg_scores);
+
+  // Get current timestamp
+  long timestamp = std::time(nullptr);
+  std::string strTimestmap = std::to_string(timestamp);
+  std::string filename = "query_search_results_" + strTimestmap + ".json";
+  exportQuerySearchResults(queries, f32Results, avx2Results, binaryResults,
+                           uint8Results, twostepResults, filename,
+                           {k, queries.size(), rescoring_factor}, searchers);
 }
 
 void printUsage(const char *programName) {
@@ -851,7 +765,7 @@ int main(int argc, char *argv[]) {
     ConfigManager::getInstance().initialize("../config.json");
     const auto &config = ConfigRef::get();
 
-    Searchers searchers;
+    simsearch::Searchers searchers;
     std::cout << "Initializing searchers with file: " << args.filename << "\n";
     initializeSearchers(searchers, args.filename);
 
@@ -864,7 +778,8 @@ int main(int argc, char *argv[]) {
     } else {
       // Run in benchmark mode
       std::cout << "Running in benchmark mode...\n";
-      BenchmarkConfig benchConfig{args.k, args.runs, args.rescoring_factor};
+      simsearch::BenchmarkConfig benchConfig{args.k, args.runs,
+                                             args.rescoring_factor};
       auto results = runBenchmark(searchers, benchConfig);
       printResults(results, benchConfig, searchers);
     }

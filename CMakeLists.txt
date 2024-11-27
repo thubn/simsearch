@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-include(${CMAKE_BINARY_DIR}/Release/generators/conan_toolchain.cmake)
+include(build/Release/generators/conan_toolchain.cmake)
 project(simsearch)
 
 set(CMAKE_CXX_STANDARD 23)
