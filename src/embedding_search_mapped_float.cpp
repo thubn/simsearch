@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <bitset>
 #include <cmath>
-#include <eigen3/Eigen/Dense>
+#include <immintrin.h>
 #include <iomanip>
 #include <numeric>
 #include <omp.h>
@@ -330,16 +330,6 @@ bool EmbeddingSearchMappedFloat::setEmbeddings(
 std::vector<std::pair<float, size_t>>
 EmbeddingSearchMappedFloat::similarity_search(const std::vector<float> &query,
                                               size_t k) {
-  std::vector<uint8_t> q(query.size());
-  for (int i = 0; i < query.size(); i++) {
-    q[i] = findPartitionIndex(partitions, query[i]);
-  }
-  return similarity_search(q, k);
-}
-
-std::vector<std::pair<float, size_t>>
-EmbeddingSearchMappedFloat::similarity_search(const std::vector<uint8_t> &query,
-                                              size_t k) {
   if (query.size() != embeddings[0].size()) {
     throw std::runtime_error("Query vector size does not match embedding size");
   }
@@ -347,32 +337,13 @@ EmbeddingSearchMappedFloat::similarity_search(const std::vector<uint8_t> &query,
   std::vector<std::pair<float, size_t>> similarities;
   similarities.reserve(embeddings.size());
 
+  alignas(32) float aligned_query[query.size()];
+  for (int i = 0; i < query.size(); i++) {
+    aligned_query[i] = query[i];
+  }
+
   for (size_t i = 0; i < embeddings.size(); ++i) {
-    if (i % 64 == 0) {
-      for (int j = 0; j + 63 < 256; j += 64) {
-        _mm_prefetch((const char *)&mapped_floats[j], _MM_HINT_T0);
-        _mm_prefetch((const char *)&mapped_floats[j + 16], _MM_HINT_T0);
-        _mm_prefetch((const char *)&mapped_floats[j + 32], _MM_HINT_T0);
-        _mm_prefetch((const char *)&mapped_floats[j + 48], _MM_HINT_T0);
-      }
-    }
-    /*_mm_prefetch((const char *)&embeddings[i][512], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][576], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][640], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][704], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][768], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][832], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][896], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i][960], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][0], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][64], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][128], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][192], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][256], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][320], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][384], _MM_HINT_T0);
-    _mm_prefetch((const char *)&embeddings[i + 1][448], _MM_HINT_T0);*/
-    float sim = cosine_similarity(query, embeddings[i]);
+    float sim = cosine_similarity(aligned_query, embeddings[i]);
     similarities.emplace_back(sim, i);
   }
 
@@ -384,21 +355,16 @@ EmbeddingSearchMappedFloat::similarity_search(const std::vector<uint8_t> &query,
                                                similarities.begin() + k);
 }
 
-/*float EmbeddingSearchMappedFloat::cosine_similarity(
-    const std::vector<uint8_t> &a, const std::vector<uint8_t> &b) {
-  float dot_product = 0.0f;
-
-  for (size_t i = 0; i < a.size(); i++) {
-    dot_product += mapped_floats[a[i]] * mapped_floats[b[i]];
-  }
-
-  return dot_product;
-}*/
+std::vector<std::pair<float, size_t>>
+EmbeddingSearchMappedFloat::similarity_search(const std::vector<uint8_t> &query,
+                                              size_t k) {
+  throw std::runtime_error("not implemented");
+}
 
 float EmbeddingSearchMappedFloat::cosine_similarity(
-    const std::vector<uint8_t> &a, const std::vector<uint8_t> &b) {
+    const float *a, const std::vector<uint8_t> &b) {
   float dot_product = 0.0f;
-  const size_t n = a.size();
+  const size_t n = b.size();
   size_t i = 0;
   __m256 sum0 = _mm256_setzero_ps();
   __m256 sum1 = _mm256_setzero_ps();
@@ -409,46 +375,38 @@ float EmbeddingSearchMappedFloat::cosine_similarity(
   for (; i + 31 < n; i += 32) {
 
     // Load and convert first set while prefetch is happening
-    __m256i indices_a0 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&a[i]));
     __m256i indices_b0 =
         _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i]));
-    __m256i indices_a1 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&a[i + 8]));
     __m256i indices_b1 =
         _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i + 8]));
 
     // Start gathers for first set
-    __m256 values_a0 = _mm256_i32gather_ps(mapped_floats, indices_a0, 4);
     __m256 values_b0 = _mm256_i32gather_ps(mapped_floats, indices_b0, 4);
+    __m256 values_a0 = _mm256_load_ps(a + i);
 
     // Load and convert second set while first gathers are happening
-    __m256i indices_a2 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&a[i + 16]));
     __m256i indices_b2 =
         _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i + 16]));
-    __m256i indices_a3 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&a[i + 24]));
     __m256i indices_b3 =
         _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i + 24]));
 
     // Start gathers for second set
-    __m256 values_a1 = _mm256_i32gather_ps(mapped_floats, indices_a1, 4);
     __m256 values_b1 = _mm256_i32gather_ps(mapped_floats, indices_b1, 4);
+    __m256 values_a1 = _mm256_load_ps(a + i + 8);
 
     // First set multiply-add while second gathers are happening
     sum0 = _mm256_fmadd_ps(values_a0, values_b0, sum0);
 
     // Continue gathers
-    __m256 values_a2 = _mm256_i32gather_ps(mapped_floats, indices_a2, 4);
     __m256 values_b2 = _mm256_i32gather_ps(mapped_floats, indices_b2, 4);
+    __m256 values_a2 = _mm256_load_ps(a + i + 16);
 
     // Second set multiply-add
     sum1 = _mm256_fmadd_ps(values_a1, values_b1, sum1);
 
     // Final gathers
-    __m256 values_a3 = _mm256_i32gather_ps(mapped_floats, indices_a3, 4);
     __m256 values_b3 = _mm256_i32gather_ps(mapped_floats, indices_b3, 4);
+    __m256 values_a3 = _mm256_load_ps(a + i + 24);
 
     // Final multiply-adds
     sum2 = _mm256_fmadd_ps(values_a2, values_b2, sum2);
@@ -468,7 +426,7 @@ float EmbeddingSearchMappedFloat::cosine_similarity(
 
   // Handle remaining elements
   for (; i < n; i++) {
-    dot_product += mapped_floats[a[i]] * mapped_floats[b[i]];
+    dot_product += *(a + i) * mapped_floats[b[i]];
   }
 
   return dot_product;

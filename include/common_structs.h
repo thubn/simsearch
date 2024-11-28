@@ -11,7 +11,7 @@
 #include "embedding_search_uint8_avx2.h"
 #include "optimized_embedding_search_avx2.h"
 #include "optimized_embedding_search_binary_avx2.h"
-//#include "optimized_embedding_search_mapped_float.h"
+// #include "optimized_embedding_search_mapped_float.h"
 #include "optimized_embedding_search_uint8_avx2.h"
 #include <string>
 #include <thread>
@@ -97,7 +97,7 @@ public:
   OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
   EmbeddingSearchFloat16 float16;
   EmbeddingSearchMappedFloat mappedFloat;
-  //OptimizedEmbeddingSearchMappedFloat mappedFloat2;
+  // OptimizedEmbeddingSearchMappedFloat mappedFloat2;
 
   Searchers() = default;
 
@@ -152,15 +152,10 @@ public:
   }*/
 };
 
-void initializeSearchers(Searchers &searchers, const std::string &filename) {
+void initializeSearchers(Searchers &searchers, const std::string &filename,
+                         const bool initPca = false) {
   // Load base embeddings
   searchers.initBase(filename);
-
-  std::thread tPca2(&Searchers::initPca2, &searchers);
-  std::thread tPca4(&Searchers::initPca4, &searchers);
-  std::thread tPca8(&Searchers::initPca8, &searchers);
-  std::thread tPca16(&Searchers::initPca16, &searchers);
-  std::thread tPca32(&Searchers::initPca32, &searchers);
 
   // std::thread tAvx2(&Searchers::initAvx2, &searchers);
   // std::thread tBinary(&Searchers::initBinary, &searchers);
@@ -171,12 +166,19 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
   // std::thread tFloat16(&Searchers::initFloat16, &searchers);
   std::thread tMappedFloat(&Searchers::initMappedFloat, &searchers);
-  //std::thread tMappedFloat2(&Searchers::initMappedFloat2, &searchers);
-  tPca8.join();
-  tPca2.join();
-  tPca4.join();
-  tPca16.join();
-  tPca32.join();
+  // std::thread tMappedFloat2(&Searchers::initMappedFloat2, &searchers);
+  if (initPca) {
+    std::thread tPca2(&Searchers::initPca2, &searchers);
+    std::thread tPca4(&Searchers::initPca4, &searchers);
+    std::thread tPca8(&Searchers::initPca8, &searchers);
+    std::thread tPca16(&Searchers::initPca16, &searchers);
+    std::thread tPca32(&Searchers::initPca32, &searchers);
+    tPca2.join();
+    tPca4.join();
+    tPca8.join();
+    tPca16.join();
+    tPca32.join();
+  }
 
   // tAvx2.join();
   // tBinary.join();
@@ -187,7 +189,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename) {
   tOuint_avx2.join();
   // tFloat16.join();
   tMappedFloat.join();
-  //tMappedFloat2.join();
+  // tMappedFloat2.join();
 }
 
 } // namespace simsearch

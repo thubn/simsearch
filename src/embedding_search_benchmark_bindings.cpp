@@ -33,6 +33,7 @@ class PyEmbeddingSearch {
 private:
   std::unique_ptr<simsearch::Searchers> searchers;
   bool is_initialized = false;
+  bool init_pca = false;
   std::string config_path;
 
   // Helper methods
@@ -108,7 +109,7 @@ private:
   }
 
 public:
-  PyEmbeddingSearch() {
+  PyEmbeddingSearch(const bool initPca = false) {
     config_path =
         std::filesystem::path(py::module::import("embedding_search_benchmark")
                                   .attr("__file__")
@@ -116,13 +117,14 @@ public:
             .parent_path()
             .string() +
         "/config.json";
+    init_pca = initPca;
   }
 
   bool load(const std::string &filename) {
     try {
       ConfigManager::getInstance().initialize(config_path);
       searchers = std::make_unique<simsearch::Searchers>();
-      simsearch::initializeSearchers(*searchers, filename);
+      simsearch::initializeSearchers(*searchers, filename, init_pca);
       is_initialized = true;
       return true;
     } catch (const std::exception &e) {
@@ -165,7 +167,7 @@ public:
   py::tuple search_mf(py::array_t<float> query_vector, size_t k) {
     return perform_search(
         SearcherInfo<EmbeddingSearchMappedFloat>{searchers->mappedFloat,
-                                                   "mapped float"},
+                                                 "mapped float"},
         query_vector, k);
   }
 
@@ -346,7 +348,7 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
   m.doc() = "Python bindings for embedding search implementations";
 
   py::class_<PyEmbeddingSearch>(m, "EmbeddingSearch")
-      .def(py::init<>())
+      .def(py::init<const bool>(),py::arg("initPca") = false)
       .def("load", &PyEmbeddingSearch::load, "Load embeddings from file",
            py::arg("filename"))
       .def("search_float", &PyEmbeddingSearch::search_float,
@@ -365,10 +367,10 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
            py::arg("query_vector"), py::arg("k"))
       .def("search_pca8", &PyEmbeddingSearch::search_pca8, "pca8 search",
            py::arg("query_vector"), py::arg("k"))
-      .def("search_pca16", &PyEmbeddingSearch::search_pca16,
-           "pca16 search", py::arg("query_vector"), py::arg("k"))
-      .def("search_pca32", &PyEmbeddingSearch::search_pca32,
-           "pca32 search", py::arg("query_vector"), py::arg("k"))
+      .def("search_pca16", &PyEmbeddingSearch::search_pca16, "pca16 search",
+           py::arg("query_vector"), py::arg("k"))
+      .def("search_pca32", &PyEmbeddingSearch::search_pca32, "pca32 search",
+           py::arg("query_vector"), py::arg("k"))
       .def("search_twostep", &PyEmbeddingSearch::search_twostep,
            "Two-step binary+float search", py::arg("query_vector"),
            py::arg("k"), py::arg("rescoring_factor") = 50)

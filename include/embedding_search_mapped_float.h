@@ -1,5 +1,6 @@
 #pragma once
 #include "embedding_search_base.h"
+#include <stdexcept>
 
 class EmbeddingSearchMappedFloat
     : public EmbeddingSearchBase<std::vector<uint8_t>, float> {
@@ -36,6 +37,9 @@ private:
   alignas(32) float mapped_floats[256];
   // float mapped_floats_mul_result[MUL_RESULTS_SIZE][MUL_RESULTS_SIZE];
   float cosine_similarity(const std::vector<uint8_t> &a,
-                          const std::vector<uint8_t> &b);
+                          const std::vector<uint8_t> &b) {
+    throw std::runtime_error("not implemented");
+  };
+  float cosine_similarity(const float *a, const std::vector<uint8_t> &b);
   std::vector<PartitionInfo> partitions;
 };
