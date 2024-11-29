@@ -120,11 +120,12 @@ public:
     init_pca = initPca;
   }
 
-  bool load(const std::string &filename) {
+  bool load(const std::string &filename, const int embedding_dim) {
     try {
       ConfigManager::getInstance().initialize(config_path);
       searchers = std::make_unique<simsearch::Searchers>();
-      simsearch::initializeSearchers(*searchers, filename, init_pca);
+      simsearch::initializeSearchers(*searchers, filename, init_pca,
+                                     embedding_dim);
       is_initialized = true;
       return true;
     } catch (const std::exception &e) {
@@ -163,6 +164,13 @@ public:
             searchers->ouint8_avx2, "int8"},
         query_vector, k);
   }
+
+  /*py::tuple search_sint8(py::array_t<float> query_vector, size_t k) {
+    return perform_search(
+        SearcherInfo<EmbeddingSearchUint8AVX2, uint32_t>{searchers->uint8_avx2,
+                                                         "slower int8"},
+        query_vector, k);
+  }*/
 
   py::tuple search_mf(py::array_t<float> query_vector, size_t k) {
     return perform_search(
@@ -335,6 +343,28 @@ py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, uint32_t>(
   return self->format_results(results, time);
 }
 
+// Specialization for int8 AVX2 searcher
+/*template <>
+py::tuple perform_search_impl<EmbeddingSearchUint8AVX2, uint32_t>(
+    PyEmbeddingSearch *self,
+    const SearcherInfo<EmbeddingSearchUint8AVX2, uint32_t> &info,
+    py::array_t<float> query_vector, size_t k) {
+  self->check_initialization();
+  std::vector<float> query = self->convert_query(query_vector);
+
+  avx2i_vector queryInt8(query.size() / 8 / 4);
+  EmbeddingUtils::convertSingleFloatToUint8AVX2(query, queryInt8,
+                                                query.size() / 8 / 4);
+
+  auto start = std::chrono::high_resolution_clock::now();
+  auto results = info.searcher.similarity_search(queryInt8, k);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                  .count();
+
+  return self->format_results(results, time);
+}*/
+
 // Module definition using a helper macro to reduce repetition
 #define ADD_SEARCH_METHOD(name, func)                                          \
   .def(#name, &PyEmbeddingSearch::func, #name " search",                       \
@@ -348,17 +378,19 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
   m.doc() = "Python bindings for embedding search implementations";
 
   py::class_<PyEmbeddingSearch>(m, "EmbeddingSearch")
-      .def(py::init<const bool>(),py::arg("initPca") = false)
+      .def(py::init<const bool>(), py::arg("initPca") = false)
       .def("load", &PyEmbeddingSearch::load, "Load embeddings from file",
-           py::arg("filename"))
+           py::arg("filename"), py::arg("embedding_dim"))
       .def("search_float", &PyEmbeddingSearch::search_float,
            "Base float search", py::arg("query_vector"), py::arg("k"))
       .def("search_avx2", &PyEmbeddingSearch::search_avx2,
            "AVX2 optimized search", py::arg("query_vector"), py::arg("k"))
       .def("search_binary", &PyEmbeddingSearch::search_binary,
            "Binary AVX2 search", py::arg("query_vector"), py::arg("k"))
-      .def("search_int8", &PyEmbeddingSearch::search_int8, "Binary INT8 search",
+      .def("search_int8", &PyEmbeddingSearch::search_int8, "INT8 search",
            py::arg("query_vector"), py::arg("k"))
+      /*.def("search_sint8", &PyEmbeddingSearch::search_sint8,
+           "slower INT8 search", py::arg("query_vector"), py::arg("k"))*/
       .def("search_mf", &PyEmbeddingSearch::search_mf, "mapped float search",
            py::arg("query_vector"), py::arg("k"))
       .def("search_pca2", &PyEmbeddingSearch::search_pca2, "pca2 search",

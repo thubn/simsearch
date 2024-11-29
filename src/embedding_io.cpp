@@ -315,7 +315,8 @@ bool load_json2(const std::string &filename,
 bool load_parquet(const std::string &filename,
                   std::vector<std::vector<float>> &embeddings,
                   std::vector<std::string> &sentences,
-                  int /* num_threads unused */) {
+                  const int embedding_dim) {
+  std::cout << "embedding_dim: " << embedding_dim << std::endl;
   try {
     // Standard initialization
     arrow::MemoryPool *pool = arrow::default_memory_pool();
@@ -335,7 +336,6 @@ bool load_parquet(const std::string &filename,
     auto file_metadata = reader->parquet_reader()->metadata();
     int64_t num_rows = file_metadata->num_rows();
     int num_row_groups = file_metadata->num_row_groups();
-    const int embedding_dim = 1024;
 
     // Pre-allocate the final vectors
     embeddings.clear();
@@ -390,7 +390,7 @@ bool load_parquet(const std::string &filename,
         if (text_array->IsNull(i)) {
           sentences[batch.base_idx + i].clear();
         } else {
-          std::string text = text_array->GetString(i).substr(0,128);
+          std::string text = text_array->GetString(i).substr(0, 128);
           std::replace(text.begin(), text.end(), '\n', ' ');
           sentences[batch.base_idx + i] = std::move(text);
         }

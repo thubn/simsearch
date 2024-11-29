@@ -22,6 +22,7 @@ protected:
 private:
   AVX2Popcount counter;
   int32_t cosine_similarity_optimized(const __m256i *vec_a, const __m256i *vec_b) const override;
+  int32_t cosine_similarity_optimized_dynamic(const __m256i *vec_a, const __m256i *vec_b) const;
   void convert_float_to_binary_avx2(const std::vector<float> &input,
                                     __m256i *output) const;
 };

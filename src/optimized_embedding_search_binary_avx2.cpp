@@ -64,9 +64,18 @@ OptimizedEmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
   // counter = AVX2Popcount();
   //  AVX2PopcountHarleySeal counter;
 
-  for (size_t i = 0; i < num_vectors; i++) {
-    int32_t sim = cosine_similarity_optimized(get_embedding_ptr(i), query_data);
-    similarities.emplace_back(sim, i);
+  if (vectors_per_embedding == 4) {
+    for (size_t i = 0; i < num_vectors; i++) {
+      int32_t sim =
+          cosine_similarity_optimized(get_embedding_ptr(i), query_data);
+      similarities.emplace_back(sim, i);
+    }
+  } else {
+    for (size_t i = 0; i < num_vectors; i++) {
+      int32_t sim =
+          cosine_similarity_optimized_dynamic(get_embedding_ptr(i), query_data);
+      similarities.emplace_back(sim, i);
+    }
   }
 
   std::partial_sort(
@@ -106,7 +115,6 @@ void OptimizedEmbeddingSearchBinaryAVX2::convert_float_to_binary_avx2(
 // currently hardcoded for 1024bit vectors
 int32_t OptimizedEmbeddingSearchBinaryAVX2::cosine_similarity_optimized(
     const __m256i *vec_a, const __m256i *vec_b) const {
-  int32_t total_popcount = 0;
 
   // prefetch 2 cache lines for 4 vectors 10 loops ahead
   _mm_prefetch(vec_a + 4 * 10, _MM_HINT_T0);
@@ -125,4 +133,24 @@ int32_t OptimizedEmbeddingSearchBinaryAVX2::cosine_similarity_optimized(
   // popcnt lookup is faster than harley seal
   return counter.popcnt_AVX2_lookup(
       reinterpret_cast<const uint8_t *>(xor_result), 4 * sizeof(__m256i));
+}
+
+int32_t OptimizedEmbeddingSearchBinaryAVX2::cosine_similarity_optimized_dynamic(
+    const __m256i *vec_a, const __m256i *vec_b) const {
+  int32_t total_popcount = 0;
+
+  // prefetch 2 cache lines for 4 vectors 10 loops ahead
+  _mm_prefetch(vec_a + 4 * 10, _MM_HINT_T0);
+  _mm_prefetch(vec_a + 4 * 10 + 2, _MM_HINT_T0);
+  __m256i all_ones = _mm256_set1_epi32(-1);
+  __m256i xor_result[vectors_per_embedding];
+  for (int i = 0; i < vectors_per_embedding; i++) {
+    xor_result[i] = _mm256_xor_si256(vec_a[i], vec_b[i]);
+    xor_result[i] = _mm256_xor_si256(xor_result[i], all_ones);
+  }
+
+  // popcnt lookup is faster than harley seal
+  return counter.popcnt_AVX2_lookup(
+      reinterpret_cast<const uint8_t *>(xor_result),
+      vectors_per_embedding * sizeof(__m256i));
 }
