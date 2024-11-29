@@ -160,17 +160,17 @@ public:
 
   py::tuple search_int8(py::array_t<float> query_vector, size_t k) {
     return perform_search(
-        SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, uint32_t>{
+        SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t>{
             searchers->ouint8_avx2, "int8"},
         query_vector, k);
   }
 
-  /*py::tuple search_sint8(py::array_t<float> query_vector, size_t k) {
+  py::tuple search_float16(py::array_t<float> query_vector, size_t k) {
     return perform_search(
-        SearcherInfo<EmbeddingSearchUint8AVX2, uint32_t>{searchers->uint8_avx2,
-                                                         "slower int8"},
+        SearcherInfo<EmbeddingSearchFloat16, float>{searchers->float16,
+                                                    "float16"},
         query_vector, k);
-  }*/
+  }
 
   py::tuple search_mf(py::array_t<float> query_vector, size_t k) {
     return perform_search(
@@ -323,9 +323,9 @@ py::tuple perform_search_impl<OptimizedEmbeddingSearchBinaryAVX2, int32_t>(
 
 // Specialization for int8 AVX2 searcher
 template <>
-py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, uint32_t>(
+py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, int32_t>(
     PyEmbeddingSearch *self,
-    const SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, uint32_t> &info,
+    const SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t> &info,
     py::array_t<float> query_vector, size_t k) {
   self->check_initialization();
   std::vector<float> query = self->convert_query(query_vector);
@@ -389,8 +389,8 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
            "Binary AVX2 search", py::arg("query_vector"), py::arg("k"))
       .def("search_int8", &PyEmbeddingSearch::search_int8, "INT8 search",
            py::arg("query_vector"), py::arg("k"))
-      /*.def("search_sint8", &PyEmbeddingSearch::search_sint8,
-           "slower INT8 search", py::arg("query_vector"), py::arg("k"))*/
+      .def("search_float16", &PyEmbeddingSearch::search_float16,
+           "float16 search", py::arg("query_vector"), py::arg("k"))
       .def("search_mf", &PyEmbeddingSearch::search_mf, "mapped float search",
            py::arg("query_vector"), py::arg("k"))
       .def("search_pca2", &PyEmbeddingSearch::search_pca2, "pca2 search",

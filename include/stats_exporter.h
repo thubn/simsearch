@@ -67,7 +67,7 @@ void exportQuerySearchResults(const std::vector<Query> &queries,
                               const SearchMethodStats<float> &f32_results,
                               const SearchMethodStats<float> &avx2_results,
                               const SearchMethodStats<int> &binary_results,
-                              const SearchMethodStats<uint32_t> &uint8_results,
+                              const SearchMethodStats<int> &uint8_results,
                               const SearchMethodStats<float> &twostep_results,
                               const std::string &output_file,
                               const BenchmarkConfig &config,
@@ -107,7 +107,7 @@ void exportQuerySearchResults(const std::vector<Query> &queries,
 // Function to export search results
 void exportQuerySearchResults(
     const std::vector<SearchMethodStats<float>> floatResults,
-    const std::vector<SearchMethodStats<uint32_t>> uint32Results,
+    const std::vector<SearchMethodStats<int>> uint32Results,
     const std::vector<SearchMethodStats<int>> intResults,
     const std::string &output_file, const BenchmarkConfig &config,
     const Searchers &searchers) {
@@ -130,7 +130,7 @@ void exportQuerySearchResults(
   for (const SearchMethodStats<int> &method : intResults) {
     output["methods"].emplace_back(method.to_json());
   }
-  for (const SearchMethodStats<uint32_t> &method : uint32Results) {
+  for (const SearchMethodStats<int> &method : uint32Results) {
     output["methods"].emplace_back(method.to_json());
   }
 

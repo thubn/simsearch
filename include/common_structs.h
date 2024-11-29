@@ -164,7 +164,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
   std::thread tOavx2(&Searchers::initOavx2, &searchers);
   std::thread tObinary_avx2(&Searchers::initObinary_avx2, &searchers);
   std::thread tOuint_avx2(&Searchers::initOuint_avx2, &searchers);
-  // std::thread tFloat16(&Searchers::initFloat16, &searchers);
+  std::thread tFloat16(&Searchers::initFloat16, &searchers);
   std::thread tMappedFloat(&Searchers::initMappedFloat, &searchers);
   // std::thread tMappedFloat2(&Searchers::initMappedFloat2, &searchers);
   if (initPca) {
@@ -187,7 +187,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
   tOavx2.join();
   tObinary_avx2.join();
   tOuint_avx2.join();
-  // tFloat16.join();
+  tFloat16.join();
   tMappedFloat.join();
   // tMappedFloat2.join();
 }

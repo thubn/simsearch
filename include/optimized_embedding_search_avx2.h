@@ -26,7 +26,7 @@ protected:
                           std::string &error_message) override;
 
 private:
-  std::vector<float> norms;
+  // std::vector<float> norms;
   // Private method declarations
   float compute_norm_avx2(const float *vec) const;
   float cosine_similarity_optimized(const float *vec_a, const float *vec_b) const override;

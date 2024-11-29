@@ -50,7 +50,7 @@ runBenchmark(simsearch::Searchers &searchers,
 
   // Create vectors to store different types of results
   std::vector<SearchMethodStats<float>> floatResults;
-  std::vector<SearchMethodStats<uint32_t>> uint32Results;
+  std::vector<SearchMethodStats<int>> uint32Results;
   std::vector<SearchMethodStats<int>> intResults;
 
   // Generate random indexes first
@@ -265,7 +265,7 @@ runBenchmark(simsearch::Searchers &searchers,
       "O Binary AVX2", searchers.obinary_avx2, simsearch::OBINAR_AVX2,
       [&](size_t idx) { return searchers.obinary_avx2.getEmbeddingAVX2(idx); });
 
-  runUint32SearcherBenchmark(
+  runIntSearcherBenchmark(
       "O UINT8 AVX2", searchers.ouint8_avx2, simsearch::OUINT8_AVX2,
       [&](size_t idx) { return searchers.ouint8_avx2.getEmbeddingAVX2(idx); });
 
@@ -393,7 +393,7 @@ void runQuerySearch(simsearch::Searchers &searchers,
   SearchMethodStats<float> f32Results{"F32_base"};
   SearchMethodStats<float> avx2Results{"AVX2_optimized"};
   SearchMethodStats<int> binaryResults{"Binary_AVX2"};
-  SearchMethodStats<uint32_t> uint8Results{"UINT8_AVX2"};
+  SearchMethodStats<int> uint8Results{"UINT8_AVX2"};
   SearchMethodStats<float> twostepResults{"Two_Step"};
 
   // Process each query

@@ -3,13 +3,15 @@
 #include <stdfloat>
 
 class EmbeddingSearchFloat16
-    : public EmbeddingSearchBase<std::vector<std::bfloat16_t>, float> {
+    : public EmbeddingSearchBase<std::vector<std::float16_t>, float> {
 public:
   EmbeddingSearchFloat16() = default;
 
   std::vector<std::pair<float, size_t>>
-  similarity_search(const std::vector<std::bfloat16_t> &query,
+  similarity_search(const std::vector<std::float16_t> &query,
                     size_t k) override;
+  std::vector<std::pair<float, size_t>>
+  similarity_search(const std::vector<float> &query, size_t k);
 
   bool validateDimensions(const std::vector<std::vector<float>> &input,
                           std::string &error_message) override {
@@ -24,6 +26,6 @@ public:
       const std::vector<std::vector<float>> &float_embeddings) override;
 
 private:
-  float cosine_similarity(const std::vector<std::bfloat16_t> &a,
-                          const std::vector<std::bfloat16_t> &b);
+  float cosine_similarity(const std::vector<std::float16_t> &a,
+                          const std::vector<std::float16_t> &b);
 };

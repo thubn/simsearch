@@ -83,20 +83,17 @@ bool validateBinaryAVX2Dimensions(const std::vector<std::vector<float>> &input,
 
 void convertSingleFloatToUint8AVX2(const std::vector<float> &input,
                                    avx2i_vector &output, size_t vector_dim) {
-  for (size_t j = 0; j < vector_dim; j++) {
-    size_t k = j * 32;
+  for (size_t i = 0; i < vector_dim; i++) {
+    std::vector<int8_t> temp(32, 0); // Initialize with zeros for padding
 
-    // Create temporary array for int8 values
-    std::vector<int8_t> temp_int8(32, 0);
-
-    // Convert float values to int8
-    for (int l = 0; l < 32; l++) {
-      temp_int8[l] = static_cast<int8_t>(input[k + l] * 127);
+    // Only fill up to the actual dimension size
+    for (size_t j = 0; j < 32 && (i * 32 + j) < input.size(); j++) {
+      float val = input[i * 32 + j];
+      temp[j] = static_cast<int8_t>(std::clamp(val * 127.0f, -127.0f, 127.0f));
     }
 
-    // Load int8 values into AVX2 vector
-    output[j] =
-        _mm256_loadu_si256(reinterpret_cast<const __m256i *>(temp_int8.data()));
+    output[i] =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i *>(temp.data()));
   }
 }
 
