@@ -287,60 +287,63 @@ bool EmbeddingSearchMappedFloat::setEmbeddings(
 bool EmbeddingSearchMappedFloat::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors,
     double distrib_factor) {
+
   initializeDimensions(input_vectors);
 
   try {
     std::vector<float> flat_input = flattenMatrix(input_vectors);
     partitions = partitionAndAverage(
         flat_input, 256, DistributionType::GAUSSIAN, distrib_factor);
-    // printPartitions(partitions);
 
-    embeddings.resize(num_vectors, std::vector<uint8_t>(vector_dim));
+    // Calculate padded dimension for AVX2 vectors
+    vector_dim = input_vectors[0].size();
+    padded_dim = ((vector_dim + 31) / 32) * 32; // Round up to multiple of 32
+    size_t avx2_vectors_per_embedding = padded_dim / 32;
+
+    // Resize embeddings with AVX vectors
+    embeddings.resize(num_vectors, avx2i_vector(avx2_vectors_per_embedding));
 
 #pragma omp parallel for
     for (int i = 0; i < num_vectors; i++) {
+      // Convert to uint8_t indices first
+      std::vector<uint8_t> temp_indices(padded_dim, 0);
       for (int j = 0; j < vector_dim; j++) {
-        embeddings[i][j] = findPartitionIndex(partitions, input_vectors[i][j]);
+        temp_indices[j] = findPartitionIndex(partitions, input_vectors[i][j]);
+      }
+
+      // Convert to AVX2 vectors (32 uint8_t values per vector)
+      for (size_t j = 0; j < avx2_vectors_per_embedding; j++) {
+        embeddings[i][j] = _mm256_loadu_si256(
+            reinterpret_cast<const __m256i *>(&temp_indices[j * 32]));
       }
     }
+
+    // Store partition averages
     for (int i = 0; i < partitions.size(); i++) {
       mapped_floats[i] = partitions[i].average;
     }
 
-    /*
-    Map results for float multiplication
-    for (int i = 0; i < MUL_RESULTS_SIZE; i++) {
-      for (int j = 0; j < MUL_RESULTS_SIZE; j++) {
-        mapped_floats_mul_result[i][j] = mapped_floats[i] * mapped_floats[j];
-      }
-    }
-    */
-
+    return true;
   } catch (const std::bad_alloc &e) {
     std::cerr << "Memory allocation failed in setEmbeddings: " << e.what()
               << '\n';
-    std::cerr << "Available system memory might be insufficient\n";
-    throw; // Re-throw the exception
+    throw;
   }
-  // exit(0);
-
-  return true;
 }
 
 std::vector<std::pair<float, size_t>>
 EmbeddingSearchMappedFloat::similarity_search(const std::vector<float> &query,
                                               size_t k) {
-  if (query.size() != embeddings[0].size()) {
+  if (query.size() != vector_dim) {
     throw std::runtime_error("Query vector size does not match embedding size");
   }
 
+  // Convert query to aligned float array
+  alignas(32) float aligned_query[query.size()];
+  std::copy(query.begin(), query.end(), aligned_query);
+
   std::vector<std::pair<float, size_t>> similarities;
   similarities.reserve(embeddings.size());
-
-  alignas(32) float aligned_query[query.size()];
-  for (int i = 0; i < query.size(); i++) {
-    aligned_query[i] = query[i];
-  }
 
   for (size_t i = 0; i < embeddings.size(); ++i) {
     float sim = cosine_similarity(aligned_query, embeddings[i]);
@@ -356,61 +359,51 @@ EmbeddingSearchMappedFloat::similarity_search(const std::vector<float> &query,
 }
 
 std::vector<std::pair<float, size_t>>
-EmbeddingSearchMappedFloat::similarity_search(const std::vector<uint8_t> &query,
+EmbeddingSearchMappedFloat::similarity_search(const avx2i_vector &query,
                                               size_t k) {
   throw std::runtime_error("not implemented");
 }
 
-float EmbeddingSearchMappedFloat::cosine_similarity(
-    const float *a, const std::vector<uint8_t> &b) {
+float EmbeddingSearchMappedFloat::cosine_similarity(const float *a,
+                                                    const avx2i_vector &b) {
   float dot_product = 0.0f;
-  const size_t n = b.size();
+  const size_t vectors_per_embedding = b.size();
+  size_t total_elements =
+      vectors_per_embedding * 32; // 32 uint8_t per AVX2 vector
   size_t i = 0;
+
   __m256 sum0 = _mm256_setzero_ps();
   __m256 sum1 = _mm256_setzero_ps();
   __m256 sum2 = _mm256_setzero_ps();
   __m256 sum3 = _mm256_setzero_ps();
 
-  // Process 32 elements at a time
-  for (; i + 31 < n; i += 32) {
+  for (size_t vec_idx = 0; vec_idx < vectors_per_embedding; vec_idx++) {
+    // Extract uint8_t values from AVX2 vector
+    alignas(32) uint8_t indices[32];
+    _mm256_store_si256((__m256i *)indices, b[vec_idx]);
 
-    // Load and convert first set while prefetch is happening
+    // Process 32 elements per AVX2 vector
     __m256i indices_b0 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i]));
-    __m256i indices_b1 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i + 8]));
-
-    // Start gathers for first set
+        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&indices[0]));
     __m256 values_b0 = _mm256_i32gather_ps(mapped_floats, indices_b0, 4);
     __m256 values_a0 = _mm256_load_ps(a + i);
-
-    // Load and convert second set while first gathers are happening
-    __m256i indices_b2 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i + 16]));
-    __m256i indices_b3 =
-        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&b[i + 24]));
-
-    // Start gathers for second set
+    sum0 = _mm256_fmadd_ps(values_a0, values_b0, sum0);
+    __m256i indices_b1 =
+        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&indices[8]));
     __m256 values_b1 = _mm256_i32gather_ps(mapped_floats, indices_b1, 4);
     __m256 values_a1 = _mm256_load_ps(a + i + 8);
-
-    // First set multiply-add while second gathers are happening
-    sum0 = _mm256_fmadd_ps(values_a0, values_b0, sum0);
-
-    // Continue gathers
+    sum1 = _mm256_fmadd_ps(values_a1, values_b1, sum1);
+    __m256i indices_b2 =
+        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&indices[16]));
     __m256 values_b2 = _mm256_i32gather_ps(mapped_floats, indices_b2, 4);
     __m256 values_a2 = _mm256_load_ps(a + i + 16);
-
-    // Second set multiply-add
-    sum1 = _mm256_fmadd_ps(values_a1, values_b1, sum1);
-
-    // Final gathers
+    sum2 = _mm256_fmadd_ps(values_a2, values_b2, sum2);
+    __m256i indices_b3 =
+        _mm256_cvtepu8_epi32(_mm_loadl_epi64((__m128i *)&indices[24]));
     __m256 values_b3 = _mm256_i32gather_ps(mapped_floats, indices_b3, 4);
     __m256 values_a3 = _mm256_load_ps(a + i + 24);
-
-    // Final multiply-adds
-    sum2 = _mm256_fmadd_ps(values_a2, values_b2, sum2);
     sum3 = _mm256_fmadd_ps(values_a3, values_b3, sum3);
+    i += 32;
   }
 
   // Combine sums
@@ -425,10 +418,11 @@ float EmbeddingSearchMappedFloat::cosine_similarity(
   dot_product = _mm_cvtss_f32(sum128);
 
   // Handle remaining elements
-  for (; i < n; i++) {
-    dot_product += *(a + i) * mapped_floats[b[i]];
+  while (i < vector_dim) {
+    uint8_t idx = reinterpret_cast<const uint8_t *>(b.data())[i];
+    dot_product += a[i] * mapped_floats[idx];
+    i++;
   }
 
   return dot_product;
-  ;
 }
