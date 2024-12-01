@@ -5,6 +5,8 @@
 #include <iostream>
 #include <stdexcept>
 
+constexpr int_fast8_t NUM_READ_POSITIONS = 6;
+
 bool OptimizedEmbeddingSearchAVX2::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {
   if (input_vectors.empty() || input_vectors[0].empty()) {
@@ -94,8 +96,9 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
   std::vector<std::pair<float, size_t>> results(num_vectors);
 
   // #pragma omp parallel for schedule(static)
-  for (size_t i = 0; i + 5 < num_vectors; i += 6) {
-    float sim[6] = {};
+  for (size_t i = 0; i + NUM_READ_POSITIONS - 1 < num_vectors;
+       i += NUM_READ_POSITIONS) {
+    float sim[NUM_READ_POSITIONS] = {};
     cosine_similarity_optimized(i, query_aligned.data(), sim);
     results[i] = std::make_pair(sim[0], i);
     results[i + 1] = std::make_pair(sim[1], i + 1);
@@ -103,8 +106,9 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
     results[i + 3] = std::make_pair(sim[3], i + 3);
     results[i + 4] = std::make_pair(sim[4], i + 4);
     results[i + 5] = std::make_pair(sim[5], i + 5);
-    // results[i + 6] = std::make_pair(sim[6], i + 6);
-    // results[i + 7] = std::make_pair(sim[7], i + 7);
+    // results[i * NUM_READ_POSITIONS + 6] = std::make_pair(sim[6], i + 6 *
+    // rpo); results[i * NUM_READ_POSITIONS + 7] = std::make_pair(sim[7], i + 7
+    // * rpo);
   }
 
   // Partial sort to get top-k results
@@ -186,21 +190,21 @@ float OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
 inline void OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
     const int j, const float *vec_a, float *sim) {
   // Check if we have enough vectors
-  if (j + 5 >= num_vectors) {
-    throw std::out_of_range("Not enough vectors for AVX2 processing");
-  }
-  __m256 sum[6] = {_mm256_setzero_ps(), _mm256_setzero_ps(),
-                   _mm256_setzero_ps(), _mm256_setzero_ps(),
-                   _mm256_setzero_ps(), _mm256_setzero_ps()};
+  __m256 sum[NUM_READ_POSITIONS] = {_mm256_setzero_ps(), _mm256_setzero_ps(),
+                                    _mm256_setzero_ps(), _mm256_setzero_ps(),
+                                    _mm256_setzero_ps(), _mm256_setzero_ps()};
+  //_mm256_setzero_ps(), _mm256_setzero_ps()
+  //_mm256_setzero_ps(), _mm256_setzero_ps()};
   //  _mm256_setzero_ps(), _mm256_setzero_ps()};
   __m256 a;
-  __m256 b[6];
+  __m256 b[NUM_READ_POSITIONS];
   // Load embedding pointers
-  const float *emb_ptr[6] = {
+  const float *emb_ptr[NUM_READ_POSITIONS] = {
       get_embedding_ptr(j),     get_embedding_ptr(j + 1),
       get_embedding_ptr(j + 2), get_embedding_ptr(j + 3),
       get_embedding_ptr(j + 4), get_embedding_ptr(j + 5)};
-  // get_embedding_ptr(j + 6), get_embedding_ptr(j + 7)};
+  // get_embedding_ptr(j + (6 * rpo)),
+  // get_embedding_ptr(j + (7 * rpo))
 
   for (int i = 0; i < padded_dim; i += 8) {
     a = _mm256_load_ps(vec_a + i);
@@ -211,6 +215,8 @@ inline void OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
     b[3] = _mm256_load_ps(emb_ptr[3] + i);
     b[4] = _mm256_load_ps(emb_ptr[4] + i);
     b[5] = _mm256_load_ps(emb_ptr[5] + i);
+    //[6] = _mm256_load_ps(emb_ptr[6] + i);
+    // b[7] = _mm256_load_ps(emb_ptr[7] + i);
 
     sum[0] = _mm256_fmadd_ps(a, b[0], sum[0]);
     sum[1] = _mm256_fmadd_ps(a, b[1], sum[1]);
@@ -218,15 +224,11 @@ inline void OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
     sum[3] = _mm256_fmadd_ps(a, b[3], sum[3]);
     sum[4] = _mm256_fmadd_ps(a, b[4], sum[4]);
     sum[5] = _mm256_fmadd_ps(a, b[5], sum[5]);
-
-    // b[6] = _mm256_load_ps(emb_ptr[6] + i);
-    // b[7] = _mm256_load_ps(emb_ptr[7] + i);
-
     // sum[6] = _mm256_fmadd_ps(a, b[6], sum[6]);
     // sum[7] = _mm256_fmadd_ps(a, b[7], sum[7]);
   }
 
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < NUM_READ_POSITIONS; i++) {
     // Horizontal sum
     __m128 hi = _mm256_extractf128_ps(sum[i], 1);
     __m128 lo = _mm256_castps256_ps128(sum[i]);
