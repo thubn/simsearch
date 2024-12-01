@@ -33,7 +33,6 @@ class PyEmbeddingSearch {
 private:
   std::unique_ptr<simsearch::Searchers> searchers;
   bool is_initialized = false;
-  bool init_pca = false;
   std::string config_path;
 
   // Helper methods
@@ -109,7 +108,7 @@ private:
   }
 
 public:
-  PyEmbeddingSearch(const bool initPca = false) {
+  PyEmbeddingSearch() {
     config_path =
         std::filesystem::path(py::module::import("embedding_search_benchmark")
                                   .attr("__file__")
@@ -117,15 +116,18 @@ public:
             .parent_path()
             .string() +
         "/config.json";
-    init_pca = initPca;
   }
 
-  bool load(const std::string &filename, const int embedding_dim) {
+  bool load(const std::string &filename, const int embedding_dim,
+            bool init_pca = true, bool init_avx2 = true,
+            bool init_binary = true, bool init_int8 = true,
+            bool init_float16 = true, bool init_mf = true) {
     try {
       ConfigManager::getInstance().initialize(config_path);
       searchers = std::make_unique<simsearch::Searchers>();
-      simsearch::initializeSearchers(*searchers, filename, init_pca,
-                                     embedding_dim);
+      simsearch::initializeSearchers(*searchers, filename, embedding_dim,
+                                     init_pca, init_avx2, init_binary,
+                                     init_int8, init_float16, init_mf);
       is_initialized = true;
       return true;
     } catch (const std::exception &e) {
@@ -378,9 +380,11 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
   m.doc() = "Python bindings for embedding search implementations";
 
   py::class_<PyEmbeddingSearch>(m, "EmbeddingSearch")
-      .def(py::init<const bool>(), py::arg("initPca") = false)
+      .def(py::init())
       .def("load", &PyEmbeddingSearch::load, "Load embeddings from file",
-           py::arg("filename"), py::arg("embedding_dim"))
+           py::arg("filename"), py::arg("embedding_dim"), py::arg("init_pca"),
+           py::arg("init_avx2"), py::arg("init_binary"), py::arg("init_int8"),
+           py::arg("init_float16"), py::arg("init_mf"))
       .def("search_float", &PyEmbeddingSearch::search_float,
            "Base float search", py::arg("query_vector"), py::arg("k"))
       .def("search_avx2", &PyEmbeddingSearch::search_avx2,

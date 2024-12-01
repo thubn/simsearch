@@ -86,7 +86,7 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
     std::memset(query_aligned.data() + vector_dim, 0,
                 (padded_dim - vector_dim) * sizeof(float));
   }
-  float query_norm = compute_norm_avx2(query_aligned.data());
+  // float query_norm = compute_norm_avx2(query_aligned.data());
 
   // Calculate similarities
   // std::vector<std::pair<float, size_t>> results;
@@ -94,10 +94,17 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
   std::vector<std::pair<float, size_t>> results(num_vectors);
 
   // #pragma omp parallel for schedule(static)
-  for (size_t i = 0; i < num_vectors; i++) {
-    float similarity =
-        cosine_similarity_optimized(get_embedding_ptr(i), query_aligned.data());
-    results[i] = std::make_pair(similarity, i);
+  for (size_t i = 0; i + 5 < num_vectors; i += 6) {
+    float sim[6] = {};
+    cosine_similarity_optimized(i, query_aligned.data(), sim);
+    results[i] = std::make_pair(sim[0], i);
+    results[i + 1] = std::make_pair(sim[1], i + 1);
+    results[i + 2] = std::make_pair(sim[2], i + 2);
+    results[i + 3] = std::make_pair(sim[3], i + 3);
+    results[i + 4] = std::make_pair(sim[4], i + 4);
+    results[i + 5] = std::make_pair(sim[5], i + 5);
+    // results[i + 6] = std::make_pair(sim[6], i + 6);
+    // results[i + 7] = std::make_pair(sim[7], i + 7);
   }
 
   // Partial sort to get top-k results
@@ -171,79 +178,61 @@ float OptimizedEmbeddingSearchAVX2::compute_norm_avx2(const float *vec) const {
 
   return std::sqrt(_mm_cvtss_f32(sum_128));
 }
-
-inline float OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
+float OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
     const float *vec_a, const float *vec_b) const {
-  __m256 sum[8] = {_mm256_setzero_ps(), _mm256_setzero_ps(),
-                   _mm256_setzero_ps(), _mm256_setzero_ps(),
+  return 0.0f;
+}
+
+inline void OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
+    const int j, const float *vec_a, float *sim) {
+  // Check if we have enough vectors
+  if (j + 5 >= num_vectors) {
+    throw std::out_of_range("Not enough vectors for AVX2 processing");
+  }
+  __m256 sum[6] = {_mm256_setzero_ps(), _mm256_setzero_ps(),
                    _mm256_setzero_ps(), _mm256_setzero_ps(),
                    _mm256_setzero_ps(), _mm256_setzero_ps()};
-  __m256 a[8];
-  __m256 b[8];
-  size_t i = 0;
+  //  _mm256_setzero_ps(), _mm256_setzero_ps()};
+  __m256 a;
+  __m256 b[6];
+  // Load embedding pointers
+  const float *emb_ptr[6] = {
+      get_embedding_ptr(j),     get_embedding_ptr(j + 1),
+      get_embedding_ptr(j + 2), get_embedding_ptr(j + 3),
+      get_embedding_ptr(j + 4), get_embedding_ptr(j + 5)};
+  // get_embedding_ptr(j + 6), get_embedding_ptr(j + 7)};
 
-  while (i + 8 * 8 - 1 < padded_dim) {
-    a[0] = _mm256_load_ps(vec_a + i);
-    a[1] = _mm256_load_ps(vec_a + i + 8);
-    a[2] = _mm256_load_ps(vec_a + i + 2 * 8);
-    a[3] = _mm256_load_ps(vec_a + i + 3 * 8);
+  for (int i = 0; i < padded_dim; i += 8) {
+    a = _mm256_load_ps(vec_a + i);
 
-    b[0] = _mm256_load_ps(vec_b + i);
-    b[1] = _mm256_load_ps(vec_b + i + 8);
-    b[2] = _mm256_load_ps(vec_b + i + 2 * 8);
-    b[3] = _mm256_load_ps(vec_b + i + 3 * 8);
+    b[0] = _mm256_load_ps(emb_ptr[0] + i);
+    b[1] = _mm256_load_ps(emb_ptr[1] + i);
+    b[2] = _mm256_load_ps(emb_ptr[2] + i);
+    b[3] = _mm256_load_ps(emb_ptr[3] + i);
+    b[4] = _mm256_load_ps(emb_ptr[4] + i);
+    b[5] = _mm256_load_ps(emb_ptr[5] + i);
 
-    sum[0] = _mm256_fmadd_ps(a[0], b[0], sum[0]);
-    sum[1] = _mm256_fmadd_ps(a[1], b[1], sum[1]);
-    sum[2] = _mm256_fmadd_ps(a[2], b[2], sum[2]);
-    sum[3] = _mm256_fmadd_ps(a[3], b[3], sum[3]);
+    sum[0] = _mm256_fmadd_ps(a, b[0], sum[0]);
+    sum[1] = _mm256_fmadd_ps(a, b[1], sum[1]);
+    sum[2] = _mm256_fmadd_ps(a, b[2], sum[2]);
+    sum[3] = _mm256_fmadd_ps(a, b[3], sum[3]);
+    sum[4] = _mm256_fmadd_ps(a, b[4], sum[4]);
+    sum[5] = _mm256_fmadd_ps(a, b[5], sum[5]);
 
-    a[4] = _mm256_load_ps(vec_a + i + 4 * 8);
-    a[5] = _mm256_load_ps(vec_a + i + 5 * 8);
-    a[6] = _mm256_load_ps(vec_a + i + 6 * 8);
-    a[7] = _mm256_load_ps(vec_a + i + 7 * 8);
+    // b[6] = _mm256_load_ps(emb_ptr[6] + i);
+    // b[7] = _mm256_load_ps(emb_ptr[7] + i);
 
-    b[4] = _mm256_load_ps(vec_b + i + 4 * 8);
-    b[5] = _mm256_load_ps(vec_b + i + 5 * 8);
-    b[6] = _mm256_load_ps(vec_b + i + 6 * 8);
-    b[7] = _mm256_load_ps(vec_b + i + 7 * 8);
-
-    // Prefetch next 4 cache lines for 8 vectors 2 loops ahead
-    //_mm_prefetch(vec_a + i + 8 * 8 * 2, _MM_HINT_T0);
-    //_mm_prefetch(vec_a + i + 8 * 8 * 2 + 16, _MM_HINT_T0);
-    //_mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 2, _MM_HINT_T0);
-    //_mm_prefetch(vec_a + i + 8 * 8 * 2 + 16 * 3, _MM_HINT_T0);
-
-    sum[4] = _mm256_fmadd_ps(a[4], b[4], sum[4]);
-    sum[5] = _mm256_fmadd_ps(a[5], b[5], sum[5]);
-    sum[6] = _mm256_fmadd_ps(a[6], b[6], sum[6]);
-    sum[7] = _mm256_fmadd_ps(a[7], b[7], sum[7]);
-
-    i += 8 * 8;
+    // sum[6] = _mm256_fmadd_ps(a, b[6], sum[6]);
+    // sum[7] = _mm256_fmadd_ps(a, b[7], sum[7]);
   }
 
-  __m256 total = _mm256_add_ps(sum[1], sum[2]);
-  total = _mm256_add_ps(total, sum[3]);
-  total = _mm256_add_ps(total, sum[4]);
-  total = _mm256_add_ps(total, sum[5]);
-  total = _mm256_add_ps(total, sum[6]);
-  total = _mm256_add_ps(total, sum[7]);
-
-  while (i + 7 < padded_dim) {
-    a[0] = _mm256_load_ps(vec_a + i);
-    b[0] = _mm256_load_ps(vec_b + i);
-    sum[0] = _mm256_fmadd_ps(a[0], b[0], sum[0]);
-    i += 8;
+  for (int i = 0; i < 6; i++) {
+    // Horizontal sum
+    __m128 hi = _mm256_extractf128_ps(sum[i], 1);
+    __m128 lo = _mm256_castps256_ps128(sum[i]);
+    __m128 sum_128 = _mm_add_ps(hi, lo);
+    sum_128 = _mm_hadd_ps(sum_128, sum_128);
+    sum_128 = _mm_hadd_ps(sum_128, sum_128);
+    sim[i] = _mm_cvtss_f32(sum_128);
   }
-
-  total = _mm256_add_ps(total, sum[0]);
-
-  // Horizontal sum
-  __m128 hi = _mm256_extractf128_ps(total, 1);
-  __m128 lo = _mm256_castps256_ps128(total);
-  __m128 sum_128 = _mm_add_ps(hi, lo);
-  sum_128 = _mm_hadd_ps(sum_128, sum_128);
-  sum_128 = _mm_hadd_ps(sum_128, sum_128);
-
-  return _mm_cvtss_f32(sum_128);
 }

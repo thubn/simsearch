@@ -186,10 +186,7 @@ std::vector<float> flattenMatrix(const std::vector<std::vector<float>> &input) {
   std::vector<float> flattened;
   // size_t total_size = input.size() * input[0].size();
   try {
-    size_t total_size = 0;
-    for (const auto &row : input) {
-      total_size += row.size();
-    }
+    size_t total_size = input.size() * input[0].size();
     flattened.reserve(total_size);
     for (const auto &row : input) {
       flattened.insert(flattened.end(), row.begin(), row.end());
@@ -303,7 +300,7 @@ bool EmbeddingSearchMappedFloat::setEmbeddings(
     // Resize embeddings with AVX vectors
     embeddings.resize(num_vectors, avx2i_vector(avx2_vectors_per_embedding));
 
-#pragma omp parallel for
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < num_vectors; i++) {
       // Convert to uint8_t indices first
       std::vector<uint8_t> temp_indices(padded_dim, 0);

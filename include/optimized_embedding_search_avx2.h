@@ -30,4 +30,5 @@ private:
   // Private method declarations
   float compute_norm_avx2(const float *vec) const;
   float cosine_similarity_optimized(const float *vec_a, const float *vec_b) const override;
+  void cosine_similarity_optimized(const int j, const float *vec_a, float *sim);
 };
