@@ -19,7 +19,10 @@ protected:
                           std::string &error_message) override;
 
 private:
-  int cosine_similarity_optimized(const __m256i *vec_a, const __m256i *vec_b) const override;
+  int cosine_similarity_optimized(const __m256i *vec_a,
+                                  const __m256i *vec_b) const override;
+  void cosine_similarity_optimized(const int j, const __m256i *vec_a,
+                                   int *sim) const;
   void convert_float_to_uint8_avx2(const std::vector<float> &input,
                                    __m256i *output) const;
 };

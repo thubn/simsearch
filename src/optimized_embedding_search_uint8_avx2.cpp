@@ -57,14 +57,21 @@ OptimizedEmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query,
     throw std::runtime_error("Query vector size does not match embedding size");
   }
 
-  std::vector<std::pair<int, size_t>> similarities;
-  similarities.reserve(num_vectors);
+  // td::vector<std::pair<int, size_t>> similarities;
+  // similarities.reserve(num_vectors);
+  std::vector<std::pair<int, size_t>> similarities(num_vectors);
 
   const __m256i *query_data = reinterpret_cast<const __m256i *>(query.data());
 
-  for (size_t i = 0; i < num_vectors; i++) {
-    int sim = cosine_similarity_optimized(get_embedding_ptr(i), query_data);
-    similarities.emplace_back(sim, i);
+  for (size_t i = 0; i + 5 < num_vectors; i += 6) {
+    int sim[6] = {};
+    cosine_similarity_optimized(i, query_data, sim);
+    similarities[i] = std::make_pair(sim[0], i);
+    similarities[i + 1] = std::make_pair(sim[1], i + 1);
+    similarities[i + 2] = std::make_pair(sim[2], i + 2);
+    similarities[i + 3] = std::make_pair(sim[3], i + 3);
+    similarities[i + 4] = std::make_pair(sim[4], i + 4);
+    similarities[i + 5] = std::make_pair(sim[5], i + 5);
   }
 
   std::partial_sort(
@@ -97,66 +104,102 @@ void OptimizedEmbeddingSearchUint8AVX2::convert_float_to_uint8_avx2(
 
 int OptimizedEmbeddingSearchUint8AVX2::cosine_similarity_optimized(
     const __m256i *vec_a, const __m256i *vec_b) const {
-  __m256i sum_lo = _mm256_setzero_si256();
-  __m256i sum_hi = _mm256_setzero_si256();
+  return 0;
+}
+
+void OptimizedEmbeddingSearchUint8AVX2::cosine_similarity_optimized(
+    const int j, const __m256i *vec_a, int *sim) const {
+  __m256i sum_lo[6] = {_mm256_setzero_si256()};
+  __m256i sum_hi[6] = {_mm256_setzero_si256()};
   __m256i ones = _mm256_set1_epi16(1);
+  const __m256i *emb_ptr[6] = {
+      get_embedding_ptr(j),     get_embedding_ptr(j + 1),
+      get_embedding_ptr(j + 2), get_embedding_ptr(j + 3),
+      get_embedding_ptr(j + 4), get_embedding_ptr(j + 5)};
 
-  for (size_t i = 0; i < vectors_per_embedding; i += 2) {
-    __m256i a[2], b[2];
-    a[0] = _mm256_load_si256(vec_a + i);
-    a[1] = _mm256_load_si256(vec_a + i + 1);
-    b[0] = _mm256_load_si256(vec_b + i);
-    b[1] = _mm256_load_si256(vec_b + i + 1);
-
-    _mm_prefetch(vec_a + i + 2 * 10, _MM_HINT_T0);
+  for (size_t i = 0; i < vectors_per_embedding; i++) {
+    __m256i a, b[6];
+    a = _mm256_load_si256(vec_a + i);
+    b[0] = _mm256_load_si256(emb_ptr[0] + i);
+    b[1] = _mm256_load_si256(emb_ptr[1] + i);
+    b[2] = _mm256_load_si256(emb_ptr[2] + i);
+    b[3] = _mm256_load_si256(emb_ptr[3] + i);
+    b[4] = _mm256_load_si256(emb_ptr[4] + i);
+    b[5] = _mm256_load_si256(emb_ptr[5] + i);
 
     // Process pairs
-    __m256i mul_lo[2], mul_hi[2];
+    __m256i mul_lo[6], mul_hi[6];
     mul_lo[0] =
-        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a[0])),
+        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a)),
                            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[0])));
     mul_hi[0] = _mm256_mullo_epi16(
-        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[0], 1)),
+        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a, 1)),
         _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[0], 1)));
 
     mul_lo[1] =
-        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a[1])),
+        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a)),
                            _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[1])));
     mul_hi[1] = _mm256_mullo_epi16(
-        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[1], 1)),
+        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a, 1)),
         _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[1], 1)));
 
-    // Accumulate results
-    sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo[0], ones));
-    sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi[0], ones));
-    sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo[1], ones));
-    sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi[1], ones));
-  }
-
-  // Handle remaining odd vector
-  if (vectors_per_embedding % 2) {
-    size_t i = vectors_per_embedding - 1;
-    __m256i a = _mm256_load_si256(vec_a + i);
-    __m256i b = _mm256_load_si256(vec_b + i);
-
-    __m256i mul_lo =
+    mul_lo[2] =
         _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a)),
-                           _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b)));
-    __m256i mul_hi = _mm256_mullo_epi16(
+                           _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[2])));
+    mul_hi[2] = _mm256_mullo_epi16(
         _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a, 1)),
-        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b, 1)));
+        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[2], 1)));
 
-    sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo, ones));
-    sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi, ones));
+    mul_lo[3] =
+        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a)),
+                           _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[3])));
+    mul_hi[3] = _mm256_mullo_epi16(
+        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a, 1)),
+        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[3], 1)));
+
+    mul_lo[4] =
+        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a)),
+                           _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[4])));
+    mul_hi[4] = _mm256_mullo_epi16(
+        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a, 1)),
+        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[4], 1)));
+
+    mul_lo[5] =
+        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a)),
+                           _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[5])));
+    mul_hi[5] = _mm256_mullo_epi16(
+        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a, 1)),
+        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[5], 1)));
+
+    // Accumulate results
+    sum_lo[0] = _mm256_add_epi32(sum_lo[0], _mm256_madd_epi16(mul_lo[0], ones));
+    sum_hi[0] = _mm256_add_epi32(sum_hi[0], _mm256_madd_epi16(mul_hi[0], ones));
+
+    sum_lo[1] = _mm256_add_epi32(sum_lo[1], _mm256_madd_epi16(mul_lo[1], ones));
+    sum_hi[1] = _mm256_add_epi32(sum_hi[1], _mm256_madd_epi16(mul_hi[1], ones));
+
+    sum_lo[2] = _mm256_add_epi32(sum_lo[2], _mm256_madd_epi16(mul_lo[2], ones));
+    sum_hi[2] = _mm256_add_epi32(sum_hi[2], _mm256_madd_epi16(mul_hi[2], ones));
+
+    sum_lo[3] = _mm256_add_epi32(sum_lo[3], _mm256_madd_epi16(mul_lo[3], ones));
+    sum_hi[3] = _mm256_add_epi32(sum_hi[3], _mm256_madd_epi16(mul_hi[3], ones));
+
+    sum_lo[4] = _mm256_add_epi32(sum_lo[4], _mm256_madd_epi16(mul_lo[4], ones));
+    sum_hi[4] = _mm256_add_epi32(sum_hi[4], _mm256_madd_epi16(mul_hi[4], ones));
+
+    sum_lo[5] = _mm256_add_epi32(sum_lo[5], _mm256_madd_epi16(mul_lo[5], ones));
+    sum_hi[5] = _mm256_add_epi32(sum_hi[5], _mm256_madd_epi16(mul_hi[5], ones));
   }
 
-  __m256i sum = _mm256_add_epi32(sum_lo, sum_hi);
-  __m128i sum_128 = _mm_add_epi32(_mm256_castsi256_si128(sum),
-                                  _mm256_extracti128_si256(sum, 1));
-  sum_128 = _mm_add_epi32(sum_128,
-                          _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(1, 0, 3, 2)));
-  sum_128 = _mm_add_epi32(sum_128,
-                          _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(2, 3, 0, 1)));
+  for (int i = 0; i < 6; i++) {
+    __m256i sum = _mm256_add_epi32(sum_lo[i], sum_hi[i]);
+    __m128i sum_128 = _mm_add_epi32(_mm256_castsi256_si128(sum),
+                                    _mm256_extracti128_si256(sum, 1));
+    sum_128 = _mm_add_epi32(
+        sum_128, _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(1, 0, 3, 2)));
+    sum_128 = _mm_add_epi32(
+        sum_128, _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(2, 3, 0, 1)));
 
-  return _mm_cvtsi128_si32(sum_128);
+    sim[i] = _mm_cvtsi128_si32(sum_128);
+  }
 }
