@@ -3,6 +3,9 @@
 #include <cstring>
 #include <stdexcept>
 
+constexpr int_fast8_t NUM_STRIDES = 6;
+constexpr int_fast64_t STRIDE_DIST = 1;
+
 bool OptimizedEmbeddingSearchBinaryAVX2::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {
   std::string error_message;
