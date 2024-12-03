@@ -133,6 +133,15 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
       }
     }
   }
+  // calc remaining similarities when strides dont fit with num_embeddings
+  if (num_vectors % (NUM_STRIDES * STRIDE_DIST) != 0) {
+    const size_t start = num_vectors - (num_vectors % (NUM_STRIDES * STRIDE_DIST));
+    for (int i = start; i < num_vectors; i++) {
+      float sim = cosine_similarity_optimized(get_embedding_ptr(i),
+                                              query_aligned.data());
+      results[i] = std::make_pair(sim, i);
+    }
+  }
 
   // Partial sort to get top-k results
   if (results.size() > k) {
