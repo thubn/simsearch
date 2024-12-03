@@ -6,7 +6,29 @@
 #include <stdexcept>
 
 constexpr int_fast8_t NUM_STRIDES = 6;
-constexpr int_fast64_t STRIDE_DIST = 1;
+// constexpr int_fast64_t STRIDE_DIST = 1;
+
+const int32_t calcStrideDist(const size_t &vector_dim,
+                             const size_t size_of_datatype,
+                             const size_t num_vectors) {
+  int32_t size_per_embedding = vector_dim * size_of_datatype;
+  int32_t i = 1;
+  int32_t max = num_vectors / 32;
+  while (i < max && i <= 2048) {
+    if (i * size_per_embedding % 4096 == 0) {
+      std::cout << "vector_dim: " << vector_dim << " STRIDE_DIST: " << i
+                << " STRIDE_DIST in bytes: " << i * size_per_embedding
+                << std::endl;
+      return i;
+    } else {
+      i++;
+    }
+  }
+  std::cout << "No optimal stride distance found :(\n"
+            << "vector_dim: " << vector_dim << " STRIDE_DIST: " << 1
+            << " STRIDE_DIST in bytes: " << size_per_embedding << std::endl;
+  return 1;
+}
 
 bool OptimizedEmbeddingSearchAVX2::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {
@@ -49,6 +71,8 @@ bool OptimizedEmbeddingSearchAVX2::setEmbeddings(
       // norms[i] = compute_norm_avx2(dest);
     }
 
+    stride_dist = calcStrideDist(vector_dim, sizeof(float), num_vectors);
+
     return true;
   } catch (const std::exception &e) {
     std::cerr << "Failed to load vectors: " << e.what() << std::endl;
@@ -89,25 +113,24 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
     std::memset(query_aligned.data() + vector_dim, 0,
                 (padded_dim - vector_dim) * sizeof(float));
   }
-  // float query_norm = compute_norm_avx2(query_aligned.data());
 
-  // Calculate similarities
-  // std::vector<std::pair<float, size_t>> results;
-  // results.reserve(num_vectors);
   std::vector<std::pair<float, size_t>> results(num_vectors);
+  const size_t STRIDE_DIST = stride_dist;
 
   // #pragma omp parallel for schedule(static)
   for (size_t i = 0; (i + (NUM_STRIDES * STRIDE_DIST) - 1) < num_vectors;
        i += (NUM_STRIDES * STRIDE_DIST)) {
     for (size_t j = i; j < (i + STRIDE_DIST); j++) {
       float sim[NUM_STRIDES] = {};
-      cosine_similarity_optimized(j, query_aligned.data(), sim);
-      results[j] = std::make_pair(sim[0], j);
-      results[j + STRIDE_DIST] = std::make_pair(sim[1], j + STRIDE_DIST);
-      results[j + 2 * STRIDE_DIST] = std::make_pair(sim[2], j + 2 * STRIDE_DIST);
-      results[j + 3 * STRIDE_DIST] = std::make_pair(sim[3], j + 3 * STRIDE_DIST);
-      results[j + 4 * STRIDE_DIST] = std::make_pair(sim[4], j + 4 * STRIDE_DIST);
-      results[j + 5 * STRIDE_DIST] = std::make_pair(sim[5], j + 5 * STRIDE_DIST);
+      float *emb_ptr[NUM_STRIDES];
+      for (int k = 0; k < NUM_STRIDES; k++) {
+        emb_ptr[k] = get_embedding_ptr(j + k * STRIDE_DIST);
+      }
+      cosine_similarity_optimized(query_aligned.data(), sim, emb_ptr);
+      for (int k = 0; k < NUM_STRIDES; k++) {
+        results[j + k * STRIDE_DIST] =
+            std::make_pair(sim[k], j + k * STRIDE_DIST);
+      }
     }
   }
 
@@ -253,17 +276,10 @@ float OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
 }
 
 inline void OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
-    const int j, const float *vec_a, float *sim) {
+    const float *vec_a, float *sim, float *emb_ptr[]) {
   __m256 sum[NUM_STRIDES] = {_mm256_setzero_ps()};
   __m256 a;
   __m256 b[NUM_STRIDES];
-  // Load embedding pointers
-  const float *emb_ptr[NUM_STRIDES] = {get_embedding_ptr(j),
-                                              get_embedding_ptr(j + STRIDE_DIST),
-                                              get_embedding_ptr(j + 2 * STRIDE_DIST),
-                                              get_embedding_ptr(j + 3 * STRIDE_DIST),
-                                              get_embedding_ptr(j + 4 * STRIDE_DIST),
-                                              get_embedding_ptr(j + 5 * STRIDE_DIST)};
 
   for (int i = 0; i < padded_dim; i += 8) {
     a = _mm256_load_ps(vec_a + i);
