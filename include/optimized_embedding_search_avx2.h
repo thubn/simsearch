@@ -28,7 +28,7 @@ public:
     is_pca = true;
     std::vector<std::vector<float>> temp_embeddings;
     EmbeddingUtils::pca_dimension_reduction(pca_factor, input_vectors,
-                                            temp_embeddings, pca_matrix);
+                                            temp_embeddings, pca_matrix, mean);
     return this->setEmbeddings(temp_embeddings);
   }
 
@@ -47,4 +47,5 @@ private:
   size_t stride_dist;
   bool is_pca = false;
   std::vector<std::vector<float>> pca_matrix;
+  std::vector<float> mean;
 };

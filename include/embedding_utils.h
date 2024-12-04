@@ -42,7 +42,11 @@ std::string sanitize_utf8(const std::string &input);
 bool pca_dimension_reduction(
     const int factor, const std::vector<std::vector<float>> &input_embeddings,
     std::vector<std::vector<float>> &result_embeddings,
-    std::vector<std::vector<float>> &result_pca_matrix);
+    std::vector<std::vector<float>> &result_pca_matrix,
+    std::vector<float> &result_mean);
+std::vector<float> apply_pca_dimension_reduction_to_query(
+    const std::vector<std::vector<float>> &pca_matrix, const std::vector<float> &mean,
+    const std::vector<float> &query);
 
 template <typename T1, typename T2>
 double calculateJaccardIndex(const std::vector<std::pair<T1, size_t>> &set1,

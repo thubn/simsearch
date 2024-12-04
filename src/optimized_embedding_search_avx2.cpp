@@ -102,13 +102,21 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const avx2_vector &query,
 std::vector<std::pair<float, size_t>>
 OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
                                                 size_t k) {
-  if (query.size() != vector_dim) {
+  std::vector<float> temp_query;
+  if (is_pca && query.size() != vector_dim) {
+    temp_query = EmbeddingUtils::apply_pca_dimension_reduction_to_query(
+        pca_matrix, mean, query);
+  } else {
+    temp_query = query;
+  }
+  if (temp_query.size() != vector_dim) {
     throw std::invalid_argument("Invalid query dimension");
   }
 
   // Prepare aligned query vector
   auto query_aligned = aligned_vector<float>(padded_dim);
-  std::memcpy(query_aligned.data(), query.data(), vector_dim * sizeof(float));
+  std::memcpy(query_aligned.data(), temp_query.data(),
+              vector_dim * sizeof(float));
   if (padded_dim > vector_dim) {
     std::memset(query_aligned.data() + vector_dim, 0,
                 (padded_dim - vector_dim) * sizeof(float));
@@ -135,7 +143,8 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
   }
   // calc remaining similarities when strides dont fit with num_embeddings
   if (num_vectors % (NUM_STRIDES * STRIDE_DIST) != 0) {
-    const size_t start = num_vectors - (num_vectors % (NUM_STRIDES * STRIDE_DIST));
+    const size_t start =
+        num_vectors - (num_vectors % (NUM_STRIDES * STRIDE_DIST));
     for (int i = start; i < num_vectors; i++) {
       float sim = cosine_similarity_optimized(get_embedding_ptr(i),
                                               query_aligned.data());

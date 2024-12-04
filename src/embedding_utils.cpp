@@ -2,6 +2,8 @@
 #include "aligned_types.h"
 #include <cstdint>
 #include <eigen3/Eigen/Dense>
+#include <iomanip>
+#include <iostream>
 #include <omp.h>
 #include <stdexcept>
 
@@ -186,10 +188,22 @@ std::string sanitize_utf8(const std::string &input) {
 
   return output;
 }
+
+void printMatrix(std::vector<std::vector<float>> m) {
+  for (auto &row : m) {
+    for (auto &cell : row) {
+      std::cout << std::fixed << std::setprecision(3) << std::setw(5) << cell
+                << " ";
+    }
+    std::cout << std::endl;
+  }
+}
+
 bool pca_dimension_reduction(
     const int factor, const std::vector<std::vector<float>> &input_embeddings,
     std::vector<std::vector<float>> &result_embeddings,
-    std::vector<std::vector<float>> &result_pca_matrix) {
+    std::vector<std::vector<float>> &result_pca_matrix,
+    std::vector<float> &result_mean) {
   // Convert data to Eigen matrix
   int rows = input_embeddings.size();
   int cols = input_embeddings[0].size();
@@ -205,6 +219,10 @@ bool pca_dimension_reduction(
   // Center the data
   Eigen::VectorXf mean = matrix.colwise().mean();
   matrix = matrix.rowwise() - mean.transpose();
+  result_mean = std::vector<float>(mean.size());
+  for (int i = 0; i < result_mean.size(); i++) {
+    result_mean[i] = mean(i);
+  }
 
   // Compute covariance matrix
   Eigen::MatrixXf cov = (matrix.transpose() * matrix) / (float)(rows - 1);
@@ -232,6 +250,7 @@ bool pca_dimension_reduction(
       result_pca_matrix[j][i] = pca_matrix(j, i);
     }
   }
+  // printMatrix(result_pca_matrix);
 
   // Project data onto principal components
   Eigen::MatrixXf reduced = matrix * pca_matrix;
@@ -257,5 +276,47 @@ bool pca_dimension_reduction(
   }
 
   return true;
+}
+std::vector<float> apply_pca_dimension_reduction_to_query(
+    const std::vector<std::vector<float>> &pca_matrix,
+    const std::vector<float> &mean, const std::vector<float> &query) {
+  size_t org_vector_dim = pca_matrix.size();
+  size_t vector_dim = pca_matrix[0].size();
+  /*std::cout << "org_vector_dim: " << org_vector_dim
+            << "\nvector_dim: " << vector_dim
+            << "\nquery.size(): " << query.size() << std::endl;*/
+  if (org_vector_dim != query.size()) {
+    std::cout << "query_dim != org_vector_dim! org_vector_dim: "
+              << org_vector_dim << " query_dim: " << query.size() << std::endl;
+    exit(1);
+  }
+  Eigen::VectorXf eigen_query(org_vector_dim);
+  Eigen::VectorXf eigen_mean(org_vector_dim);
+  Eigen::MatrixXf eigen_pca_matrix(org_vector_dim, vector_dim);
+  for (int i = 0; i < org_vector_dim; i++) {
+    for (int j = 0; j < vector_dim; j++) {
+      eigen_pca_matrix(i, j) = pca_matrix[i][j];
+    }
+    eigen_query(i) = query[i];
+    eigen_mean(i) = mean[i];
+  }
+
+  Eigen::VectorXf centered_query = eigen_query - eigen_mean;
+  Eigen::VectorXf eigen_result_query(vector_dim);
+  eigen_result_query = eigen_pca_matrix.transpose() * centered_query;
+  
+  if (vector_dim != eigen_result_query.size()) {
+    std::cout << "vector_dim != eigen_result_query.size(): " << vector_dim
+              << " != " << eigen_result_query.size() << std::endl;
+  }
+
+  float norm = eigen_result_query.norm();
+  eigen_result_query /= norm;
+
+  std::vector<float> result_query(vector_dim);
+  for (int i = 0; i < vector_dim; i++) {
+    result_query[i] = eigen_result_query(i);
+  }
+  return result_query;
 }
 } // namespace EmbeddingUtils
