@@ -110,10 +110,7 @@ public:
   void initPca2() {
     std::cout << "Start loading of PCA2" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(2);
-    pca2.setEmbeddings(temp.getEmbeddings());
+    pca2.setEmbeddings(base.getEmbeddings(), 2);
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::high_resolution_clock::now() - start)
                     .count();
@@ -123,10 +120,7 @@ public:
   void initPca4() {
     std::cout << "Start loading of PCA4" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(4);
-    pca4.setEmbeddings(temp.getEmbeddings());
+    pca4.setEmbeddings(base.getEmbeddings(), 4);
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::high_resolution_clock::now() - start)
                     .count();
@@ -136,10 +130,7 @@ public:
   void initPca8() {
     std::cout << "Start loading of PCA8" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(8);
-    pca8.setEmbeddings(temp.getEmbeddings());
+    pca8.setEmbeddings(base.getEmbeddings(), 8);
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::high_resolution_clock::now() - start)
                     .count();
@@ -149,10 +140,7 @@ public:
   void initPca16() {
     std::cout << "Start loading of PCA16" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(16);
-    pca16.setEmbeddings(temp.getEmbeddings());
+    pca16.setEmbeddings(base.getEmbeddings(), 16);
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::high_resolution_clock::now() - start)
                     .count();
@@ -162,10 +150,7 @@ public:
   void initPca32() {
     std::cout << "Start loading of PCA32" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
-    EmbeddingSearchFloat temp;
-    temp.setEmbeddings(base.getEmbeddings());
-    temp.pca_dimension_reduction(32);
-    pca32.setEmbeddings(temp.getEmbeddings());
+    pca32.setEmbeddings(base.getEmbeddings(), 32);
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::high_resolution_clock::now() - start)
                     .count();
@@ -306,10 +291,15 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
   // std::thread tMappedFloat2(&Searchers::initMappedFloat2, &searchers);
   if (init_pca) {
     tPca2 = std::thread(&Searchers::initPca2, &searchers);
+    tPca2.join();
     tPca4 = std::thread(&Searchers::initPca4, &searchers);
+    tPca4.join();
     tPca8 = std::thread(&Searchers::initPca8, &searchers);
+    tPca8.join();
     tPca16 = std::thread(&Searchers::initPca16, &searchers);
+    tPca16.join();
     tPca32 = std::thread(&Searchers::initPca32, &searchers);
+    tPca32.join();
   }
 
   // tAvx2.join();
@@ -327,14 +317,6 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
   if (init_mf)
     tMappedFloat.join();
   // tMappedFloat2.join();
-
-  if (init_pca) {
-    tPca2.join();
-    tPca4.join();
-    tPca8.join();
-    tPca16.join();
-    tPca32.join();
-  }
 }
 
 } // namespace simsearch

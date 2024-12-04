@@ -37,7 +37,8 @@ public:
         "Two-step search not implemented for this searcher");
   }
 
-  bool load(const std::string &filename, bool set_sentences = true, const int embedding_dim = 1024) {
+  bool load(const std::string &filename, bool set_sentences = true,
+            const int embedding_dim = 1024) {
     std::vector<std::vector<float>> temp_embeddings;
     std::vector<std::string> temp_sentences;
     bool result = false;
@@ -52,8 +53,8 @@ public:
       result =
           EmbeddingIO::load_json2(filename, temp_embeddings, temp_sentences);
     } else if (filename.ends_with(".parquet")) {
-      result =
-          EmbeddingIO::load_parquet(filename, temp_embeddings, temp_sentences, embedding_dim);
+      result = EmbeddingIO::load_parquet(filename, temp_embeddings,
+                                         temp_sentences, embedding_dim);
     } else {
       throw std::runtime_error("Unsupported file format");
     }

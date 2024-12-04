@@ -1,6 +1,7 @@
 #include "embedding_utils.h"
 #include "aligned_types.h"
 #include <cstdint>
+#include <eigen3/Eigen/Dense>
 #include <omp.h>
 #include <stdexcept>
 
@@ -184,5 +185,77 @@ std::string sanitize_utf8(const std::string &input) {
   }
 
   return output;
+}
+bool pca_dimension_reduction(
+    const int factor, const std::vector<std::vector<float>> &input_embeddings,
+    std::vector<std::vector<float>> &result_embeddings,
+    std::vector<std::vector<float>> &result_pca_matrix) {
+  // Convert data to Eigen matrix
+  int rows = input_embeddings.size();
+  int cols = input_embeddings[0].size();
+  Eigen::MatrixXf matrix(rows, cols);
+  int target_dim = cols / factor;
+
+  for (int i = 0; i < rows; ++i) {
+    for (int j = 0; j < cols; ++j) {
+      matrix(i, j) = input_embeddings[i][j];
+    }
+  }
+
+  // Center the data
+  Eigen::VectorXf mean = matrix.colwise().mean();
+  matrix = matrix.rowwise() - mean.transpose();
+
+  // Compute covariance matrix
+  Eigen::MatrixXf cov = (matrix.transpose() * matrix) / (float)(rows - 1);
+
+  // Compute eigendecomposition
+  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> eig(cov);
+
+  // Sort eigenvectors by eigenvalues
+  std::vector<std::pair<float, Eigen::VectorXf>> eigens;
+  for (int i = 0; i < cols; ++i) {
+    eigens.push_back({eig.eigenvalues()[i], eig.eigenvectors().col(i)});
+  }
+
+  std::sort(eigens.begin(), eigens.end(),
+            [](const auto &a, const auto &b) { return a.first > b.first; });
+
+  result_pca_matrix =
+      std::vector<std::vector<float>>(cols, std::vector<float>(target_dim));
+
+  // Select top k eigenvectors
+  Eigen::MatrixXf pca_matrix(cols, target_dim);
+  for (int i = 0; i < target_dim; ++i) {
+    pca_matrix.col(i) = eigens[i].second;
+    for (int j = 0; j < cols; ++j) {
+      result_pca_matrix[j][i] = pca_matrix(j, i);
+    }
+  }
+
+  // Project data onto principal components
+  Eigen::MatrixXf reduced = matrix * pca_matrix;
+
+  // Convert back to vector of vectors
+  // std::vector<std::vector<float>> result(rows,
+  // std::vector<float>(target_dim));
+  result_embeddings =
+      std::vector<std::vector<float>>(rows, std::vector<float>(target_dim));
+
+  // #pragma omp parallel for schedule(dynamic)
+  for (int i = 0; i < rows; ++i) {
+    for (int j = 0; j < target_dim; ++j) {
+      result_embeddings[i][j] = reduced(i, j);
+    }
+  }
+
+  for (std::vector<float> &vec : result_embeddings) {
+    float norm = EmbeddingUtils::calcNorm(vec);
+    for (float &el : vec) {
+      el = el / norm;
+    }
+  }
+
+  return true;
 }
 } // namespace EmbeddingUtils

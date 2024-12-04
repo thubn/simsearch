@@ -39,6 +39,10 @@ bool validateUint8AVX2Dimensions(const std::vector<std::vector<float>> &input,
 size_t calculateUint8AVX2VectorSize(size_t float_vector_size);
 
 std::string sanitize_utf8(const std::string &input);
+bool pca_dimension_reduction(
+    const int factor, const std::vector<std::vector<float>> &input_embeddings,
+    std::vector<std::vector<float>> &result_embeddings,
+    std::vector<std::vector<float>> &result_pca_matrix);
 
 template <typename T1, typename T2>
 double calculateJaccardIndex(const std::vector<std::pair<T1, size_t>> &set1,
