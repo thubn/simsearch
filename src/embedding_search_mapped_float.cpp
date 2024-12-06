@@ -356,6 +356,35 @@ EmbeddingSearchMappedFloat::similarity_search(const std::vector<float> &query,
 }
 
 std::vector<std::pair<float, size_t>>
+EmbeddingSearchMappedFloat::similarity_search(
+    const std::vector<float> &query, size_t k,
+    std::vector<std::pair<int, size_t>> &searchIndexes) {
+  if (query.size() != vector_dim) {
+    throw std::runtime_error("Query vector size does not match embedding size");
+  }
+
+  // Convert query to aligned float array
+  alignas(32) float aligned_query[query.size()];
+  std::copy(query.begin(), query.end(), aligned_query);
+
+  std::vector<std::pair<float, size_t>> similarities;
+  similarities.reserve(searchIndexes.size());
+
+  for (size_t i = 0; i < searchIndexes.size(); ++i) {
+    float sim =
+        cosine_similarity(aligned_query, embeddings[searchIndexes[i].second]);
+    similarities.emplace_back(sim, searchIndexes[i].second);
+  }
+
+  std::partial_sort(
+      similarities.begin(), similarities.begin() + k, similarities.end(),
+      [](const auto &a, const auto &b) { return a.first > b.first; });
+
+  return std::vector<std::pair<float, size_t>>(similarities.begin(),
+                                               similarities.begin() + k);
+}
+
+std::vector<std::pair<float, size_t>>
 EmbeddingSearchMappedFloat::similarity_search(const avx2i_vector &query,
                                               size_t k) {
   throw std::runtime_error("not implemented");

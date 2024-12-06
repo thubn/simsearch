@@ -1,7 +1,7 @@
 #pragma once
+#include "aligned_types.h"
 #include "embedding_search_base.h"
 #include <stdexcept>
-#include "aligned_types.h"
 
 class EmbeddingSearchMappedFloat
     : public EmbeddingSearchBase<avx2i_vector, float> {
@@ -18,6 +18,9 @@ public:
   similarity_search(const avx2i_vector &query, size_t k) override;
   std::vector<std::pair<float, size_t>>
   similarity_search(const std::vector<float> &query, size_t k);
+  std::vector<std::pair<float, size_t>>
+  similarity_search(const std::vector<float> &query, size_t k,
+                    std::vector<std::pair<int, size_t>> &searchIndexes);
 
   bool validateDimensions(const std::vector<std::vector<float>> &input,
                           std::string &error_message) override {
@@ -37,8 +40,7 @@ private:
   // static const u_int8_t MUL_RESULTS_SIZE = 64;
   alignas(32) float mapped_floats[256];
   // float mapped_floats_mul_result[MUL_RESULTS_SIZE][MUL_RESULTS_SIZE];
-  float cosine_similarity(const avx2i_vector &a,
-                          const avx2i_vector &b) {
+  float cosine_similarity(const avx2i_vector &a, const avx2i_vector &b) {
     throw std::runtime_error("not implemented");
   };
   float cosine_similarity(const float *a, const avx2i_vector &b);

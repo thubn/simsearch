@@ -296,7 +296,8 @@ bool OptimizedEmbeddingSearchMappedFloat::setEmbeddings(
 #pragma omp parallel for
   for (int i = 0; i < num_vectors; i++) {
     for (int j = 0; j < vector_dim; j++) {
-      intermediate_embeddings[i][j] = findPartitionIndex(partitions, input_vectors[i][j]);
+      intermediate_embeddings[i][j] =
+          findPartitionIndex(partitions, input_vectors[i][j]);
     }
   }
   for (int i = 0; i < partitions.size(); i++) {
@@ -315,14 +316,14 @@ bool OptimizedEmbeddingSearchMappedFloat::setEmbeddings(
   }
 
   // Compute mapped float values
-  //computeMappedFloats(input_vectors, distrib_factor, dist_type);
+  // computeMappedFloats(input_vectors, distrib_factor, dist_type);
 
 // Convert and store each vector as int8 indices
 #pragma omp parallel for
   for (size_t i = 0; i < num_vectors; i++) {
     uint8_t *dest = get_embedding_ptr(i);
     dest = intermediate_embeddings[i].data();
-    //convertToMappedFormat(input_vectors[i], dest);
+    // convertToMappedFormat(input_vectors[i], dest);
   }
 
   return true;

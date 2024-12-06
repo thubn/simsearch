@@ -314,7 +314,7 @@ bool load_json2(const std::string &filename,
 
 bool load_parquet(const std::string &filename,
                   std::vector<std::vector<float>> &embeddings,
-                  std::vector<std::string> &sentences,
+                  std::vector<std::string> &sentences, const bool set_sentences,
                   const int embedding_dim) {
   std::cout << "embedding_dim: " << embedding_dim << std::endl;
   try {
@@ -339,9 +339,7 @@ bool load_parquet(const std::string &filename,
 
     // Pre-allocate the final vectors
     embeddings.clear();
-    sentences.clear();
     embeddings.resize(num_rows, std::vector<float>(embedding_dim));
-    sentences.resize(num_rows);
 
     // Create column selection vectors
     std::vector<int> text_column{schema->GetFieldIndex("formatted_text")};
@@ -386,13 +384,17 @@ bool load_parquet(const std::string &filename,
           batch.text_batch->column(0)->chunk(0));
 
       // Process entire text column
-      for (int64_t i = 0; i < batch.rows_in_group; i++) {
-        if (text_array->IsNull(i)) {
-          sentences[batch.base_idx + i].clear();
-        } else {
-          std::string text = text_array->GetString(i).substr(0, 128);
-          std::replace(text.begin(), text.end(), '\n', ' ');
-          sentences[batch.base_idx + i] = std::move(text);
+      if (set_sentences) {
+        sentences.clear();
+        sentences.resize(num_rows);
+        for (int64_t i = 0; i < batch.rows_in_group; i++) {
+          if (text_array->IsNull(i)) {
+            sentences[batch.base_idx + i].clear();
+          } else {
+            std::string text = text_array->GetString(i).substr(0, 128);
+            std::replace(text.begin(), text.end(), '\n', ' ');
+            sentences[batch.base_idx + i] = std::move(text);
+          }
         }
       }
 

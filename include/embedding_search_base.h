@@ -39,22 +39,19 @@ public:
 
   bool load(const std::string &filename, bool set_sentences = true,
             const int embedding_dim = 1024) {
-    std::vector<std::vector<float>> temp_embeddings;
-    std::vector<std::string> temp_sentences;
+    // std::vector<std::vector<float>> temp_embeddings;
+    // std::vector<std::string> temp_sentences;
     bool result = false;
     auto start = std::chrono::high_resolution_clock::now();
     if (filename.ends_with(".safetensors")) {
-      result = EmbeddingIO::load_safetensors(filename, temp_embeddings,
-                                             temp_sentences);
+      result = EmbeddingIO::load_safetensors(filename, embeddings, sentences);
     } else if (filename.ends_with(".ndjson")) {
-      result =
-          EmbeddingIO::load_json(filename, temp_embeddings, temp_sentences);
+      result = EmbeddingIO::load_json(filename, embeddings, sentences);
     } else if (filename.ends_with(".jsonl")) {
-      result =
-          EmbeddingIO::load_json2(filename, temp_embeddings, temp_sentences);
+      result = EmbeddingIO::load_json2(filename, embeddings, sentences);
     } else if (filename.ends_with(".parquet")) {
-      result = EmbeddingIO::load_parquet(filename, temp_embeddings,
-                                         temp_sentences, embedding_dim);
+      result = EmbeddingIO::load_parquet(filename, embeddings, sentences,
+                                         set_sentences, embedding_dim);
     } else {
       throw std::runtime_error("Unsupported file format");
     }
@@ -64,11 +61,7 @@ public:
             .count() /
         1000;
     std::cout << "loading took " << time << "ms" << std::endl;
-    num_vectors = temp_embeddings.size();
-    this->setEmbeddings(temp_embeddings);
-    if (set_sentences) {
-      this->setSentences(temp_sentences);
-    }
+    initializeDimensions(embeddings);
     return result;
   }
 
@@ -76,7 +69,6 @@ public:
   const std::vector<VectorType> &getEmbeddings() const { return embeddings; }
   const std::vector<std::string> &getSentences() const { return sentences; }
   bool setSentences(const std::vector<std::string> &s) {
-    sentences.resize(s.size());
     sentences = s;
     return true;
   }

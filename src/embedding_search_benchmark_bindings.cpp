@@ -235,6 +235,30 @@ public:
     return format_results(final_results, time);
   }
 
+  py::tuple search_twostep_mf(py::array_t<float> query_vector, size_t k,
+                              size_t rescoring_factor) {
+    check_initialization();
+    std::vector<float> query = convert_query(query_vector);
+
+    // Convert query for binary search
+    avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
+    EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2,
+                                                   query.size() / 8 / 32);
+
+    // Perform two-step search with timing
+    auto start = std::chrono::high_resolution_clock::now();
+    auto binary_results = searchers->obinary_avx2.similarity_search(
+        queryBinaryAvx2, k * rescoring_factor);
+    auto final_results =
+        searchers->mappedFloat.similarity_search(query, k, binary_results);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto time =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count();
+
+    return format_results(final_results, time);
+  }
+
   // ======================================
   // getEmbedding()
   // ======================================
@@ -409,6 +433,9 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
            py::arg("query_vector"), py::arg("k"))
       .def("search_twostep", &PyEmbeddingSearch::search_twostep,
            "Two-step binary+float search", py::arg("query_vector"),
+           py::arg("k"), py::arg("rescoring_factor") = 50)
+      .def("search_twostep_mf", &PyEmbeddingSearch::search_twostep_mf,
+           "Two-step binary+mf search", py::arg("query_vector"),
            py::arg("k"), py::arg("rescoring_factor") = 50)
       .def("get_float_embedding", &PyEmbeddingSearch::get_float_embedding,
            "Get float embedding at index", py::arg("index"))
