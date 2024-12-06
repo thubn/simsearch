@@ -1,6 +1,5 @@
 #pragma once
 #include "config_manager.h"
-#include "embedding_io.h"
 #include <cstdint>
 #include <iostream>
 #include <stdexcept>
@@ -35,34 +34,6 @@ public:
                     std::vector<std::pair<int, size_t>> &searchIndexes) {
     throw std::runtime_error(
         "Two-step search not implemented for this searcher");
-  }
-
-  bool load(const std::string &filename, bool set_sentences = true,
-            const int embedding_dim = 1024) {
-    // std::vector<std::vector<float>> temp_embeddings;
-    // std::vector<std::string> temp_sentences;
-    bool result = false;
-    auto start = std::chrono::high_resolution_clock::now();
-    if (filename.ends_with(".safetensors")) {
-      result = EmbeddingIO::load_safetensors(filename, embeddings, sentences);
-    } else if (filename.ends_with(".ndjson")) {
-      result = EmbeddingIO::load_json(filename, embeddings, sentences);
-    } else if (filename.ends_with(".jsonl")) {
-      result = EmbeddingIO::load_json2(filename, embeddings, sentences);
-    } else if (filename.ends_with(".parquet")) {
-      result = EmbeddingIO::load_parquet(filename, embeddings, sentences,
-                                         set_sentences, embedding_dim);
-    } else {
-      throw std::runtime_error("Unsupported file format");
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    auto time =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-            .count() /
-        1000;
-    std::cout << "loading took " << time << "ms" << std::endl;
-    initializeDimensions(embeddings);
-    return result;
   }
 
   // Common getters/setters that were duplicated across classes

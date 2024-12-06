@@ -262,7 +262,25 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
                          const bool init_mf = true) {
   // Load base embeddings
   searchers.initBase(filename, embedding_dim);
-
+#ifdef NO_THREADS
+  if (init_avx2)
+    searchers.initOavx2();
+  if (init_binary)
+    searchers.initObinary_avx2();
+  if (init_int8)
+    searchers.initOuint_avx2();
+  if (init_float16)
+    searchers.initFloat16();
+  if (init_mf)
+    searchers.initMappedFloat();
+  if (init_pca) {
+    searchers.initPca2();
+    searchers.initPca4();
+    searchers.initPca8();
+    searchers.initPca16();
+    searchers.initPca32();
+  }
+#else
   std::thread tOavx2;
   std::thread tObinary_avx2;
   std::thread tOuint_avx2;
@@ -316,7 +334,10 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
     tFloat16.join();
   if (init_mf)
     tMappedFloat.join();
+
   // tMappedFloat2.join();
+
+#endif
 }
 
 } // namespace simsearch
