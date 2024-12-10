@@ -306,6 +306,11 @@ public:
     return py::make_tuple(searchers->base.getNumVectors(),
                           searchers->base.getVectorDim());
   }
+
+  py::str get_sentence(size_t index) const {
+    check_initialization();
+    return searchers->base.getSentences()[index];
+  }
 };
 
 // Implementation for float-based searchers (base and AVX2)
@@ -435,8 +440,8 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
            "Two-step binary+float search", py::arg("query_vector"),
            py::arg("k"), py::arg("rescoring_factor") = 50)
       .def("search_twostep_mf", &PyEmbeddingSearch::search_twostep_mf,
-           "Two-step binary+mf search", py::arg("query_vector"),
-           py::arg("k"), py::arg("rescoring_factor") = 50)
+           "Two-step binary+mf search", py::arg("query_vector"), py::arg("k"),
+           py::arg("rescoring_factor") = 50)
       .def("get_float_embedding", &PyEmbeddingSearch::get_float_embedding,
            "Get float embedding at index", py::arg("index"))
       .def("get_avx2_embedding", &PyEmbeddingSearch::get_avx2_embedding,
@@ -452,5 +457,6 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
       .def("get_pca32_embedding", &PyEmbeddingSearch::get_pca32_embedding,
            "Get PCA32 embedding at index", py::arg("index"))
       .def("get_dimensions", &PyEmbeddingSearch::get_dimensions,
-           "Get number of vectors and vector dimensions");
+           "Get number of vectors and vector dimensions")
+      .def("get_sentence", &PyEmbeddingSearch::get_sentence, py::arg("index"));
 }

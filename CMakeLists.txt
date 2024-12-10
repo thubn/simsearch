@@ -4,7 +4,7 @@ project(simsearch)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE "include-what-you-use")
+#set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE "include-what-you-use")
 
 add_compile_options(-Wno-ignored-attributes)
 

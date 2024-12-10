@@ -401,8 +401,6 @@ bool load_parquet(const std::string &filename,
 
       // Process entire text column
       if (set_sentences) {
-        sentences.clear();
-        sentences.resize(num_rows);
         for (int64_t i = 0; i < batch.rows_in_group; i++) {
           if (text_array->IsNull(i)) {
             sentences[batch.base_idx + i].clear();
@@ -426,6 +424,11 @@ bool load_parquet(const std::string &filename,
         }
       }
     };
+
+    if (set_sentences) {
+      sentences.clear();
+      sentences.resize(num_rows);
+    }
 
     // Main async processing loop
     std::future<BatchData> next_batch;
