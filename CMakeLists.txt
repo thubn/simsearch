@@ -4,17 +4,9 @@ project(simsearch)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE "include-what-you-use")
 
-# Check for AVX2 support
-include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
-
-if(COMPILER_SUPPORTS_AVX2)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
-    add_definitions(-DAVX2_ENABLED)
-else()
-    message(WARNING "AVX2 is not supported on this machine.")
-endif()
+add_compile_options(-Wno-ignored-attributes)
 
 find_package(nlohmann_json REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -25,6 +17,7 @@ find_package(pybind11 CONFIG REQUIRED)
 # Add the include directory to the include path
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+# main executable (main.cpp)
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/embedding_io.cpp
@@ -37,27 +30,6 @@ add_executable(${PROJECT_NAME}
     src/optimized_embedding_search_uint8_avx2.cpp
     src/optimized_embedding_search_avx2.cpp
     src/optimized_embedding_search_binary_avx2.cpp
-    #src/optimized_embedding_search_mapped_float.cpp
-    src/embedding_search_float_int8.cpp
-    src/embedding_search_float16.cpp
-    src/embedding_search_mapped_float.cpp
-)
-
-# Create the Python module
-pybind11_add_module(embedding_search 
-    src/embedding_search_bindings.cpp
-    src/embedding_io.cpp
-    src/embedding_search_avx2.cpp
-    src/embedding_search_binary.cpp
-    src/embedding_search_float.cpp
-    src/embedding_search_binary_avx2.cpp
-    src/embedding_search_uint8_avx2.cpp
-    src/embedding_utils.cpp
-    src/optimized_embedding_search_uint8_avx2.cpp
-    src/optimized_embedding_search_avx2.cpp
-    src/optimized_embedding_search_binary_avx2.cpp
-    #src/optimized_embedding_search_mapped_float.cpp
-    src/embedding_search_float_int8.cpp
     src/embedding_search_float16.cpp
     src/embedding_search_mapped_float.cpp
 )
@@ -75,8 +47,6 @@ pybind11_add_module(embedding_search_benchmark
     src/optimized_embedding_search_uint8_avx2.cpp
     src/optimized_embedding_search_avx2.cpp
     src/optimized_embedding_search_binary_avx2.cpp
-    #src/optimized_embedding_search_mapped_float.cpp
-    src/embedding_search_float_int8.cpp
     src/embedding_search_float16.cpp
     src/embedding_search_mapped_float.cpp
 )
@@ -102,23 +72,11 @@ target_link_libraries(embedding_search_benchmark
 )
 
 # Set Python module properties
-set_target_properties(embedding_search PROPERTIES
-    PREFIX ""  # Removes lib prefix on Unix
-    SUFFIX ".so"  # Sets correct extension on Unix
-)
-
-# Set Python module properties
 set_target_properties(embedding_search_benchmark PROPERTIES
     PREFIX ""  # Removes lib prefix on Unix
     SUFFIX ".so"  # Sets correct extension on Unix
 )
 
-# Optionally, you can set different flags for Debug and Release builds
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -g -fopenmp")
-
-# Print include directories for debugging
-get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-foreach(dir ${dirs})
-  message(STATUS "dir='${dir}'")
-endforeach()
+# set different flags for Debug and Release builds
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -mavx2 -DNO_THREADS")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -fopenmp -mavx2 -DNO_THREADS")
