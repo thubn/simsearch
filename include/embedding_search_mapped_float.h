@@ -1,7 +1,11 @@
 #pragma once
-#include "aligned_types.h"
-#include "embedding_search_base.h"
-#include <stdexcept>
+#include "aligned_types.h"         // for avx2i_vector
+#include "embedding_search_base.h" // for EmbeddingSearchBase
+#include <stddef.h>                // for size_t
+#include <stdexcept>               // for runtime_error
+#include <string>                  // for string
+#include <utility>                 // for pair
+#include <vector>                  // for vector
 
 class EmbeddingSearchMappedFloat
     : public EmbeddingSearchBase<avx2i_vector, float> {

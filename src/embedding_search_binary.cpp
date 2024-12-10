@@ -1,9 +1,6 @@
 #include "embedding_search_binary.h"
-#include "embedding_io.h"
-#include <algorithm>
-#include <bit>
-#include <omp.h>
-#include <stdexcept>
+#include <algorithm> // for partial_sort
+#include <stdexcept> // for runtime_error
 
 std::vector<std::pair<int, size_t>>
 EmbeddingSearchBinary::similarity_search(const std::vector<uint64_t> &query,

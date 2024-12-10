@@ -1,6 +1,13 @@
 #pragma once
-#include "embedding_search_base.h"
-#include "embedding_io.h"
+#include "embedding_io.h"          // for load_json, load_json2, load_parquet
+#include "embedding_search_base.h" // for EmbeddingSearchBase
+#include <bits/chrono.h>           // for duration, duration_cast, high_res...
+#include <iostream>                // for basic_ostream, operator<<, basic_ios
+#include <stddef.h>                // for size_t
+#include <stdexcept>               // for runtime_error
+#include <string>                  // for char_traits, string
+#include <utility>                 // for pair
+#include <vector>                  // for vector
 
 class EmbeddingSearchFloat
     : public EmbeddingSearchBase<std::vector<float>, float> {

@@ -1,6 +1,10 @@
 #pragma once
-#include "embedding_search_base.h"
-#include <cstdint>
+#include "embedding_search_base.h" // for EmbeddingSearchBase
+#include <cstdint>                 // for uint64_t
+#include <stddef.h>                // for size_t
+#include <string>                  // for string
+#include <utility>                 // for pair
+#include <vector>                  // for vector
 
 class EmbeddingSearchBinary
     : public EmbeddingSearchBase<std::vector<uint64_t>, int> {

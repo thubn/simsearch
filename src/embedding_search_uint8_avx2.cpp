@@ -1,11 +1,9 @@
 #include "embedding_search_uint8_avx2.h"
-#include "embedding_io.h"
-#include "embedding_utils.h"
-#include <algorithm>
-#include <cmath>
-#include <iostream>
-#include <omp.h>
-#include <stdexcept>
+#include "embedding_utils.h" // for validateUint8AVX2Dimensions, calculateU...
+#include <algorithm>         // for partial_sort
+#include <emmintrin.h>       // for _mm_add_epi32, _mm_cvtsi128_si32, _mm_s...
+#include <stdexcept>         // for runtime_error
+#include <xmmintrin.h>       // for _MM_SHUFFLE
 
 std::vector<std::pair<uint, size_t>>
 EmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query,

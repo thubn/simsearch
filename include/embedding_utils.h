@@ -1,12 +1,14 @@
 // embedding_utils.h
 #pragma once
-#include "aligned_types.h"
-#include <algorithm>
-#include <cmath>
-#include <immintrin.h>
-#include <string>
-#include <unordered_map>
-#include <vector>
+#include "aligned_types.h" // for avx2_vector, avx2i_vector
+#include <algorithm>       // for sort, unique, set_intersection, set_union
+#include <bits/std_abs.h>  // for abs
+#include <cmath>           // for log2, exp, sqrt
+#include <iterator>        // for back_insert_iterator, back_inserter, pair
+#include <stddef.h>        // for size_t
+#include <string>          // for string
+#include <unordered_map>   // for unordered_map
+#include <vector>          // for vector
 
 namespace EmbeddingUtils {
 // Convert a single float vector to AVX2 format
@@ -45,8 +47,8 @@ bool pca_dimension_reduction(
     std::vector<std::vector<float>> &result_pca_matrix,
     std::vector<float> &result_mean);
 std::vector<float> apply_pca_dimension_reduction_to_query(
-    const std::vector<std::vector<float>> &pca_matrix, const std::vector<float> &mean,
-    const std::vector<float> &query);
+    const std::vector<std::vector<float>> &pca_matrix,
+    const std::vector<float> &mean, const std::vector<float> &query);
 
 template <typename T1, typename T2>
 double calculateJaccardIndex(const std::vector<std::pair<T1, size_t>> &set1,

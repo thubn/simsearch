@@ -1,11 +1,10 @@
 #include "embedding_search_avx2.h"
-#include "embedding_io.h"
-#include "embedding_utils.h"
-#include <algorithm>
-#include <cmath>
-#include <iostream>
-#include <omp.h>
-#include <stdexcept>
+#include "embedding_utils.h" // for convertEmbeddingsToAVX2, validateAVX2Di...
+#include <algorithm>         // for partial_sort
+#include <cmath>             // for sqrt
+#include <pmmintrin.h>       // for _mm_hadd_ps
+#include <stdexcept>         // for runtime_error
+#include <xmmintrin.h>       // for __m128, _mm_add_ps, _mm_cvtss_f32
 
 std::vector<std::pair<float, size_t>>
 EmbeddingSearchAVX2::similarity_search(const avx2_vector &query, size_t k) {

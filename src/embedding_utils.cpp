@@ -2,10 +2,10 @@
 #include "aligned_types.h"
 #include <cstdint>
 #include <eigen3/Eigen/Dense>
+#include <immintrin.h>
 #include <iomanip>
 #include <iostream>
-#include <omp.h>
-#include <stdexcept>
+#include <stdlib.h>
 
 namespace EmbeddingUtils {
 void convertSingleEmbeddingToAVX2(const std::vector<float> &input,
@@ -304,7 +304,7 @@ std::vector<float> apply_pca_dimension_reduction_to_query(
   Eigen::VectorXf centered_query = eigen_query - eigen_mean;
   Eigen::VectorXf eigen_result_query(vector_dim);
   eigen_result_query = eigen_pca_matrix.transpose() * centered_query;
-  
+
   if (vector_dim != eigen_result_query.size()) {
     std::cout << "vector_dim != eigen_result_query.size(): " << vector_dim
               << " != " << eigen_result_query.size() << std::endl;

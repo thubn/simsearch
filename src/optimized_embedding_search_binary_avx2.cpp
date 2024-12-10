@@ -1,7 +1,9 @@
 #include "optimized_embedding_search_binary_avx2.h"
-#include "embedding_utils.h"
-#include <cstring>
-#include <stdexcept>
+#include "embedding_utils.h" // for validateBinaryAVX2Dimensions
+#include <algorithm>         // for partial_sort
+#include <iostream>          // for basic_ostream, operator<<, cerr, endl
+#include <stdexcept>         // for runtime_error, out_of_range
+#include <xmmintrin.h>       // for _MM_HINT_T0, _mm_prefetch
 
 constexpr int_fast8_t NUM_STRIDES = 6;
 constexpr int_fast64_t STRIDE_DIST = 1;

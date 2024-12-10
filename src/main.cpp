@@ -1,32 +1,5 @@
-#include "aligned_types.h"
-#include "config_manager.h"
-#include "embedding_search_avx2.h"
-#include "embedding_search_binary.h"
-#include "embedding_search_binary_avx2.h"
-#include "embedding_search_float.h"
-#include "embedding_search_float16.h"
-// #include "embedding_search_float_int8.h"
-#include "common_structs.h"
-//#include "embedding_search_mapped_float.h"
-#include "embedding_search_uint8_avx2.h"
-#include "embedding_utils.h"
-#include "optimized_embedding_search_avx2.h"
-#include "optimized_embedding_search_binary_avx2.h"
-#include "optimized_embedding_search_uint8_avx2.h"
 #include "stats_exporter.h"
-#include <algorithm>
-#include <chrono>
-#include <ctime>
-#include <filesystem>
-#include <fstream>
-#include <immintrin.h>
-#include <iostream>
-#include <nlohmann/json.hpp>
 #include <random>
-#include <string>
-#include <thread>
-#include <unordered_set>
-#include <vector>
 
 using json = nlohmann::json;
 

@@ -1,7 +1,11 @@
 #include "optimized_embedding_search_uint8_avx2.h"
-#include "embedding_utils.h"
-#include <cstring>
-#include <stdexcept>
+#include "embedding_utils.h" // for validateUint8AVX2Dimensions
+#include <algorithm>         // for clamp, partial_sort
+#include <emmintrin.h>       // for _mm_add_epi32, _mm_cvtsi128_si32, _mm_s...
+#include <iostream>          // for basic_ostream, operator<<, cerr, endl
+#include <stdexcept>         // for runtime_error, out_of_range
+#include <stdint.h>          // for int8_t
+#include <xmmintrin.h>       // for _MM_SHUFFLE, _MM_HINT_T0, _mm_prefetch
 
 bool OptimizedEmbeddingSearchUint8AVX2::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {

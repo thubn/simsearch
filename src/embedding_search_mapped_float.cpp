@@ -1,13 +1,19 @@
 #include "embedding_search_mapped_float.h"
-#include "embedding_io.h"
-#include <algorithm>
-#include <bitset>
-#include <cmath>
-#include <immintrin.h>
-#include <iomanip>
-#include <numeric>
-#include <omp.h>
-#include <stdexcept>
+#include <algorithm>      // for copy, max, partial_sort, lower_bound, sort
+#include <bits/std_abs.h> // for abs
+#include <cmath>          // for cos, exp, M_PI_2
+#include <emmintrin.h>    // for _mm_loadl_epi64, __m128i
+#include <exception>      // for exception
+#include <immintrin.h>    // for __m256, _mm256_cvtepu8_epi32, _mm256_fmadd_ps
+#include <iomanip>        // for operator<<, setw, setprecision, fixed, hex
+#include <iostream>       // for basic_ostream, operator<<, cout, basic_ost...
+#include <iterator>       // for distance
+#include <new>            // for bad_alloc
+#include <pmmintrin.h>    // for _mm_hadd_ps
+#include <sstream>        // for basic_stringstream
+#include <stdexcept>      // for runtime_error, invalid_argument
+#include <stdint.h>       // for uint8_t, uint32_t
+#include <xmmintrin.h>    // for _mm_add_ps, _mm_cvtss_f32, __m128
 
 // Distribution function type for easier switching
 enum class DistributionType {
@@ -75,15 +81,13 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
       pos_parts = 1;
     pos_parts = n_parts - neg_parts;
 
-    /*
-    std::cout << "Distribution info:\n";
-    std::cout << "Distribution type: " << static_cast<int>(dist_type) << "\n";
-    std::cout << "Total elements: " << arr.size() << "\n";
-    std::cout << "Negative elements: " << neg_count << " (" << neg_parts
-              << " partitions)\n";
-    std::cout << "Positive elements: " << pos_count << " (" << pos_parts
-              << " partitions)\n\n";
-    */
+    // std::cout << "Distribution info:\n";
+    // std::cout << "Distribution type: " << static_cast<int>(dist_type) <<
+    // "\n"; std::cout << "Total elements: " << arr.size() << "\n"; std::cout <<
+    // "Negative elements: " << neg_count << " (" << neg_parts
+    //           << " partitions)\n";
+    // std::cout << "Positive elements: " << pos_count << " (" << pos_parts
+    //           << " partitions)\n\n";
 
     // Calculate weights and sizes for both sides
     std::vector<size_t> partition_sizes(n_parts);
@@ -163,14 +167,12 @@ partitionAndAverage(std::vector<float> &arr, int n_parts,
       partitions[i] = {arr[start_pos], arr[start_pos + partition_sizes[i] - 1],
                        average};
 
-      /*
       // Print partition details
       std::cout << "Partition " << std::setw(2) << i << ": "
                 << "size = " << std::setw(10) << partition_sizes[i]
                 << " elements, range [" << std::fixed << std::setprecision(6)
                 << partitions[i].start << ", " << partitions[i].end
                 << "], avg = " << partitions[i].average << "\n";
-      */
 
       start_pos += partition_sizes[i];
     }

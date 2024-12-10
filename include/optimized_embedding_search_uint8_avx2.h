@@ -1,7 +1,11 @@
 #pragma once
-#include "aligned_types.h"
-#include "embedding_search_base.h"
-#include <immintrin.h>
+#include "aligned_types.h"         // for avx2i_vector
+#include "embedding_search_base.h" // for OptimizedEmbeddingSearchBase
+#include <immintrin.h>             // for __m256i
+#include <stddef.h>                // for size_t
+#include <string>                  // for string
+#include <utility>                 // for pair
+#include <vector>                  // for vector
 
 class OptimizedEmbeddingSearchUint8AVX2
     : public OptimizedEmbeddingSearchBase<avx2i_vector, int, __m256i> {
@@ -19,7 +23,8 @@ protected:
                           std::string &error_message) override;
 
 private:
-  int cosine_similarity_optimized(const __m256i *vec_a, const __m256i *vec_b) const override;
+  int cosine_similarity_optimized(const __m256i *vec_a,
+                                  const __m256i *vec_b) const override;
   void convert_float_to_uint8_avx2(const std::vector<float> &input,
                                    __m256i *output) const;
 };

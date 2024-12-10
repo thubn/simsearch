@@ -1,22 +1,38 @@
 #include "embedding_io.h"
-#include <arrow/array.h>
-#include <arrow/chunked_array.h>
-#include <arrow/io/file.h>
-#include <arrow/table.h>
-#include <arrow/type_traits.h>
-#include <atomic>
-#include <condition_variable>
-#include <fstream>
-#include <future>
-#include <iostream>
-#include <mutex>
-#include <nlohmann/json.hpp>
-#include <omp.h>
-#include <parquet/arrow/reader.h>
-#include <parquet/file_reader.h>
-#include <queue>
-#include <stdexcept>
-#include <thread>
+#include <algorithm>                     // for replace
+#include <arrow/array/array_binary.h>    // for StringArray
+#include <arrow/array/array_primitive.h> // for NumericArray
+#include <arrow/chunked_array.h>         // for ChunkedArray
+#include <arrow/io/file.h>               // for ReadableFile
+#include <arrow/result.h>                // for Result
+#include <arrow/table.h>                 // for Table
+#include <arrow/type.h>                  // for Schema, default_memory_pool
+#include <atomic>                        // for atomic, __atomic_base
+#include <condition_variable>            // for condition_variable
+#include <exception>                     // for exception
+#include <fstream>                       // for basic_ostream, operator<<
+#include <functional>                    // for ref
+#include <future>                        // for future, async, launch
+#include <iostream>                      // for cout, cerr
+#include <map>                           // for operator==
+#include <memory>                        // for shared_ptr, __shared_ptr_ac...
+#include <mutex>                         // for mutex, lock_guard, unique_lock
+#include <nlohmann/json.hpp>             // for basic_json
+#include <nlohmann/json_fwd.hpp>         // for json
+#include <parquet/arrow/reader.h>        // for FileReader, OpenFile
+#include <parquet/exception.h>           // for PARQUET_THROW_NOT_OK, PARQU...
+#include <parquet/file_reader.h>         // for ParquetFileReader
+#include <parquet/metadata.h>            // for FileMetaData, RowGroupMetaData
+#include <parquet/properties.h>          // for ReaderProperties
+#include <queue>                         // for queue
+#include <stddef.h>                      // for size_t
+#include <stdexcept>                     // for runtime_error
+#include <stdint.h>                      // for int64_t, uint64_t
+#include <thread>                        // for thread
+#include <utility>                       // for move
+namespace arrow {
+class MemoryPool;
+}
 
 using json = nlohmann::json;
 

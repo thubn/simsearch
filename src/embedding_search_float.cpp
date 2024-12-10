@@ -1,79 +1,12 @@
 #include "embedding_search_float.h"
-#include "embedding_io.h"
-#include <algorithm>
-#include <cmath>
-#include <eigen3/Eigen/Dense>
-#include <embedding_utils.h>
-#include <stdexcept>
+#include <algorithm> // for partial_sort
+#include <cmath>     // for sqrt
+#include <stdexcept> // for runtime_error
 
 bool EmbeddingSearchFloat::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {
   initializeDimensions(input_vectors);
   embeddings = input_vectors;
-  return true;
-}
-
-bool EmbeddingSearchFloat::pca_dimension_reduction(int factor) {
-  // Convert data to Eigen matrix
-  int rows = embeddings.size();
-  int cols = embeddings[0].size();
-  Eigen::MatrixXf matrix(rows, cols);
-  int target_dim = cols / factor;
-
-  for (int i = 0; i < rows; ++i) {
-    for (int j = 0; j < cols; ++j) {
-      matrix(i, j) = embeddings[i][j];
-    }
-  }
-
-  // Center the data
-  Eigen::VectorXf mean = matrix.colwise().mean();
-  matrix = matrix.rowwise() - mean.transpose();
-
-  // Compute covariance matrix
-  Eigen::MatrixXf cov = (matrix.transpose() * matrix) / (float)(rows - 1);
-
-  // Compute eigendecomposition
-  Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> eig(cov);
-
-  // Sort eigenvectors by eigenvalues
-  std::vector<std::pair<float, Eigen::VectorXf>> eigens;
-  for (int i = 0; i < cols; ++i) {
-    eigens.push_back({eig.eigenvalues()[i], eig.eigenvectors().col(i)});
-  }
-
-  std::sort(eigens.begin(), eigens.end(),
-            [](const auto &a, const auto &b) { return a.first > b.first; });
-
-  // Select top k eigenvectors
-  Eigen::MatrixXf pca_matrix(cols, target_dim);
-  for (int i = 0; i < target_dim; ++i) {
-    pca_matrix.col(i) = eigens[i].second;
-  }
-
-  // Project data onto principal components
-  Eigen::MatrixXf reduced = matrix * pca_matrix;
-
-  // Convert back to vector of vectors
-  std::vector<std::vector<float>> result(rows, std::vector<float>(target_dim));
-
-  // #pragma omp parallel for schedule(dynamic)
-  for (int i = 0; i < rows; ++i) {
-    for (int j = 0; j < target_dim; ++j) {
-      result[i][j] = reduced(i, j);
-    }
-  }
-
-  for (std::vector<float> &vec : result) {
-    float norm = EmbeddingUtils::calcNorm(vec);
-    for (float &el : vec) {
-      el = el / norm;
-    }
-  }
-
-  embeddings.resize(embeddings.size(), std::vector<float>(target_dim));
-  embeddings = std::move(result);
-  vector_dim = target_dim;
   return true;
 }
 

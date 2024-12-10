@@ -1,9 +1,15 @@
 #include "optimized_embedding_search_avx2.h"
-#include "embedding_io.h"
-#include "embedding_utils.h"
-#include <cstring>
-#include <iostream>
-#include <stdexcept>
+#include "embedding_utils.h" // for apply_pca_dimension_reduction_to_query
+#include <algorithm>         // for partial_sort, copy
+#include <cmath>             // for sqrt
+#include <cstring>           // for size_t, memcpy, memset
+#include <exception>         // for exception
+#include <immintrin.h>       // for _mm256_load_ps, _mm256_setzero_ps, _mm2...
+#include <iostream>          // for basic_ostream, char_traits, operator<<
+#include <pmmintrin.h>       // for _mm_hadd_ps
+#include <stdexcept>         // for invalid_argument, runtime_error, out_of...
+#include <stdint.h>          // for int32_t, int_fast8_t
+#include <xmmintrin.h>       // for __m128, _mm_add_ps, _mm_cvtss_f32
 
 constexpr int_fast8_t NUM_STRIDES = 6;
 // constexpr int_fast64_t STRIDE_DIST = 1;

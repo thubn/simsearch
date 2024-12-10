@@ -1,10 +1,9 @@
 #include "embedding_search_binary_avx2.h"
-#include "embedding_io.h"
-#include "embedding_utils.h"
-#include <algorithm>
-#include <bit>
-#include <omp.h>
-#include <stdexcept>
+#include "embedding_utils.h" // for validateBinaryAVX2Dimensions
+#include <algorithm>         // for partial_sort
+#include <immintrin.h>       // for _mm256_xor_si256, __m256i, _mm256_set1_...
+#include <stdexcept>         // for runtime_error
+#include <stdint.h>          // for uint64_t
 
 std::vector<std::pair<int, size_t>>
 EmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
@@ -40,7 +39,7 @@ bool EmbeddingSearchBinaryAVX2::setEmbeddings(
   size_t float_vector_size = float_data[0].size();
 
   vector_dim = (float_vector_size + 255) /
-                256; // Round up to nearest multiple of 256 bits
+               256; // Round up to nearest multiple of 256 bits
   embeddings.resize(num_vectors, avx2i_vector(vector_dim));
 
   for (size_t i = 0; i < num_vectors; ++i) {

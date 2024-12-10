@@ -1,7 +1,6 @@
 // common_structures.h
 #pragma once
 
-#include "aligned_types.h"
 #include "embedding_search_avx2.h"
 #include "embedding_search_binary.h"
 #include "embedding_search_binary_avx2.h"
@@ -11,12 +10,9 @@
 #include "embedding_search_uint8_avx2.h"
 #include "optimized_embedding_search_avx2.h"
 #include "optimized_embedding_search_binary_avx2.h"
-// #include "optimized_embedding_search_mapped_float.h"
 #include "optimized_embedding_search_uint8_avx2.h"
 #include <chrono>
-#include <string>
 #include <thread>
-#include <vector>
 
 namespace simsearch {
 
