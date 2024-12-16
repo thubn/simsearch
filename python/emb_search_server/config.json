@@ -1,0 +1,16 @@
+{
+    "performance": {
+        "batchSize": 512,
+        "numThreads": 8
+    },
+    "algorithm": {
+        "k": 100,
+        "rescoringFactor": 50
+    },
+    "memory": {
+        "maxCacheSize": 1073741824,
+        "alignmentSize": 32,
+        "prefetchEnabled": true,
+        "prefetchDistance": 8
+    }
+}

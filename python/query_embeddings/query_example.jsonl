@@ -1,0 +1,2 @@
+{"query": "cats", "formatted_query": "Represent this sentence for searching relevant passages: cats", "embedding": [0.011975935660302639, 0.015126843005418777, 0.06319043785333633, ...,]}
+{"query": "detailed history of the development of the first successful polio vaccine by Jonas Salk in the 1950s", "formatted_query": "Represent this sentence for searching relevant passages: detailed history of the development of the first successful polio vaccine by Jonas Salk in the 1950s", "embedding": [0.03303418308496475, 0.0222849752753973, 0.021171219646930695, ...,]}
