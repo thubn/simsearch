@@ -1,4 +1,4 @@
-# Git repo for Bachelors Thesis Vector Similarity Search Optimization by Thorben Simon
+# Git repo for Bachelors Thesis: Vector Similarity Search Optimization by Thorben Simon
 This repository contains all the files used in this thesis.
 This repo is availible on:
 - <https://github.com/thubn/simsearch>
