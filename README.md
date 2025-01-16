@@ -12,6 +12,8 @@ This repo is availible on:
   - [Jupyter](./python/jupyter/README.md) contains the Jupyter Notebook that generates the plots used in the thesis.
 - [memory benchmark](./memory_benchmark/README.md) used to test the effect of strided memory access vs. full sequential access.
 
+The embeddings used are stored in this repo: <https://github.com/thubn/simsearch_embeddings> Alternatively you can create then yourself: [python files](./python/README.md)
+
 ## Gettings started with the c++ program "simsearch"
 
 ```
