@@ -1,0 +1,2 @@
+# Jupyter Notebook
+This is the jupyter notebook used to generate the plots. It uses the results from the results folder. When you ran your own [benchmark with the python script](../benchmark/) in benchmark folder, you can use them in this notebook.
