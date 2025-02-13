@@ -23,34 +23,34 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/embedding_io.cpp
-    #src/embedding_search_avx2.cpp
+    src/embedding_search_avx2.cpp
     src/embedding_search_binary.cpp
     src/embedding_search_float.cpp
-    #src/embedding_search_binary_avx2.cpp
-    #src/embedding_search_uint8_avx2.cpp
+    src/embedding_search_binary_avx2.cpp
+    src/embedding_search_uint8_avx2.cpp
     src/embedding_utils.cpp
-    #src/optimized_embedding_search_uint8_avx2.cpp
-    #src/optimized_embedding_search_avx2.cpp
-    #src/optimized_embedding_search_binary_avx2.cpp
-    #src/embedding_search_float16.cpp
-    #src/embedding_search_mapped_float.cpp
+    src/optimized_embedding_search_uint8_avx2.cpp
+    src/optimized_embedding_search_avx2.cpp
+    src/optimized_embedding_search_binary_avx2.cpp
+    src/embedding_search_float16.cpp
+    src/embedding_search_mapped_float.cpp
 )
 
 # Create the Python module
 pybind11_add_module(embedding_search_benchmark
     src/embedding_search_benchmark_bindings.cpp
     src/embedding_io.cpp
-    #src/embedding_search_avx2.cpp
+    src/embedding_search_avx2.cpp
     src/embedding_search_binary.cpp
     src/embedding_search_float.cpp
-    #src/embedding_search_binary_avx2.cpp
-    #src/embedding_search_uint8_avx2.cpp
+    src/embedding_search_binary_avx2.cpp
+    src/embedding_search_uint8_avx2.cpp
     src/embedding_utils.cpp
-    #src/optimized_embedding_search_uint8_avx2.cpp
-    #src/optimized_embedding_search_avx2.cpp
-    #src/optimized_embedding_search_binary_avx2.cpp
-    #src/embedding_search_float16.cpp
-    #src/embedding_search_mapped_float.cpp
+    src/optimized_embedding_search_uint8_avx2.cpp
+    src/optimized_embedding_search_avx2.cpp
+    src/optimized_embedding_search_binary_avx2.cpp
+    src/embedding_search_float16.cpp
+    src/embedding_search_mapped_float.cpp
 )
 
 # Link libraries for main executable
