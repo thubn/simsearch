@@ -15,16 +15,21 @@ This repo is availible on:
 The embeddings used are stored in this repo: <https://github.com/thubn/simsearch_embeddings> Alternatively you can create then yourself: [python files](./python/README.md)
 
 ## Gettings started with the c++ program "simsearch"
+### Install dependencies
+#### Fedora
+```
+dnf install eigen3-devel json-devel python3-devel pybind11-devel pybind11-json-devel libarrow-devel parquet-libs-devel
+```
+
+### Compiling
 
 ```
-conan install . --output-folder=. --build=missing
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
 ```
 OR (for debugging)
 ```
-conan install . -s build_type=Debug --output-folder=. --build=missing
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Debug
 cmake --build .

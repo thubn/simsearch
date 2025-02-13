@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-include(build/Release/generators/conan_toolchain.cmake)
+#include(build/Release/generators/conan_toolchain.cmake)
 project(simsearch)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -13,6 +13,8 @@ find_package(Eigen3 REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
+find_package(Arrow REQUIRED)
+find_package(Parquet REQUIRED)
 
 # Add the include directory to the include path
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
