@@ -16,6 +16,37 @@ find_package(pybind11 CONFIG REQUIRED)
 find_package(Arrow REQUIRED)
 find_package(Parquet REQUIRED)
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+    add_definitions(-DUSE_AVX2)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+    add_definitions(-DUSE_NEON)
+endif()
+# ^ Use like this in code: ^
+# #ifdef USE_AVX2
+#     #include <immintrin.h>  // AVX2 headers
+#     // AVX2 implementation
+# #elif defined(USE_NEON)
+#     #include <arm_neon.h>   // NEON headers
+#     // NEON implementation
+# #else
+#     // Generic implementation
+# #endif
+
+# First get all files
+file(GLOB INCLUDE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h")
+
+# Remove specific files
+list(REMOVE_ITEM INCLUDE_FILES 
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/aligned_types.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/avx2_popcount.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/embedding_search_avx2.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/embedding_search_binary_avx2.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/embedding_search_uint8_avx2.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/optimized_embedding_search_avx2.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/optimized_embedding_search_binary_avx2.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/optimized_embedding_search_uint8_avx2.h"
+)
+
 # Add the include directory to the include path
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 

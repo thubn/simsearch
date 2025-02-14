@@ -1,4 +1,5 @@
 #include "stats_exporter.h"
+#include "embedding_utils.h"
 #include <random>
 
 using json = nlohmann::json;
@@ -188,59 +189,59 @@ runBenchmark(simsearch::Searchers &searchers,
   };
 
   // Run benchmarks for each searcher type sequentially
-  runFloatSearcherBenchmark(
-      "PCA2", searchers.pca2, simsearch::F32_PCA2,
-      [&](size_t idx) { return searchers.pca2.getEmbedding(idx); });
+  // runFloatSearcherBenchmark(
+  //     "PCA2", searchers.pca2, simsearch::F32_PCA2,
+  //     [&](size_t idx) { return searchers.pca2.getEmbedding(idx); });
 
-  runFloatSearcherBenchmark(
-      "PCA4", searchers.pca4, simsearch::F32_PCA4,
-      [&](size_t idx) { return searchers.pca4.getEmbedding(idx); });
+  // runFloatSearcherBenchmark(
+  //     "PCA4", searchers.pca4, simsearch::F32_PCA4,
+  //     [&](size_t idx) { return searchers.pca4.getEmbedding(idx); });
 
-  runFloatSearcherBenchmark(
-      "PCA8", searchers.pca8, simsearch::F32_PCA8,
-      [&](size_t idx) { return searchers.pca8.getEmbedding(idx); });
+  // runFloatSearcherBenchmark(
+  //     "PCA8", searchers.pca8, simsearch::F32_PCA8,
+  //     [&](size_t idx) { return searchers.pca8.getEmbedding(idx); });
 
-  runFloatSearcherBenchmark(
-      "PCA16", searchers.pca16, simsearch::F32_PCA16,
-      [&](size_t idx) { return searchers.pca16.getEmbedding(idx); });
+  // runFloatSearcherBenchmark(
+  //     "PCA16", searchers.pca16, simsearch::F32_PCA16,
+  //     [&](size_t idx) { return searchers.pca16.getEmbedding(idx); });
 
-  runFloatSearcherBenchmark(
-      "PCA32", searchers.pca32, simsearch::F32_PCA32,
-      [&](size_t idx) { return searchers.pca32.getEmbedding(idx); });
+  // runFloatSearcherBenchmark(
+  //     "PCA32", searchers.pca32, simsearch::F32_PCA32,
+  //     [&](size_t idx) { return searchers.pca32.getEmbedding(idx); });
 
-  runFloatSearcherBenchmark(
-      "AVX2", searchers.avx2, simsearch::F32_AVX2,
-      [&](size_t idx) { return searchers.avx2.getEmbeddings()[idx]; });
+  // runFloatSearcherBenchmark(
+  //     "AVX2", searchers.avx2, simsearch::F32_AVX2,
+  //     [&](size_t idx) { return searchers.avx2.getEmbeddings()[idx]; });
 
   runIntSearcherBenchmark(
       "Binary", searchers.binary, simsearch::BINARY,
       [&](size_t idx) { return searchers.binary.getEmbeddings()[idx]; });
 
-  runIntSearcherBenchmark(
-      "Binary AVX2", searchers.binary_avx2, simsearch::BINARY_AVX2,
-      [&](size_t idx) { return searchers.binary_avx2.getEmbeddings()[idx]; });
+  // runIntSearcherBenchmark(
+  //     "Binary AVX2", searchers.binary_avx2, simsearch::BINARY_AVX2,
+  //     [&](size_t idx) { return searchers.binary_avx2.getEmbeddings()[idx]; });
 
-  runUint32SearcherBenchmark(
-      "UINT8 AVX2", searchers.uint8_avx2, simsearch::UINT8_AVX2,
-      [&](size_t idx) { return searchers.uint8_avx2.getEmbeddings()[idx]; });
+  // runUint32SearcherBenchmark(
+  //     "UINT8 AVX2", searchers.uint8_avx2, simsearch::UINT8_AVX2,
+  //     [&](size_t idx) { return searchers.uint8_avx2.getEmbeddings()[idx]; });
 
-  runSearcherBenchmarkTwoStep(
-      "OBAVX2_F32OAVX2", searchers.obinary_avx2, searchers.oavx2,
-      simsearch::OBAVX2_F32OAVX2,
-      [&](size_t idx) { return searchers.obinary_avx2.getEmbeddingAVX2(idx); },
-      [&](size_t idx) { return searchers.oavx2.getEmbedding(idx); });
+  // runSearcherBenchmarkTwoStep(
+  //     "OBAVX2_F32OAVX2", searchers.obinary_avx2, searchers.oavx2,
+  //     simsearch::OBAVX2_F32OAVX2,
+  //     [&](size_t idx) { return searchers.obinary_avx2.getEmbeddingAVX2(idx); },
+  //     [&](size_t idx) { return searchers.oavx2.getEmbedding(idx); });
 
-  runFloatSearcherBenchmark(
-      "OAVX2", searchers.oavx2, simsearch::F32_OAVX2,
-      [&](size_t idx) { return searchers.oavx2.getEmbedding(idx); });
+  // runFloatSearcherBenchmark(
+  //     "OAVX2", searchers.oavx2, simsearch::F32_OAVX2,
+  //     [&](size_t idx) { return searchers.oavx2.getEmbedding(idx); });
 
-  runIntSearcherBenchmark(
-      "O Binary AVX2", searchers.obinary_avx2, simsearch::OBINAR_AVX2,
-      [&](size_t idx) { return searchers.obinary_avx2.getEmbeddingAVX2(idx); });
+  // runIntSearcherBenchmark(
+  //     "O Binary AVX2", searchers.obinary_avx2, simsearch::OBINAR_AVX2,
+  //     [&](size_t idx) { return searchers.obinary_avx2.getEmbeddingAVX2(idx); });
 
-  runIntSearcherBenchmark(
-      "O UINT8 AVX2", searchers.ouint8_avx2, simsearch::OUINT8_AVX2,
-      [&](size_t idx) { return searchers.ouint8_avx2.getEmbeddingAVX2(idx); });
+  // runIntSearcherBenchmark(
+  //     "O UINT8 AVX2", searchers.ouint8_avx2, simsearch::OUINT8_AVX2,
+  //     [&](size_t idx) { return searchers.ouint8_avx2.getEmbeddingAVX2(idx); });
 
   /*runFloatSearcherBenchmark(
       "MAPPED_FLOAT", searchers.mappedFloat, simsearch::MAPPED_FLOAT,
@@ -354,217 +355,217 @@ void printSearchResults(
   std::cout << "-------------------\n";
 }
 
-void runQuerySearch(simsearch::Searchers &searchers,
-                    const std::string &query_file, size_t k,
-                    size_t rescoring_factor = 10) {
-  // Load and validate queries
-  std::vector<Query> queries = loadQueries(query_file);
-  if (queries.empty()) {
-    throw std::runtime_error("No queries loaded");
-  }
+// void runQuerySearch(simsearch::Searchers &searchers,
+//                     const std::string &query_file, size_t k,
+//                     size_t rescoring_factor = 10) {
+//   // Load and validate queries
+//   std::vector<Query> queries = loadQueries(query_file);
+//   if (queries.empty()) {
+//     throw std::runtime_error("No queries loaded");
+//   }
 
-  SearchMethodStats<float> f32Results{"F32_base"};
-  SearchMethodStats<float> avx2Results{"AVX2_optimized"};
-  SearchMethodStats<int> binaryResults{"Binary_AVX2"};
-  SearchMethodStats<int> uint8Results{"UINT8_AVX2"};
-  SearchMethodStats<float> twostepResults{"Two_Step"};
+//   SearchMethodStats<float> f32Results{"F32_base"};
+//   SearchMethodStats<float> avx2Results{"AVX2_optimized"};
+//   SearchMethodStats<int> binaryResults{"Binary_AVX2"};
+//   SearchMethodStats<int> uint8Results{"UINT8_AVX2"};
+//   SearchMethodStats<float> twostepResults{"Two_Step"};
 
-  // Process each query
-  for (size_t i = 0; i < queries.size(); i++) {
-    std::cout << "\n=== Processing Query " << (i + 1) << " of "
-              << queries.size() << " ===\n";
-    std::cout << "Query: " << queries[i].query << "\n";
-    std::cout << "Formatted query: " << queries[i].formatted_query << "\n\n";
+//   // Process each query
+//   for (size_t i = 0; i < queries.size(); i++) {
+//     std::cout << "\n=== Processing Query " << (i + 1) << " of "
+//               << queries.size() << " ===\n";
+//     std::cout << "Query: " << queries[i].query << "\n";
+//     std::cout << "Formatted query: " << queries[i].formatted_query << "\n\n";
 
-    // Normalize query vector
-    std::vector<float> normalized_query = queries[i].embedding;
-    float norm = EmbeddingUtils::calcNorm(normalized_query);
-    for (float &val : normalized_query) {
-      val = val / norm;
-    }
+//     // Normalize query vector
+//     std::vector<float> normalized_query = queries[i].embedding;
+//     float norm = EmbeddingUtils::calcNorm(normalized_query);
+//     for (float &val : normalized_query) {
+//       val = val / norm;
+//     }
 
-    // Convert query for different formats
-    avx2_vector queryAvx2(normalized_query.size() / 8);
-    EmbeddingUtils::convertSingleEmbeddingToAVX2(normalized_query, queryAvx2,
-                                                 normalized_query.size() / 8);
+//     // Convert query for different formats
+//     avx2_vector queryAvx2(normalized_query.size() / 8);
+//     EmbeddingUtils::convertSingleEmbeddingToAVX2(normalized_query, queryAvx2,
+//                                                  normalized_query.size() / 8);
 
-    avx2i_vector queryBinaryAvx2(normalized_query.size() / 8 / 32);
-    EmbeddingUtils::convertSingleFloatToBinaryAVX2(
-        normalized_query, queryBinaryAvx2, normalized_query.size() / 8 / 32);
+//     avx2i_vector queryBinaryAvx2(normalized_query.size() / 8 / 32);
+//     EmbeddingUtils::convertSingleFloatToBinaryAVX2(
+//         normalized_query, queryBinaryAvx2, normalized_query.size() / 8 / 32);
 
-    avx2i_vector queryUint8Avx2(normalized_query.size() / 8 / 4);
-    EmbeddingUtils::convertSingleFloatToUint8AVX2(
-        normalized_query, queryUint8Avx2, normalized_query.size() / 8 / 4);
+//     avx2i_vector queryUint8Avx2(normalized_query.size() / 8 / 4);
+//     EmbeddingUtils::convertSingleFloatToUint8AVX2(
+//         normalized_query, queryUint8Avx2, normalized_query.size() / 8 / 4);
 
-    // F32 (base) search
-    {
-      auto start = std::chrono::high_resolution_clock::now();
-      auto results = searchers.base.similarity_search(normalized_query, k);
-      auto end = std::chrono::high_resolution_clock::now();
+//     // F32 (base) search
+//     {
+//       auto start = std::chrono::high_resolution_clock::now();
+//       auto results = searchers.base.similarity_search(normalized_query, k);
+//       auto end = std::chrono::high_resolution_clock::now();
 
-      f32Results.times.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-              .count());
-      f32Results.results.push_back(results);
-    }
+//       f32Results.times.push_back(
+//           std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+//               .count());
+//       f32Results.results.push_back(results);
+//     }
 
-    // opt AVX2 search
-    {
-      auto start = std::chrono::high_resolution_clock::now();
-      // auto results = searchers.avx2.similarity_search(queryAvx2, k);
-      auto results = searchers.oavx2.similarity_search(normalized_query, k);
-      auto end = std::chrono::high_resolution_clock::now();
+//     // opt AVX2 search
+//     {
+//       auto start = std::chrono::high_resolution_clock::now();
+//       // auto results = searchers.avx2.similarity_search(queryAvx2, k);
+//       auto results = searchers.oavx2.similarity_search(normalized_query, k);
+//       auto end = std::chrono::high_resolution_clock::now();
 
-      avx2Results.times.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-              .count());
-      avx2Results.results.push_back(results);
-      avx2Results.jaccard_indexes.push_back(
-          EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
-                                                results));
-      avx2Results.ndcg_scores.push_back(
-          EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
-    }
+//       avx2Results.times.push_back(
+//           std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+//               .count());
+//       avx2Results.results.push_back(results);
+//       avx2Results.jaccard_indexes.push_back(
+//           EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
+//                                                 results));
+//       avx2Results.ndcg_scores.push_back(
+//           EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
+//     }
 
-    // opt Binary AVX2 search
-    {
-      auto start = std::chrono::high_resolution_clock::now();
-      auto results =
-          searchers.obinary_avx2.similarity_search(queryBinaryAvx2, k);
-      auto end = std::chrono::high_resolution_clock::now();
+//     // opt Binary AVX2 search
+//     {
+//       auto start = std::chrono::high_resolution_clock::now();
+//       auto results =
+//           searchers.obinary_avx2.similarity_search(queryBinaryAvx2, k);
+//       auto end = std::chrono::high_resolution_clock::now();
 
-      binaryResults.times.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-              .count());
-      binaryResults.results.push_back(results);
-      binaryResults.jaccard_indexes.push_back(
-          EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
-                                                results));
-      binaryResults.ndcg_scores.push_back(
-          EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
-    }
+//       binaryResults.times.push_back(
+//           std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+//               .count());
+//       binaryResults.results.push_back(results);
+//       binaryResults.jaccard_indexes.push_back(
+//           EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
+//                                                 results));
+//       binaryResults.ndcg_scores.push_back(
+//           EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
+//     }
 
-    // opt UINT8 AVX2 search
-    {
-      auto start = std::chrono::high_resolution_clock::now();
-      auto results = searchers.ouint8_avx2.similarity_search(queryUint8Avx2, k);
-      auto end = std::chrono::high_resolution_clock::now();
+//     // opt UINT8 AVX2 search
+//     {
+//       auto start = std::chrono::high_resolution_clock::now();
+//       auto results = searchers.ouint8_avx2.similarity_search(queryUint8Avx2, k);
+//       auto end = std::chrono::high_resolution_clock::now();
 
-      uint8Results.times.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-              .count());
-      uint8Results.results.push_back(results);
-      uint8Results.jaccard_indexes.push_back(
-          EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
-                                                results));
-      uint8Results.ndcg_scores.push_back(
-          EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
-    }
+//       uint8Results.times.push_back(
+//           std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+//               .count());
+//       uint8Results.results.push_back(results);
+//       uint8Results.jaccard_indexes.push_back(
+//           EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
+//                                                 results));
+//       uint8Results.ndcg_scores.push_back(
+//           EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
+//     }
 
-    // Two-step search
-    {
-      auto start = std::chrono::high_resolution_clock::now();
-      auto results_binary = searchers.obinary_avx2.similarity_search(
-          queryBinaryAvx2, k * rescoring_factor);
-      auto results = searchers.oavx2.similarity_search(normalized_query, k,
-                                                       results_binary);
-      auto end = std::chrono::high_resolution_clock::now();
+//     // Two-step search
+//     {
+//       auto start = std::chrono::high_resolution_clock::now();
+//       auto results_binary = searchers.obinary_avx2.similarity_search(
+//           queryBinaryAvx2, k * rescoring_factor);
+//       auto results = searchers.oavx2.similarity_search(normalized_query, k,
+//                                                        results_binary);
+//       auto end = std::chrono::high_resolution_clock::now();
 
-      twostepResults.times.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-              .count());
-      twostepResults.results.push_back(results);
-      twostepResults.jaccard_indexes.push_back(
-          EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
-                                                results));
-      twostepResults.ndcg_scores.push_back(
-          EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
-    }
+//       twostepResults.times.push_back(
+//           std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+//               .count());
+//       twostepResults.results.push_back(results);
+//       twostepResults.jaccard_indexes.push_back(
+//           EmbeddingUtils::calculateJaccardIndex(f32Results.results.back(),
+//                                                 results));
+//       twostepResults.ndcg_scores.push_back(
+//           EmbeddingUtils::calculateNDCG(f32Results.results.back(), results));
+//     }
 
-    // Print results for current query
-    auto printResults =
-        [&](const std::string &name, const auto &results,
-            const std::vector<int64_t> &times,
-            const std::vector<double> &jaccardIndexes = std::vector<double>(),
-            const std::vector<double> &ndcgScores = std::vector<double>()) {
-          size_t idx = times.size() - 1;
-          std::cout << "\n" << name << " Results:\n";
-          std::cout << "Time: " << times[idx] << "us\n";
-          if (!jaccardIndexes.empty()) {
-            std::cout << "Jaccard Index: " << jaccardIndexes[idx] << "\n";
-            std::cout << "NDCG Score: " << ndcgScores[idx] << "\n";
-          }
-          std::cout << "Top " << k << " matches:\n";
-          for (const auto &match : results[idx]) {
-            std::cout << "Score: " << match.first << ", Text: "
-                      << searchers.base.getSentences()[match.second] << "...\n";
-          }
-          std::cout << "-------------------\n";
-        };
+//     // Print results for current query
+//     auto printResults =
+//         [&](const std::string &name, const auto &results,
+//             const std::vector<int64_t> &times,
+//             const std::vector<double> &jaccardIndexes = std::vector<double>(),
+//             const std::vector<double> &ndcgScores = std::vector<double>()) {
+//           size_t idx = times.size() - 1;
+//           std::cout << "\n" << name << " Results:\n";
+//           std::cout << "Time: " << times[idx] << "us\n";
+//           if (!jaccardIndexes.empty()) {
+//             std::cout << "Jaccard Index: " << jaccardIndexes[idx] << "\n";
+//             std::cout << "NDCG Score: " << ndcgScores[idx] << "\n";
+//           }
+//           std::cout << "Top " << k << " matches:\n";
+//           for (const auto &match : results[idx]) {
+//             std::cout << "Score: " << match.first << ", Text: "
+//                       << searchers.base.getSentences()[match.second] << "...\n";
+//           }
+//           std::cout << "-------------------\n";
+//         };
 
-    printResults("F32 (base)", f32Results.results, f32Results.times);
-    printResults("OAVX2", avx2Results.results, avx2Results.times,
-                 avx2Results.jaccard_indexes, avx2Results.ndcg_scores);
-    printResults("OBinary AVX2", binaryResults.results, binaryResults.times,
-                 binaryResults.jaccard_indexes, binaryResults.ndcg_scores);
-    printResults("OUINT8 AVX2", uint8Results.results, uint8Results.times,
-                 uint8Results.jaccard_indexes, uint8Results.ndcg_scores);
-    printResults("Two-step bin+float", twostepResults.results,
-                 twostepResults.times, twostepResults.jaccard_indexes,
-                 twostepResults.ndcg_scores);
-  }
+//     printResults("F32 (base)", f32Results.results, f32Results.times);
+//     printResults("OAVX2", avx2Results.results, avx2Results.times,
+//                  avx2Results.jaccard_indexes, avx2Results.ndcg_scores);
+//     printResults("OBinary AVX2", binaryResults.results, binaryResults.times,
+//                  binaryResults.jaccard_indexes, binaryResults.ndcg_scores);
+//     printResults("OUINT8 AVX2", uint8Results.results, uint8Results.times,
+//                  uint8Results.jaccard_indexes, uint8Results.ndcg_scores);
+//     printResults("Two-step bin+float", twostepResults.results,
+//                  twostepResults.times, twostepResults.jaccard_indexes,
+//                  twostepResults.ndcg_scores);
+//   }
 
-  std::cout << "Configuration:\n"
-            << "Runs: " << queries.size() << " | k: " << k
-            << " | Rescoring factor: " << rescoring_factor
-            << " | Embeddings: " << searchers.base.getEmbeddings().size()
-            << " | Dimensions: " << searchers.base.getEmbeddings()[0].size()
-            << "\n\nAverage Times:\n";
+//   std::cout << "Configuration:\n"
+//             << "Runs: " << queries.size() << " | k: " << k
+//             << " | Rescoring factor: " << rescoring_factor
+//             << " | Embeddings: " << searchers.base.getEmbeddings().size()
+//             << " | Dimensions: " << searchers.base.getEmbeddings()[0].size()
+//             << "\n\nAverage Times:\n";
 
-  // Print aggregate statistics
-  std::cout << "\n=== Aggregate Statistics ===\n";
+//   // Print aggregate statistics
+//   std::cout << "\n=== Aggregate Statistics ===\n";
 
-  auto printAggregateStats =
-      [](const std::string &name, const std::vector<int64_t> &times,
-         const std::vector<double> &jaccardIndexes = std::vector<double>(),
-         const std::vector<double> &ndcgScores = std::vector<double>()) {
-        double avgTime =
-            std::accumulate(times.begin(), times.end(), 0.0) / times.size();
-        std::cout << "\n" << name << " Statistics:\n";
-        std::cout << "Average Time: " << avgTime << "us\n";
+//   auto printAggregateStats =
+//       [](const std::string &name, const std::vector<int64_t> &times,
+//          const std::vector<double> &jaccardIndexes = std::vector<double>(),
+//          const std::vector<double> &ndcgScores = std::vector<double>()) {
+//         double avgTime =
+//             std::accumulate(times.begin(), times.end(), 0.0) / times.size();
+//         std::cout << "\n" << name << " Statistics:\n";
+//         std::cout << "Average Time: " << avgTime << "us\n";
 
-        if (!jaccardIndexes.empty()) {
-          double avgJaccard = std::accumulate(jaccardIndexes.begin(),
-                                              jaccardIndexes.end(), 0.0) /
-                              jaccardIndexes.size();
-          double avgNDCG =
-              std::accumulate(ndcgScores.begin(), ndcgScores.end(), 0.0) /
-              ndcgScores.size();
+//         if (!jaccardIndexes.empty()) {
+//           double avgJaccard = std::accumulate(jaccardIndexes.begin(),
+//                                               jaccardIndexes.end(), 0.0) /
+//                               jaccardIndexes.size();
+//           double avgNDCG =
+//               std::accumulate(ndcgScores.begin(), ndcgScores.end(), 0.0) /
+//               ndcgScores.size();
 
-          std::cout << "Average Jaccard Index: " << avgJaccard << "\n";
-          std::cout << "Average NDCG Score: " << avgNDCG << "\n";
-        }
-      };
+//           std::cout << "Average Jaccard Index: " << avgJaccard << "\n";
+//           std::cout << "Average NDCG Score: " << avgNDCG << "\n";
+//         }
+//       };
 
-  printAggregateStats("F32 (base)", f32Results.times);
-  printAggregateStats("AVX2", avx2Results.times, avx2Results.jaccard_indexes,
-                      avx2Results.ndcg_scores);
-  printAggregateStats("Binary AVX2", binaryResults.times,
-                      binaryResults.jaccard_indexes, binaryResults.ndcg_scores);
-  printAggregateStats("UINT8 AVX2", uint8Results.times,
-                      uint8Results.jaccard_indexes, uint8Results.ndcg_scores);
-  printAggregateStats("Two-step bin+float", twostepResults.times,
-                      twostepResults.jaccard_indexes,
-                      twostepResults.ndcg_scores);
+//   printAggregateStats("F32 (base)", f32Results.times);
+//   printAggregateStats("AVX2", avx2Results.times, avx2Results.jaccard_indexes,
+//                       avx2Results.ndcg_scores);
+//   printAggregateStats("Binary AVX2", binaryResults.times,
+//                       binaryResults.jaccard_indexes, binaryResults.ndcg_scores);
+//   printAggregateStats("UINT8 AVX2", uint8Results.times,
+//                       uint8Results.jaccard_indexes, uint8Results.ndcg_scores);
+//   printAggregateStats("Two-step bin+float", twostepResults.times,
+//                       twostepResults.jaccard_indexes,
+//                       twostepResults.ndcg_scores);
 
-  // Get current timestamp
-  long timestamp = std::time(nullptr);
-  std::string strTimestmap = std::to_string(timestamp);
-  std::string filename = "query_search_results_" + strTimestmap + ".json";
-  exportQuerySearchResults(queries, f32Results, avx2Results, binaryResults,
-                           uint8Results, twostepResults, filename,
-                           {k, queries.size(), rescoring_factor}, searchers);
-}
+//   // Get current timestamp
+//   long timestamp = std::time(nullptr);
+//   std::string strTimestmap = std::to_string(timestamp);
+//   std::string filename = "query_search_results_" + strTimestmap + ".json";
+//   exportQuerySearchResults(queries, f32Results, avx2Results, binaryResults,
+//                            uint8Results, twostepResults, filename,
+//                            {k, queries.size(), rescoring_factor}, searchers);
+// }
 
 void printUsage(const char *programName) {
   std::cout << "Usage: " << programName << " [options]\n"
@@ -703,7 +704,9 @@ int main(int argc, char *argv[]) {
                 << std::endl;
       // Run in query search mode
       std::cout << "Running in query search mode...\n";
-      runQuerySearch(searchers, args.query_file, args.k, args.rescoring_factor);
+      std::cerr << "query search mode not yet implemented..." << std::endl;
+      exit(1);
+      // runQuerySearch(searchers, args.query_file, args.k, args.rescoring_factor);
     } else {
       // Run in benchmark mode
       std::cout << "Running in benchmark mode...\n";

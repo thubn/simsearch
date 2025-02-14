@@ -1,7 +1,8 @@
 #pragma once
 #include "embedding_io.h"          // for load_json, load_json2, load_parquet
 #include "embedding_search_base.h" // for EmbeddingSearchBase
-#include <bits/chrono.h>           // for duration, duration_cast, high_res...
+// #include <bits/chrono.h>           // for duration, duration_cast, high_res...
+#include <chrono>                  // for duration, duration_cast, high_res...
 #include <iostream>                // for basic_ostream, operator<<, basic_ios
 #include <stddef.h>                // for size_t
 #include <stdexcept>               // for runtime_error

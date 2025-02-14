@@ -1,16 +1,16 @@
 // common_structures.h
 #pragma once
 
-#include "embedding_search_avx2.h"
+//#include "embedding_search_avx2.h"
 #include "embedding_search_binary.h"
-#include "embedding_search_binary_avx2.h"
+//#include "embedding_search_binary_avx2.h"
 #include "embedding_search_float.h"
-#include "embedding_search_float16.h"
-#include "embedding_search_mapped_float.h"
-#include "embedding_search_uint8_avx2.h"
-#include "optimized_embedding_search_avx2.h"
-#include "optimized_embedding_search_binary_avx2.h"
-#include "optimized_embedding_search_uint8_avx2.h"
+//#include "embedding_search_float16.h"
+//#include "embedding_search_mapped_float.h"
+//#include "embedding_search_uint8_avx2.h"
+//#include "optimized_embedding_search_avx2.h"
+//#include "optimized_embedding_search_binary_avx2.h"
+//#include "optimized_embedding_search_uint8_avx2.h"
 #include <chrono>
 #include <thread>
 
@@ -80,20 +80,20 @@ struct BenchmarkConfig {
 class Searchers {
 public:
   EmbeddingSearchFloat base;
-  OptimizedEmbeddingSearchAVX2 pca2;
-  OptimizedEmbeddingSearchAVX2 pca4;
-  OptimizedEmbeddingSearchAVX2 pca8;
-  OptimizedEmbeddingSearchAVX2 pca16;
-  OptimizedEmbeddingSearchAVX2 pca32;
-  EmbeddingSearchAVX2 avx2;
+  // OptimizedEmbeddingSearchAVX2 pca2;
+  // OptimizedEmbeddingSearchAVX2 pca4;
+  // OptimizedEmbeddingSearchAVX2 pca8;
+  // OptimizedEmbeddingSearchAVX2 pca16;
+  // OptimizedEmbeddingSearchAVX2 pca32;
+  // EmbeddingSearchAVX2 avx2;
   EmbeddingSearchBinary binary;
-  EmbeddingSearchBinaryAVX2 binary_avx2;
-  EmbeddingSearchUint8AVX2 uint8_avx2;
-  OptimizedEmbeddingSearchAVX2 oavx2;
-  OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
-  OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
-  EmbeddingSearchFloat16 float16;
-  EmbeddingSearchMappedFloat mappedFloat;
+  // EmbeddingSearchBinaryAVX2 binary_avx2;
+  // EmbeddingSearchUint8AVX2 uint8_avx2;
+  // OptimizedEmbeddingSearchAVX2 oavx2;
+  // OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
+  // OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
+  // EmbeddingSearchFloat16 float16;
+  // EmbeddingSearchMappedFloat mappedFloat;
   // OptimizedEmbeddingSearchMappedFloat mappedFloat2;
 
   Searchers() = default;
@@ -103,66 +103,66 @@ public:
     return base.load(filename, true, embedding_dim);
   }
 
-  void initPca2() {
-    std::cout << "Start loading of PCA2" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    pca2.setEmbeddings(base.getEmbeddings(), 2);
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of PCA2 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initPca4() {
-    std::cout << "Start loading of PCA4" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    pca4.setEmbeddings(base.getEmbeddings(), 4);
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of PCA4 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initPca8() {
-    std::cout << "Start loading of PCA8" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    pca8.setEmbeddings(base.getEmbeddings(), 8);
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of PCA8 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initPca16() {
-    std::cout << "Start loading of PCA16" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    pca16.setEmbeddings(base.getEmbeddings(), 16);
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of PCA16 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initPca32() {
-    std::cout << "Start loading of PCA32" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    pca32.setEmbeddings(base.getEmbeddings(), 32);
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of PCA32 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initAvx2() {
-    std::cout << "Start loading of AVX2" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    avx2.setEmbeddings(base.getEmbeddings());
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of AVX2 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
+  // void initPca2() {
+  //   std::cout << "Start loading of PCA2" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   pca2.setEmbeddings(base.getEmbeddings(), 2);
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of PCA2 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initPca4() {
+  //   std::cout << "Start loading of PCA4" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   pca4.setEmbeddings(base.getEmbeddings(), 4);
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of PCA4 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initPca8() {
+  //   std::cout << "Start loading of PCA8" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   pca8.setEmbeddings(base.getEmbeddings(), 8);
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of PCA8 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initPca16() {
+  //   std::cout << "Start loading of PCA16" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   pca16.setEmbeddings(base.getEmbeddings(), 16);
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of PCA16 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initPca32() {
+  //   std::cout << "Start loading of PCA32" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   pca32.setEmbeddings(base.getEmbeddings(), 32);
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of PCA32 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initAvx2() {
+  //   std::cout << "Start loading of AVX2" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   avx2.setEmbeddings(base.getEmbeddings());
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of AVX2 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
   void initBinary() {
     std::cout << "Start loading of Binary" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
@@ -173,76 +173,76 @@ public:
     std::cout << "Loading of Binary finished. Elapsed time: " << time << "ms"
               << std::endl;
   }
-  void initBinary_avx2() {
-    std::cout << "Start loading of BinaryAVX2" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    binary_avx2.setEmbeddings(base.getEmbeddings());
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of BinaryAVX2 finished. Elapsed time: " << time
-              << "ms" << std::endl;
-  }
-  void initUint8_avx2() {
-    std::cout << "Start loading of Int8AVX2" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    uint8_avx2.setEmbeddings(base.getEmbeddings());
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of Int8AVX2 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initOavx2() {
-    std::cout << "Start loading of oAVX2" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    oavx2.setEmbeddings(base.getEmbeddings());
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of oAVX2 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initObinary_avx2() {
-    std::cout << "Start loading of oBinary" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    obinary_avx2.setEmbeddings(base.getEmbeddings());
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of oBinary finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initOuint_avx2() {
-    std::cout << "Start loading of oInt8" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    ouint8_avx2.setEmbeddings(base.getEmbeddings());
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of oInt8 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initFloat16() {
-    std::cout << "Start loading of Float16" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    float16.setEmbeddings(base.getEmbeddings());
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of Float16 finished. Elapsed time: " << time << "ms"
-              << std::endl;
-  }
-  void initMappedFloat() {
-    std::cout << "Start loading of mapped Float" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
-    mappedFloat.setEmbeddings(base.getEmbeddings(), 10.0);
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now() - start)
-                    .count();
-    std::cout << "Loading of mapped Float finished. Elapsed time: " << time
-              << "ms" << std::endl;
-  }
+  // void initBinary_avx2() {
+  //   std::cout << "Start loading of BinaryAVX2" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   binary_avx2.setEmbeddings(base.getEmbeddings());
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of BinaryAVX2 finished. Elapsed time: " << time
+  //             << "ms" << std::endl;
+  // }
+  // void initUint8_avx2() {
+  //   std::cout << "Start loading of Int8AVX2" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   uint8_avx2.setEmbeddings(base.getEmbeddings());
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of Int8AVX2 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initOavx2() {
+  //   std::cout << "Start loading of oAVX2" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   oavx2.setEmbeddings(base.getEmbeddings());
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of oAVX2 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initObinary_avx2() {
+  //   std::cout << "Start loading of oBinary" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   obinary_avx2.setEmbeddings(base.getEmbeddings());
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of oBinary finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initOuint_avx2() {
+  //   std::cout << "Start loading of oInt8" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   ouint8_avx2.setEmbeddings(base.getEmbeddings());
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of oInt8 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initFloat16() {
+  //   std::cout << "Start loading of Float16" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   float16.setEmbeddings(base.getEmbeddings());
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of Float16 finished. Elapsed time: " << time << "ms"
+  //             << std::endl;
+  // }
+  // void initMappedFloat() {
+  //   std::cout << "Start loading of mapped Float" << std::endl;
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   mappedFloat.setEmbeddings(base.getEmbeddings(), 10.0);
+  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                   std::chrono::high_resolution_clock::now() - start)
+  //                   .count();
+  //   std::cout << "Loading of mapped Float finished. Elapsed time: " << time
+  //             << "ms" << std::endl;
+  // }
   /*void initMappedFloat2() {
     mappedFloat2.setEmbeddings(base.getEmbeddings());
   }*/
@@ -260,21 +260,21 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
   searchers.initBase(filename, embedding_dim);
 #ifdef NO_THREADS
   if (init_avx2)
-    searchers.initOavx2();
+    // searchers.initOavx2();
   if (init_binary)
-    searchers.initObinary_avx2();
+    // searchers.initObinary_avx2();
   if (init_int8)
-    searchers.initOuint_avx2();
+    // searchers.initOuint_avx2();
   if (init_float16)
-    searchers.initFloat16();
+    // searchers.initFloat16();
   if (init_mf)
-    searchers.initMappedFloat();
+    // searchers.initMappedFloat();
   if (init_pca) {
-    searchers.initPca2();
-    searchers.initPca4();
-    searchers.initPca8();
-    searchers.initPca16();
-    searchers.initPca32();
+    // searchers.initPca2();
+    // searchers.initPca4();
+    // searchers.initPca8();
+    // searchers.initPca16();
+    // searchers.initPca32();
   }
 #else
   std::thread tOavx2;

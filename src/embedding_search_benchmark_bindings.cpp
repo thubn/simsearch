@@ -147,117 +147,117 @@ public:
         query_vector, k);
   }
 
-  py::tuple search_avx2(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->oavx2, "avx2"},
-        query_vector, k);
-  }
+  // py::tuple search_avx2(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->oavx2, "avx2"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_binary(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t>{
-            searchers->obinary_avx2, "binary"},
-        query_vector, k);
-  }
+  // py::tuple search_binary(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t>{
+  //           searchers->obinary_avx2, "binary"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_int8(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t>{
-            searchers->ouint8_avx2, "int8"},
-        query_vector, k);
-  }
+  // py::tuple search_int8(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t>{
+  //           searchers->ouint8_avx2, "int8"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_float16(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<EmbeddingSearchFloat16, float>{searchers->float16,
-                                                    "float16"},
-        query_vector, k);
-  }
+  // py::tuple search_float16(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<EmbeddingSearchFloat16, float>{searchers->float16,
+  //                                                   "float16"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_mf(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<EmbeddingSearchMappedFloat>{searchers->mappedFloat,
-                                                 "mapped float"},
-        query_vector, k);
-  }
+  // py::tuple search_mf(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<EmbeddingSearchMappedFloat>{searchers->mappedFloat,
+  //                                                "mapped float"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_pca2(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca2, "pca2"},
-        query_vector, k);
-  }
+  // py::tuple search_pca2(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca2, "pca2"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_pca4(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca4, "pca4"},
-        query_vector, k);
-  }
+  // py::tuple search_pca4(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca4, "pca4"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_pca8(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca8, "pca8"},
-        query_vector, k);
-  }
+  // py::tuple search_pca8(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca8, "pca8"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_pca16(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca16, "pca16"},
-        query_vector, k);
-  }
+  // py::tuple search_pca16(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca16, "pca16"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_pca32(py::array_t<float> query_vector, size_t k) {
-    return perform_search(
-        SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca32, "pca32"},
-        query_vector, k);
-  }
+  // py::tuple search_pca32(py::array_t<float> query_vector, size_t k) {
+  //   return perform_search(
+  //       SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->pca32, "pca32"},
+  //       query_vector, k);
+  // }
 
-  py::tuple search_twostep(py::array_t<float> query_vector, size_t k,
-                           size_t rescoring_factor) {
-    check_initialization();
-    std::vector<float> query = convert_query(query_vector);
+  // py::tuple search_twostep(py::array_t<float> query_vector, size_t k,
+  //                          size_t rescoring_factor) {
+  //   check_initialization();
+  //   std::vector<float> query = convert_query(query_vector);
 
-    // Convert query for binary search
-    avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
-    EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2,
-                                                   query.size() / 8 / 32);
+  //   // Convert query for binary search
+  //   avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
+  //   EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2,
+  //                                                  query.size() / 8 / 32);
 
-    // Perform two-step search with timing
-    auto start = std::chrono::high_resolution_clock::now();
-    auto binary_results = searchers->obinary_avx2.similarity_search(
-        queryBinaryAvx2, k * rescoring_factor);
-    auto final_results =
-        searchers->oavx2.similarity_search(query, k, binary_results);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto time =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-            .count();
+  //   // Perform two-step search with timing
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   auto binary_results = searchers->obinary_avx2.similarity_search(
+  //       queryBinaryAvx2, k * rescoring_factor);
+  //   auto final_results =
+  //       searchers->oavx2.similarity_search(query, k, binary_results);
+  //   auto end = std::chrono::high_resolution_clock::now();
+  //   auto time =
+  //       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+  //           .count();
 
-    return format_results(final_results, time);
-  }
+  //   return format_results(final_results, time);
+  // }
 
-  py::tuple search_twostep_mf(py::array_t<float> query_vector, size_t k,
-                              size_t rescoring_factor) {
-    check_initialization();
-    std::vector<float> query = convert_query(query_vector);
+  // py::tuple search_twostep_mf(py::array_t<float> query_vector, size_t k,
+  //                             size_t rescoring_factor) {
+  //   check_initialization();
+  //   std::vector<float> query = convert_query(query_vector);
 
-    // Convert query for binary search
-    avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
-    EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2,
-                                                   query.size() / 8 / 32);
+  //   // Convert query for binary search
+  //   avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
+  //   EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2,
+  //                                                  query.size() / 8 / 32);
 
-    // Perform two-step search with timing
-    auto start = std::chrono::high_resolution_clock::now();
-    auto binary_results = searchers->obinary_avx2.similarity_search(
-        queryBinaryAvx2, k * rescoring_factor);
-    auto final_results =
-        searchers->mappedFloat.similarity_search(query, k, binary_results);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto time =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-            .count();
+  //   // Perform two-step search with timing
+  //   auto start = std::chrono::high_resolution_clock::now();
+  //   auto binary_results = searchers->obinary_avx2.similarity_search(
+  //       queryBinaryAvx2, k * rescoring_factor);
+  //   auto final_results =
+  //       searchers->mappedFloat.similarity_search(query, k, binary_results);
+  //   auto end = std::chrono::high_resolution_clock::now();
+  //   auto time =
+  //       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+  //           .count();
 
-    return format_results(final_results, time);
-  }
+  //   return format_results(final_results, time);
+  // }
 
   // ======================================
   // getEmbedding()
@@ -268,35 +268,35 @@ public:
                                      searchers->base.getEmbeddings()[index]);
   }
 
-  py::array_t<float> get_avx2_embedding(size_t index) {
-    return get_embedding_impl<float>(index, searchers->oavx2.getNumVectors(),
-                                     searchers->oavx2.getEmbedding(index));
-  }
+  // py::array_t<float> get_avx2_embedding(size_t index) {
+  //   return get_embedding_impl<float>(index, searchers->oavx2.getNumVectors(),
+  //                                    searchers->oavx2.getEmbedding(index));
+  // }
 
-  py::array_t<float> get_pca2_embedding(size_t index) {
-    return get_embedding_impl<float>(index, searchers->pca2.getNumVectors(),
-                                     searchers->pca2.getEmbedding(index));
-  }
+  // py::array_t<float> get_pca2_embedding(size_t index) {
+  //   return get_embedding_impl<float>(index, searchers->pca2.getNumVectors(),
+  //                                    searchers->pca2.getEmbedding(index));
+  // }
 
-  py::array_t<float> get_pca4_embedding(size_t index) {
-    return get_embedding_impl<float>(index, searchers->pca4.getNumVectors(),
-                                     searchers->pca4.getEmbedding(index));
-  }
+  // py::array_t<float> get_pca4_embedding(size_t index) {
+  //   return get_embedding_impl<float>(index, searchers->pca4.getNumVectors(),
+  //                                    searchers->pca4.getEmbedding(index));
+  // }
 
-  py::array_t<float> get_pca8_embedding(size_t index) {
-    return get_embedding_impl<float>(index, searchers->pca8.getNumVectors(),
-                                     searchers->pca8.getEmbedding(index));
-  }
+  // py::array_t<float> get_pca8_embedding(size_t index) {
+  //   return get_embedding_impl<float>(index, searchers->pca8.getNumVectors(),
+  //                                    searchers->pca8.getEmbedding(index));
+  // }
 
-  py::array_t<float> get_pca16_embedding(size_t index) {
-    return get_embedding_impl<float>(index, searchers->pca16.getNumVectors(),
-                                     searchers->pca16.getEmbedding(index));
-  }
+  // py::array_t<float> get_pca16_embedding(size_t index) {
+  //   return get_embedding_impl<float>(index, searchers->pca16.getNumVectors(),
+  //                                    searchers->pca16.getEmbedding(index));
+  // }
 
-  py::array_t<float> get_pca32_embedding(size_t index) {
-    return get_embedding_impl<float>(index, searchers->pca32.getNumVectors(),
-                                     searchers->pca32.getEmbedding(index));
-  }
+  // py::array_t<float> get_pca32_embedding(size_t index) {
+  //   return get_embedding_impl<float>(index, searchers->pca32.getNumVectors(),
+  //                                    searchers->pca32.getEmbedding(index));
+  // }
 
   // ======================================
 
@@ -331,48 +331,48 @@ py::tuple perform_search_impl(PyEmbeddingSearch *self,
 }
 
 // Specialization for binary AVX2 searcher
-template <>
-py::tuple perform_search_impl<OptimizedEmbeddingSearchBinaryAVX2, int32_t>(
-    PyEmbeddingSearch *self,
-    const SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t> &info,
-    py::array_t<float> query_vector, size_t k) {
-  self->check_initialization();
-  std::vector<float> query = self->convert_query(query_vector);
+// template <>
+// py::tuple perform_search_impl<OptimizedEmbeddingSearchBinaryAVX2, int32_t>(
+//     PyEmbeddingSearch *self,
+//     const SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t> &info,
+//     py::array_t<float> query_vector, size_t k) {
+//   self->check_initialization();
+//   std::vector<float> query = self->convert_query(query_vector);
 
-  avx2i_vector queryBinary(query.size() / 8 / 32);
-  EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinary,
-                                                 query.size() / 8 / 32);
+//   avx2i_vector queryBinary(query.size() / 8 / 32);
+//   EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinary,
+//                                                  query.size() / 8 / 32);
 
-  auto start = std::chrono::high_resolution_clock::now();
-  auto results = info.searcher.similarity_search(queryBinary, k);
-  auto end = std::chrono::high_resolution_clock::now();
-  auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-                  .count();
+//   auto start = std::chrono::high_resolution_clock::now();
+//   auto results = info.searcher.similarity_search(queryBinary, k);
+//   auto end = std::chrono::high_resolution_clock::now();
+//   auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+//                   .count();
 
-  return self->format_results(results, time);
-}
+//   return self->format_results(results, time);
+// }
 
-// Specialization for int8 AVX2 searcher
-template <>
-py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, int32_t>(
-    PyEmbeddingSearch *self,
-    const SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t> &info,
-    py::array_t<float> query_vector, size_t k) {
-  self->check_initialization();
-  std::vector<float> query = self->convert_query(query_vector);
+// // Specialization for int8 AVX2 searcher
+// template <>
+// py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, int32_t>(
+//     PyEmbeddingSearch *self,
+//     const SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t> &info,
+//     py::array_t<float> query_vector, size_t k) {
+//   self->check_initialization();
+//   std::vector<float> query = self->convert_query(query_vector);
 
-  avx2i_vector queryInt8(query.size() / 8 / 4);
-  EmbeddingUtils::convertSingleFloatToUint8AVX2(query, queryInt8,
-                                                query.size() / 8 / 4);
+//   avx2i_vector queryInt8(query.size() / 8 / 4);
+//   EmbeddingUtils::convertSingleFloatToUint8AVX2(query, queryInt8,
+//                                                 query.size() / 8 / 4);
 
-  auto start = std::chrono::high_resolution_clock::now();
-  auto results = info.searcher.similarity_search(queryInt8, k);
-  auto end = std::chrono::high_resolution_clock::now();
-  auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-                  .count();
+//   auto start = std::chrono::high_resolution_clock::now();
+//   auto results = info.searcher.similarity_search(queryInt8, k);
+//   auto end = std::chrono::high_resolution_clock::now();
+//   auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+//                   .count();
 
-  return self->format_results(results, time);
-}
+//   return self->format_results(results, time);
+// }
 
 // Specialization for int8 AVX2 searcher
 /*template <>
@@ -416,46 +416,46 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
            py::arg("init_float16"), py::arg("init_mf"))
       .def("search_float", &PyEmbeddingSearch::search_float,
            "Base float search", py::arg("query_vector"), py::arg("k"))
-      .def("search_avx2", &PyEmbeddingSearch::search_avx2,
-           "AVX2 optimized search", py::arg("query_vector"), py::arg("k"))
-      .def("search_binary", &PyEmbeddingSearch::search_binary,
-           "Binary AVX2 search", py::arg("query_vector"), py::arg("k"))
-      .def("search_int8", &PyEmbeddingSearch::search_int8, "INT8 search",
-           py::arg("query_vector"), py::arg("k"))
-      .def("search_float16", &PyEmbeddingSearch::search_float16,
-           "float16 search", py::arg("query_vector"), py::arg("k"))
-      .def("search_mf", &PyEmbeddingSearch::search_mf, "mapped float search",
-           py::arg("query_vector"), py::arg("k"))
-      .def("search_pca2", &PyEmbeddingSearch::search_pca2, "pca2 search",
-           py::arg("query_vector"), py::arg("k"))
-      .def("search_pca4", &PyEmbeddingSearch::search_pca4, "pca4 search",
-           py::arg("query_vector"), py::arg("k"))
-      .def("search_pca8", &PyEmbeddingSearch::search_pca8, "pca8 search",
-           py::arg("query_vector"), py::arg("k"))
-      .def("search_pca16", &PyEmbeddingSearch::search_pca16, "pca16 search",
-           py::arg("query_vector"), py::arg("k"))
-      .def("search_pca32", &PyEmbeddingSearch::search_pca32, "pca32 search",
-           py::arg("query_vector"), py::arg("k"))
-      .def("search_twostep", &PyEmbeddingSearch::search_twostep,
-           "Two-step binary+float search", py::arg("query_vector"),
-           py::arg("k"), py::arg("rescoring_factor") = 50)
-      .def("search_twostep_mf", &PyEmbeddingSearch::search_twostep_mf,
-           "Two-step binary+mf search", py::arg("query_vector"), py::arg("k"),
-           py::arg("rescoring_factor") = 50)
+      // .def("search_avx2", &PyEmbeddingSearch::search_avx2,
+      //      "AVX2 optimized search", py::arg("query_vector"), py::arg("k"))
+      // .def("search_binary", &PyEmbeddingSearch::search_binary,
+      //      "Binary AVX2 search", py::arg("query_vector"), py::arg("k"))
+      // .def("search_int8", &PyEmbeddingSearch::search_int8, "INT8 search",
+      //      py::arg("query_vector"), py::arg("k"))
+      // .def("search_float16", &PyEmbeddingSearch::search_float16,
+      //      "float16 search", py::arg("query_vector"), py::arg("k"))
+      // .def("search_mf", &PyEmbeddingSearch::search_mf, "mapped float search",
+      //      py::arg("query_vector"), py::arg("k"))
+      // .def("search_pca2", &PyEmbeddingSearch::search_pca2, "pca2 search",
+      //      py::arg("query_vector"), py::arg("k"))
+      // .def("search_pca4", &PyEmbeddingSearch::search_pca4, "pca4 search",
+      //      py::arg("query_vector"), py::arg("k"))
+      // .def("search_pca8", &PyEmbeddingSearch::search_pca8, "pca8 search",
+      //      py::arg("query_vector"), py::arg("k"))
+      // .def("search_pca16", &PyEmbeddingSearch::search_pca16, "pca16 search",
+      //      py::arg("query_vector"), py::arg("k"))
+      // .def("search_pca32", &PyEmbeddingSearch::search_pca32, "pca32 search",
+      //      py::arg("query_vector"), py::arg("k"))
+      // .def("search_twostep", &PyEmbeddingSearch::search_twostep,
+      //      "Two-step binary+float search", py::arg("query_vector"),
+      //      py::arg("k"), py::arg("rescoring_factor") = 50)
+      // .def("search_twostep_mf", &PyEmbeddingSearch::search_twostep_mf,
+      //      "Two-step binary+mf search", py::arg("query_vector"), py::arg("k"),
+      //      py::arg("rescoring_factor") = 50)
       .def("get_float_embedding", &PyEmbeddingSearch::get_float_embedding,
            "Get float embedding at index", py::arg("index"))
-      .def("get_avx2_embedding", &PyEmbeddingSearch::get_avx2_embedding,
-           "Get AVX2 embedding at index", py::arg("index"))
-      .def("get_pca2_embedding", &PyEmbeddingSearch::get_pca2_embedding,
-           "Get PCA2 embedding at index", py::arg("index"))
-      .def("get_pca4_embedding", &PyEmbeddingSearch::get_pca4_embedding,
-           "Get PCA4 embedding at index", py::arg("index"))
-      .def("get_pca8_embedding", &PyEmbeddingSearch::get_pca8_embedding,
-           "Get PCA8 embedding at index", py::arg("index"))
-      .def("get_pca16_embedding", &PyEmbeddingSearch::get_pca16_embedding,
-           "Get PCA16 embedding at index", py::arg("index"))
-      .def("get_pca32_embedding", &PyEmbeddingSearch::get_pca32_embedding,
-           "Get PCA32 embedding at index", py::arg("index"))
+      // .def("get_avx2_embedding", &PyEmbeddingSearch::get_avx2_embedding,
+      //      "Get AVX2 embedding at index", py::arg("index"))
+      // .def("get_pca2_embedding", &PyEmbeddingSearch::get_pca2_embedding,
+      //      "Get PCA2 embedding at index", py::arg("index"))
+      // .def("get_pca4_embedding", &PyEmbeddingSearch::get_pca4_embedding,
+      //      "Get PCA4 embedding at index", py::arg("index"))
+      // .def("get_pca8_embedding", &PyEmbeddingSearch::get_pca8_embedding,
+      //      "Get PCA8 embedding at index", py::arg("index"))
+      // .def("get_pca16_embedding", &PyEmbeddingSearch::get_pca16_embedding,
+      //      "Get PCA16 embedding at index", py::arg("index"))
+      // .def("get_pca32_embedding", &PyEmbeddingSearch::get_pca32_embedding,
+      //      "Get PCA32 embedding at index", py::arg("index"))
       .def("get_dimensions", &PyEmbeddingSearch::get_dimensions,
            "Get number of vectors and vector dimensions")
       .def("get_sentence", &PyEmbeddingSearch::get_sentence, py::arg("index"));
