@@ -83,6 +83,9 @@
     "makefile.makefilePath": "build/Makefile",
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "cmake.configureSettings": {
-        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/build/Release/generators/conan_toolchain.cmake"
-    }
+        "CMAKE_MAKE_PROGRAM": "/usr/bin/ninja",
+        "CMAKE_C_COMPILER": "/usr/bin/gcc",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++"
+    },
+    "cmake.generator": "Ninja"
 }
