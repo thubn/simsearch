@@ -1,11 +1,11 @@
 #include "optimized_embedding_search_binary_avx2.h"
 #include "embedding_utils.h" // for validateBinaryAVX2Dimensions
 #include <algorithm>         // for partial_sort
-#include <iostream>          // for basic_ostream, operator<<, cerr, endl
-#include <stdexcept>         // for runtime_error, out_of_range
-#include <xmmintrin.h>       // for _MM_HINT_T0, _mm_prefetch
+#include <arm_neon.h>
+#include <iostream>  // for basic_ostream, operator<<, cerr, endl
+#include <stdexcept> // for runtime_error, out_of_range
 
-constexpr int_fast8_t NUM_STRIDES = 6;
+constexpr int_fast8_t NUM_STRIDES = 1;
 constexpr int_fast64_t STRIDE_DIST = 1;
 
 bool OptimizedEmbeddingSearchBinaryAVX2::setEmbeddings(
@@ -17,10 +17,11 @@ bool OptimizedEmbeddingSearchBinaryAVX2::setEmbeddings(
   if (!initializeDimensions(input_vectors))
     return false;
 
-  // Calculate padding for binary values (256 bits per AVX2 vector)
-  padded_dim = ((vector_dim + 255) / 256) * 256;
+  // Calculate padding for binary values (128 bits per NEON vector)
+
+  padded_dim = ((vector_dim + 127) / 128) * 128;
   vectors_per_embedding =
-      padded_dim / 256; // Number of __m256i vectors needed per embedding
+      padded_dim / 128; // Number of uint32x4_t vectors needed per embedding
 
   // Allocate aligned memory
   size_t total_vectors = num_vectors * vectors_per_embedding;
@@ -29,8 +30,8 @@ bool OptimizedEmbeddingSearchBinaryAVX2::setEmbeddings(
 
   // Convert and store each vector
   for (size_t i = 0; i < num_vectors; i++) {
-    __m256i *dest = get_embedding_ptr(i);
-    convert_float_to_binary_avx2(input_vectors[i], dest);
+    uint32x4_t *dest = get_embedding_ptr(i);
+    convert_float_to_binary_neon(input_vectors[i], dest);
   }
 
   return true;
@@ -43,11 +44,11 @@ OptimizedEmbeddingSearchBinaryAVX2::getEmbeddingAVX2(size_t index) const {
   }
 
   avx2i_vector result(vectors_per_embedding);
-  const __m256i *src = get_embedding_ptr(index);
+  const uint32x4_t *src = get_embedding_ptr(index);
 
-  // Each __m256i contains 256 bits
+  // Each uint32x4_t contains 128 bits
   for (size_t i = 0; i < vectors_per_embedding; ++i) {
-    result[i] = _mm256_load_si256(&src[i]);
+    result[i] = vld1q_u32(reinterpret_cast<const uint32_t *>(&src[i]));
   }
 
   return result;
@@ -97,65 +98,84 @@ bool OptimizedEmbeddingSearchBinaryAVX2::validateDimensions(
 }
 
 void OptimizedEmbeddingSearchBinaryAVX2::convert_float_to_binary_avx2(
-    const std::vector<float> &input, __m256i *output) const {
+    const std::vector<float> &input, uint32x4_t *output) const {
   for (size_t i = 0; i < vectors_per_embedding; i++) {
-    uint64_t bits[4] = {0, 0, 0, 0}; // 256 bits total
+    uint32_t bits[4] = {0, 0, 0, 0}; // 128 bits total
 
-    // Process each 64-bit chunk
+    // Process each 32-bit chunk
     for (size_t chunk = 0; chunk < 4; chunk++) {
       // Process each bit within the chunk
-      for (size_t bit = 0; bit < 64; bit++) {
-        size_t input_idx = i * 256 + chunk * 64 + bit;
+      for (size_t bit = 0; bit < 32; bit++) {
+        size_t input_idx = i * 128 + chunk * 32 + bit;
         if (input_idx < input.size() && input[input_idx] >= 0) {
-          bits[chunk] |= (1ULL << (63 - bit));
+          bits[chunk] |= (1U << (31 - bit));
         }
       }
     }
 
-    // Combine into single AVX2 vector
-    output[i] = _mm256_set_epi64x(bits[3], bits[2], bits[1], bits[0]);
+    // Combine into single NEON vector
+    output[i] = vld1q_u32(bits);
   }
 }
 
 // currently hardcoded for 1024bit vectors
 int32_t OptimizedEmbeddingSearchBinaryAVX2::cosine_similarity_optimized(
-    const __m256i *vec_a, const __m256i *vec_b) const {
+    const uint32x4_t *vec_a, const uint32x4_t *vec_b) const {
 
-  // prefetch 2 cache lines for 4 vectors 10 loops ahead
-  _mm_prefetch(vec_a + 4 * 10, _MM_HINT_T0);
-  _mm_prefetch(vec_a + 4 * 10 + 2, _MM_HINT_T0);
-  __m256i all_ones = _mm256_set1_epi32(-1);
-  __m256i xor_result[4];
-  xor_result[0] = _mm256_xor_si256(vec_a[0], vec_b[0]);
-  xor_result[0] = _mm256_xor_si256(xor_result[0], all_ones);
-  xor_result[1] = _mm256_xor_si256(vec_a[1], vec_b[1]);
-  xor_result[1] = _mm256_xor_si256(xor_result[1], all_ones);
-  xor_result[2] = _mm256_xor_si256(vec_a[2], vec_b[2]);
-  xor_result[2] = _mm256_xor_si256(xor_result[2], all_ones);
-  xor_result[3] = _mm256_xor_si256(vec_a[3], vec_b[3]);
-  xor_result[3] = _mm256_xor_si256(xor_result[3], all_ones);
+  // For 1024-bit vectors (8 x 128-bit NEON vectors)
+  uint32x4_t all_ones = vdupq_n_u32(0xFFFFFFFF);
+  int32_t = total_popcount = 0;
 
-  // popcnt lookup is faster than harley seal
-  return counter.popcnt_AVX2_lookup(
-      reinterpret_cast<const uint8_t *>(xor_result), 4 * sizeof(__m256i));
+  // Process 8 vectors (1024 bits total)
+  for (int i = 0; i < 8; i++) {
+    // Compute XOR and NOT for each pair of vectors
+    uint32x4_t xor_result = veorq_u32(vec_a[i], vec_b[i]);
+    xor_result = veorq_u32(xor_result, all_ones);
+
+    // Convert to bytes for VCNT (which operates on uint8x16_t)
+    uint8x16_t bytes = vreinterpretq_u8_u32(xor_result);
+
+    // Count 1s in each byte
+    uint8x16_t popcnt = vcntq_u8(bytes);
+
+    // Pairwise add to sum up counts
+    uint16x8_t sum16 = vpaddlq_u8(popcnt);
+    uint32x4_t sum32 = vpaddlq_u16(sum16);
+
+    // Final horizontal sum of the 4 32-bit values
+    uint64x2_t sum64 = vpaddlq_u32(sum32);
+    total_popcount += vgetq_lane_u64(sum64, 0) + vgetq_lane_u64(sum64, 1);
+  }
+
+  return total_popcount;
 }
 
 int32_t OptimizedEmbeddingSearchBinaryAVX2::cosine_similarity_optimized_dynamic(
-    const __m256i *vec_a, const __m256i *vec_b) const {
+    const uint32x4_t *vec_a, const uint32x4_t *vec_b) const {
+
+  uint32x4_t all_ones = vdupq_n_u32(0xFFFFFFFF);
   int32_t total_popcount = 0;
 
-  // prefetch 2 cache lines for 4 vectors 10 loops ahead
-  _mm_prefetch(vec_a + 4 * 10, _MM_HINT_T0);
-  _mm_prefetch(vec_a + 4 * 10 + 2, _MM_HINT_T0);
-  __m256i all_ones = _mm256_set1_epi32(-1);
-  __m256i xor_result[vectors_per_embedding];
+  // Process vectors_per_embedding number of 128-bit vectors
   for (int i = 0; i < vectors_per_embedding; i++) {
-    xor_result[i] = _mm256_xor_si256(vec_a[i], vec_b[i]);
-    xor_result[i] = _mm256_xor_si256(xor_result[i], all_ones);
+    // Compute XOR and NOT for each pair of vectors
+    uint32x4_t xor_result = veorq_u32(vec_a[i], vec_b[i]);
+    xor_result = veorq_u32(xor_result, all_ones);
+
+    // Convert to bytes for VCNT (which operates on uint8x16_t)
+    uint8x16_t bytes = vreinterpretq_u8_u32(xor_result);
+
+    // Count 1s in each byte using VCNT
+    uint8x16_t popcnt = vcntq_u8(bytes);
+
+    // Pairwise add to sum up counts
+    uint16x8_t sum16 = vpaddlq_u8(popcnt);
+    uint32x4_t sum32 = vpaddlq_u16(sum16);
+
+    // Final horizontal sum of the 4 32-bit values
+    uint64x2_t sum64 = vpaddlq_u32(sum32);
+    total_popcount += vgetq_lane_u64(sum64, 0) + vgetq_lane_u64(sum64, 1);
   }
 
-  // popcnt lookup is faster than harley seal
-  return counter.popcnt_AVX2_lookup(
-      reinterpret_cast<const uint8_t *>(xor_result),
-      vectors_per_embedding * sizeof(__m256i));
+  return total_popcount;
 }
