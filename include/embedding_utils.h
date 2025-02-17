@@ -20,9 +20,9 @@ namespace EmbeddingUtils {
 //                              std::vector<avx2_vector> &output,
 //                              size_t vector_dim);
 
-// // Validate input dimensions for AVX2 conversion
-// bool validateAVX2Dimensions(const std::vector<std::vector<float>> &input,
-//                             std::string &error_message);
+// Validate input dimensions for AVX2 conversion
+bool validateAVX2Dimensions(const std::vector<std::vector<float>> &input,
+                            std::string &error_message);
 
 // size_t calculateBinaryAVX2VectorSize(size_t float_vector_size);
 

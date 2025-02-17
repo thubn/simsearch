@@ -42,7 +42,7 @@ list(REMOVE_ITEM INCLUDE_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/include/embedding_search_avx2.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/embedding_search_binary_avx2.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/embedding_search_uint8_avx2.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/optimized_embedding_search_avx2.h"
+    #"${CMAKE_CURRENT_SOURCE_DIR}/include/optimized_embedding_search_avx2.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/optimized_embedding_search_binary_avx2.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/optimized_embedding_search_uint8_avx2.h"
 )
@@ -61,7 +61,7 @@ add_executable(${PROJECT_NAME}
     #src/embedding_search_uint8_avx2.cpp
     src/embedding_utils.cpp
     #src/optimized_embedding_search_uint8_avx2.cpp
-    #src/optimized_embedding_search_avx2.cpp
+    src/optimized_embedding_search_avx2.cpp
     #src/optimized_embedding_search_binary_avx2.cpp
     #src/embedding_search_float16.cpp
     #src/embedding_search_mapped_float.cpp
@@ -78,7 +78,7 @@ pybind11_add_module(embedding_search_benchmark
     #src/embedding_search_uint8_avx2.cpp
     src/embedding_utils.cpp
     #src/optimized_embedding_search_uint8_avx2.cpp
-    #src/optimized_embedding_search_avx2.cpp
+    src/optimized_embedding_search_avx2.cpp
     #src/optimized_embedding_search_binary_avx2.cpp
     #src/embedding_search_float16.cpp
     #src/embedding_search_mapped_float.cpp

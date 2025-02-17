@@ -1,6 +1,6 @@
 // aligned_types.h
 #pragma once
-#include <immintrin.h>
+#include <arm_neon.h>
 #include <memory>
 #include <vector>
 
@@ -9,7 +9,7 @@ namespace AlignedTypes {
 template <typename T> class AlignedAllocator {
 public:
   using value_type = T;
-  static constexpr size_t alignment = 32; // AVX2 needs 32-byte alignment
+  static constexpr size_t alignment = 16; // AVX2 needs 32-byte alignment
 
   AlignedAllocator() noexcept {}
   template <class U> AlignedAllocator(const AlignedAllocator<U> &) noexcept {}
@@ -43,8 +43,8 @@ template <typename T>
 using aligned_vector = std::vector<T, AlignedAllocator<T>>;
 
 // Convenience type aliases for AVX2 vectors
-using avx2_vector = aligned_vector<__m256>;
-using avx2i_vector = aligned_vector<__m256i>;
+using avx2_vector = aligned_vector<float32x4_t>;
+using avx2i_vector = aligned_vector<int32x4_t>;
 } // namespace AlignedTypes
 
 // Bring types into global namespace

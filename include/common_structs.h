@@ -8,7 +8,7 @@
 //#include "embedding_search_float16.h"
 //#include "embedding_search_mapped_float.h"
 //#include "embedding_search_uint8_avx2.h"
-//#include "optimized_embedding_search_avx2.h"
+#include "optimized_embedding_search_avx2.h"
 //#include "optimized_embedding_search_binary_avx2.h"
 //#include "optimized_embedding_search_uint8_avx2.h"
 #include <chrono>
@@ -89,7 +89,7 @@ public:
   EmbeddingSearchBinary binary;
   // EmbeddingSearchBinaryAVX2 binary_avx2;
   // EmbeddingSearchUint8AVX2 uint8_avx2;
-  // OptimizedEmbeddingSearchAVX2 oavx2;
+  OptimizedEmbeddingSearchAVX2 oavx2;
   // OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
   // OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
   // EmbeddingSearchFloat16 float16;
@@ -193,16 +193,16 @@ public:
   //   std::cout << "Loading of Int8AVX2 finished. Elapsed time: " << time << "ms"
   //             << std::endl;
   // }
-  // void initOavx2() {
-  //   std::cout << "Start loading of oAVX2" << std::endl;
-  //   auto start = std::chrono::high_resolution_clock::now();
-  //   oavx2.setEmbeddings(base.getEmbeddings());
-  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-  //                   std::chrono::high_resolution_clock::now() - start)
-  //                   .count();
-  //   std::cout << "Loading of oAVX2 finished. Elapsed time: " << time << "ms"
-  //             << std::endl;
-  // }
+  void initOavx2() {
+    std::cout << "Start loading of oAVX2" << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    oavx2.setEmbeddings(base.getEmbeddings());
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::high_resolution_clock::now() - start)
+                    .count();
+    std::cout << "Loading of oAVX2 finished. Elapsed time: " << time << "ms"
+              << std::endl;
+  }
   // void initObinary_avx2() {
   //   std::cout << "Start loading of oBinary" << std::endl;
   //   auto start = std::chrono::high_resolution_clock::now();
@@ -260,7 +260,7 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
   searchers.initBase(filename, embedding_dim);
 #ifdef NO_THREADS
   if (init_avx2)
-    // searchers.initOavx2();
+    searchers.initOavx2();
   if (init_binary)
     // searchers.initObinary_avx2();
   if (init_int8)

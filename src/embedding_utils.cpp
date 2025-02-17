@@ -29,20 +29,20 @@ namespace EmbeddingUtils {
 //   }
 // }
 
-// bool validateAVX2Dimensions(const std::vector<std::vector<float>> &input,
-//                             std::string &error_message) {
-//   if (input.empty()) {
-//     error_message = "Input vector is empty";
-//     return false;
-//   }
+bool validateAVX2Dimensions(const std::vector<std::vector<float>> &input,
+                            std::string &error_message) {
+  if (input.empty()) {
+    error_message = "Input vector is empty";
+    return false;
+  }
 
-//   if (input[0].size() % 8 != 0) {
-//     error_message = "Input vector size must be a multiple of 8";
-//     return false;
-//   }
+  if (input[0].size() % 4 != 0) {
+    error_message = "Input vector size must be a multiple of 8";
+    return false;
+  }
 
-//   return true;
-// }
+  return true;
+}
 
 // size_t calculateBinaryAVX2VectorSize(size_t float_vector_size) {
 //   return ((float_vector_size + 63) / 64 + 3) / 4;

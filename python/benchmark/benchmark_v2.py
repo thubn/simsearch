@@ -42,7 +42,7 @@ def calculate_ndcg(ground_truth: List[Tuple[float, int, str]],
 class VectorSearchBenchmark:
     def __init__(self, embedding_file: str, k: int = 25, runs: int = 100, rescoring_factors: List[int] = None, embedding_dim = 1024):
         self.searcher = EmbeddingSearch()
-        self.searcher.load(filename=embedding_file, embedding_dim=embedding_dim, init_pca=False, init_avx2=False, init_binary=False, init_int8=False, init_float16=False, init_mf=False)
+        self.searcher.load(filename=embedding_file, embedding_dim=embedding_dim, init_pca=False, init_avx2=True, init_binary=False, init_int8=False, init_float16=False, init_mf=False)
         self.k = k
         self.runs = runs
         self.rescoring_factors = rescoring_factors or []
@@ -119,7 +119,7 @@ class VectorSearchBenchmark:
         
         search_methods = [
             ("float", self.searcher.search_float),
-            # ("avx2", self.searcher.search_avx2),
+            ("avx2", self.searcher.search_avx2),
             # ("binary", self.searcher.search_binary),
             # ("int8", self.searcher.search_int8),
             # ("float16", self.searcher.search_float16),
