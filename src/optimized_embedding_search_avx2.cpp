@@ -1,17 +1,15 @@
 #include "optimized_embedding_search_avx2.h"
 #include "embedding_utils.h" // for apply_pca_dimension_reduction_to_query
 #include <algorithm>         // for partial_sort, copy
+#include <arm_neon.h>        // for _mm256_load_ps, _mm256_setzero_ps, _mm2...
 #include <cmath>             // for sqrt
 #include <cstring>           // for size_t, memcpy, memset
 #include <exception>         // for exception
-#include <immintrin.h>       // for _mm256_load_ps, _mm256_setzero_ps, _mm2...
 #include <iostream>          // for basic_ostream, char_traits, operator<<
-#include <pmmintrin.h>       // for _mm_hadd_ps
 #include <stdexcept>         // for invalid_argument, runtime_error, out_of...
 #include <stdint.h>          // for int32_t, int_fast8_t
-#include <xmmintrin.h>       // for __m128, _mm_add_ps, _mm_cvtss_f32
 
-constexpr int_fast8_t NUM_STRIDES = 6;
+constexpr int_fast8_t NUM_STRIDES = 1;
 // constexpr int_fast64_t STRIDE_DIST = 1;
 
 const int32_t calcStrideDist(const size_t &vector_dim,
@@ -49,7 +47,7 @@ bool OptimizedEmbeddingSearchAVX2::setEmbeddings(
 
     if (!initializeDimensions(input_vectors))
       return false;
-    padded_dim = ((vector_dim + 7) / 8) * 8;
+    padded_dim = ((vector_dim + 3) / 4) * 4;
     vectors_per_embedding = padded_dim;
 
     // Allocate aligned memory for embeddings
@@ -116,6 +114,8 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
     temp_query = query;
   }
   if (temp_query.size() != vector_dim) {
+    std::cout << "temp_query.size(): " << temp_query.size()
+              << " vector_dim: " << vector_dim << std::endl;
     throw std::invalid_argument("Invalid query dimension");
   }
 
@@ -213,123 +213,62 @@ bool OptimizedEmbeddingSearchAVX2::validateDimensions(
 }
 
 float OptimizedEmbeddingSearchAVX2::compute_norm_avx2(const float *vec) const {
-  __m256 sum = _mm256_setzero_ps();
+  float32x4_t sum = vdupq_n_f32(0.0f);
 
-  for (size_t i = 0; i < padded_dim; i += 8) {
-    __m256 v = _mm256_load_ps(vec + i);
-    sum = _mm256_fmadd_ps(v, v, sum);
+  for (size_t i = 0; i < padded_dim; i += 4) {
+    float32x4_t v = vld1q_f32(vec + i);
+    sum = vmlaq_f32(sum, v, v); // Fused multiply-add
   }
 
   // Horizontal sum and square root
-  __m128 hi = _mm256_extractf128_ps(sum, 1);
-  __m128 lo = _mm256_castps256_ps128(sum);
-  __m128 sum_128 = _mm_add_ps(hi, lo);
-  sum_128 = _mm_hadd_ps(sum_128, sum_128);
-  sum_128 = _mm_hadd_ps(sum_128, sum_128);
+  float32x2_t sum2 = vadd_f32(vget_high_f32(sum), vget_low_f32(sum));
+  sum2 = vpadd_f32(sum2, sum2);
 
-  return std::sqrt(_mm_cvtss_f32(sum_128));
+  return std::sqrt(vget_lane_f32(sum2, 0));
 }
 float OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
     const float *vec_a, const float *vec_b) const {
-  __m256 sum[8] = {_mm256_setzero_ps(), _mm256_setzero_ps(),
-                   _mm256_setzero_ps(), _mm256_setzero_ps(),
-                   _mm256_setzero_ps(), _mm256_setzero_ps(),
-                   _mm256_setzero_ps(), _mm256_setzero_ps()};
-  __m256 a[8];
-  __m256 b[8];
-  size_t i = 0;
+  float32x4_t sum = vdupq_n_f32(0.0f);
 
-  while (i + 8 * 8 - 1 < padded_dim) {
-    a[0] = _mm256_load_ps(vec_a + i);
-    a[1] = _mm256_load_ps(vec_a + i + 8);
-    a[2] = _mm256_load_ps(vec_a + i + 2 * 8);
-    a[3] = _mm256_load_ps(vec_a + i + 3 * 8);
-
-    b[0] = _mm256_load_ps(vec_b + i);
-    b[1] = _mm256_load_ps(vec_b + i + 8);
-    b[2] = _mm256_load_ps(vec_b + i + 2 * 8);
-    b[3] = _mm256_load_ps(vec_b + i + 3 * 8);
-
-    sum[0] = _mm256_fmadd_ps(a[0], b[0], sum[0]);
-    sum[1] = _mm256_fmadd_ps(a[1], b[1], sum[1]);
-    sum[2] = _mm256_fmadd_ps(a[2], b[2], sum[2]);
-    sum[3] = _mm256_fmadd_ps(a[3], b[3], sum[3]);
-
-    a[4] = _mm256_load_ps(vec_a + i + 4 * 8);
-    a[5] = _mm256_load_ps(vec_a + i + 5 * 8);
-    a[6] = _mm256_load_ps(vec_a + i + 6 * 8);
-    a[7] = _mm256_load_ps(vec_a + i + 7 * 8);
-
-    b[4] = _mm256_load_ps(vec_b + i + 4 * 8);
-    b[5] = _mm256_load_ps(vec_b + i + 5 * 8);
-    b[6] = _mm256_load_ps(vec_b + i + 6 * 8);
-    b[7] = _mm256_load_ps(vec_b + i + 7 * 8);
-
-    sum[4] = _mm256_fmadd_ps(a[4], b[4], sum[4]);
-    sum[5] = _mm256_fmadd_ps(a[5], b[5], sum[5]);
-    sum[6] = _mm256_fmadd_ps(a[6], b[6], sum[6]);
-    sum[7] = _mm256_fmadd_ps(a[7], b[7], sum[7]);
-
-    i += 8 * 8;
+  // Process 4 floats at a time
+  for (size_t i = 0; i < padded_dim; i += 4) {
+    float32x4_t a = vld1q_f32(vec_a + i);
+    float32x4_t b = vld1q_f32(vec_b + i);
+    sum = vmlaq_f32(sum, a, b); // Fused multiply-add
   }
-
-  __m256 total = _mm256_add_ps(sum[1], sum[2]);
-  total = _mm256_add_ps(total, sum[3]);
-  total = _mm256_add_ps(total, sum[4]);
-  total = _mm256_add_ps(total, sum[5]);
-  total = _mm256_add_ps(total, sum[6]);
-  total = _mm256_add_ps(total, sum[7]);
-
-  while (i + 7 < padded_dim) {
-    a[0] = _mm256_load_ps(vec_a + i);
-    b[0] = _mm256_load_ps(vec_b + i);
-    sum[0] = _mm256_fmadd_ps(a[0], b[0], sum[0]);
-    i += 8;
-  }
-
-  total = _mm256_add_ps(total, sum[0]);
 
   // Horizontal sum
-  __m128 hi = _mm256_extractf128_ps(total, 1);
-  __m128 lo = _mm256_castps256_ps128(total);
-  __m128 sum_128 = _mm_add_ps(hi, lo);
-  sum_128 = _mm_hadd_ps(sum_128, sum_128);
-  sum_128 = _mm_hadd_ps(sum_128, sum_128);
+  float32x2_t sum2 = vadd_f32(vget_high_f32(sum), vget_low_f32(sum));
+  sum2 = vpadd_f32(sum2, sum2);
 
-  return _mm_cvtss_f32(sum_128);
+  return vget_lane_f32(sum2, 0);
 }
 
 inline void OptimizedEmbeddingSearchAVX2::cosine_similarity_optimized(
     const float *vec_a, float *sim, float *emb_ptr[]) {
-  __m256 sum[NUM_STRIDES] = {_mm256_setzero_ps()};
-  __m256 a;
-  __m256 b[NUM_STRIDES];
+  float32x4_t sum[NUM_STRIDES];
+  float32x4_t a;
+  float32x4_t b[NUM_STRIDES];
 
-  for (int i = 0; i < padded_dim; i += 8) {
-    a = _mm256_load_ps(vec_a + i);
-
-    b[0] = _mm256_load_ps(emb_ptr[0] + i);
-    b[1] = _mm256_load_ps(emb_ptr[1] + i);
-    b[2] = _mm256_load_ps(emb_ptr[2] + i);
-    b[3] = _mm256_load_ps(emb_ptr[3] + i);
-    b[4] = _mm256_load_ps(emb_ptr[4] + i);
-    b[5] = _mm256_load_ps(emb_ptr[5] + i);
-
-    sum[0] = _mm256_fmadd_ps(a, b[0], sum[0]);
-    sum[1] = _mm256_fmadd_ps(a, b[1], sum[1]);
-    sum[2] = _mm256_fmadd_ps(a, b[2], sum[2]);
-    sum[3] = _mm256_fmadd_ps(a, b[3], sum[3]);
-    sum[4] = _mm256_fmadd_ps(a, b[4], sum[4]);
-    sum[5] = _mm256_fmadd_ps(a, b[5], sum[5]);
+  // Initialize sums to zero
+  for (int i = 0; i < NUM_STRIDES; i++) {
+    sum[i] = vdupq_n_f32(0.0f);
   }
 
+  // Process 4 floats at a time for each stride
+  for (size_t i = 0; i < padded_dim; i += 4) {
+    a = vld1q_f32(vec_a + i);
+
+    for (int j = 0; j < NUM_STRIDES; j++) {
+      b[j] = vld1q_f32(emb_ptr[j] + i);
+      sum[j] = vmlaq_f32(sum[j], a, b[j]); // Fused multiply-add
+    }
+  }
+
+  // Calculate final similarities for each stride
   for (int i = 0; i < NUM_STRIDES; i++) {
-    // Horizontal sum
-    __m128 hi = _mm256_extractf128_ps(sum[i], 1);
-    __m128 lo = _mm256_castps256_ps128(sum[i]);
-    __m128 sum_128 = _mm_add_ps(hi, lo);
-    sum_128 = _mm_hadd_ps(sum_128, sum_128);
-    sum_128 = _mm_hadd_ps(sum_128, sum_128);
-    sim[i] = _mm_cvtss_f32(sum_128);
+    float32x2_t sum2 = vadd_f32(vget_high_f32(sum[i]), vget_low_f32(sum[i]));
+    sum2 = vpadd_f32(sum2, sum2);
+    sim[i] = vget_lane_f32(sum2, 0);
   }
 }
