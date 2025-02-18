@@ -8,6 +8,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-Wno-ignored-attributes)
 
+set(CMAKE_PREFIX_PATH "/usr/lib64/cmake/arrow/")
+
 find_package(nlohmann_json REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OpenMP REQUIRED)

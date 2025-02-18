@@ -13,3 +13,4 @@ memory_benchmark/memory_benchmark
 embeddings/10k_random_out.parquet
 python/benchmark/embedding_search_benchmark.so
 python/benchmark/benchmark_results*.json
+memory_benchmark/mb
