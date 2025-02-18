@@ -44,10 +44,12 @@ using aligned_vector = std::vector<T, AlignedAllocator<T>>;
 
 // Convenience type aliases for AVX2 vectors
 using avx2_vector = aligned_vector<float32x4_t>;
-using avx2i_vector = aligned_vector<int32x4_t>;
+using avx2i_vector = aligned_vector<uint32x4_t>;
+using avx2i_vector8 = aligned_vector<int8x16_t>;
 } // namespace AlignedTypes
 
 // Bring types into global namespace
 using avx2_vector = AlignedTypes::avx2_vector;
 using avx2i_vector = AlignedTypes::avx2i_vector;
+using avx2i_vector8 = AlignedTypes::avx2i_vector8;
 template <typename T> using aligned_vector = AlignedTypes::aligned_vector<T>;

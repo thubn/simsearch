@@ -1,8 +1,8 @@
 #pragma once
 #include "aligned_types.h"         // for avx2i_vector
-#include "avx2_popcount.h"         // for AVX2Popcount
+// #include "avx2_popcount.h"         // for AVX2Popcount
 #include "embedding_search_base.h" // for OptimizedEmbeddingSearchBase
-#include <immintrin.h>             // for __m256i
+#include <arm_neon.h>              // for __m256i
 #include <stddef.h>                // for size_t
 #include <stdint.h>                // for int32_t
 #include <string>                  // for string
@@ -10,7 +10,7 @@
 #include <vector>                  // for vector
 
 class OptimizedEmbeddingSearchBinaryAVX2
-    : public OptimizedEmbeddingSearchBase<avx2i_vector, int32_t, __m256i> {
+    : public OptimizedEmbeddingSearchBase<avx2i_vector, int32_t, uint32x4_t> {
 public:
   OptimizedEmbeddingSearchBinaryAVX2() = default;
 
@@ -25,11 +25,11 @@ protected:
                           std::string &error_message) override;
 
 private:
-  AVX2Popcount counter;
-  int32_t cosine_similarity_optimized(const __m256i *vec_a,
-                                      const __m256i *vec_b) const override;
-  int32_t cosine_similarity_optimized_dynamic(const __m256i *vec_a,
-                                              const __m256i *vec_b) const;
+  // AVX2Popcount counter;
+  int32_t cosine_similarity_optimized(const uint32x4_t *vec_a,
+                                      const uint32x4_t *vec_b) const override;
+  int32_t cosine_similarity_optimized_dynamic(const uint32x4_t *vec_a,
+                                              const uint32x4_t *vec_b) const;
   void convert_float_to_binary_avx2(const std::vector<float> &input,
-                                    __m256i *output) const;
+                                    uint32x4_t *output) const;
 };

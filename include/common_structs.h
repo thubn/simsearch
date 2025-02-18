@@ -9,8 +9,8 @@
 //#include "embedding_search_mapped_float.h"
 //#include "embedding_search_uint8_avx2.h"
 #include "optimized_embedding_search_avx2.h"
-//#include "optimized_embedding_search_binary_avx2.h"
-//#include "optimized_embedding_search_uint8_avx2.h"
+#include "optimized_embedding_search_binary_avx2.h"
+#include "optimized_embedding_search_uint8_avx2.h"
 #include <chrono>
 #include <thread>
 
@@ -90,8 +90,8 @@ public:
   // EmbeddingSearchBinaryAVX2 binary_avx2;
   // EmbeddingSearchUint8AVX2 uint8_avx2;
   OptimizedEmbeddingSearchAVX2 oavx2;
-  // OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
-  // OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
+  OptimizedEmbeddingSearchBinaryAVX2 obinary_avx2;
+  OptimizedEmbeddingSearchUint8AVX2 ouint8_avx2;
   // EmbeddingSearchFloat16 float16;
   // EmbeddingSearchMappedFloat mappedFloat;
   // OptimizedEmbeddingSearchMappedFloat mappedFloat2;
@@ -203,26 +203,26 @@ public:
     std::cout << "Loading of oAVX2 finished. Elapsed time: " << time << "ms"
               << std::endl;
   }
-  // void initObinary_avx2() {
-  //   std::cout << "Start loading of oBinary" << std::endl;
-  //   auto start = std::chrono::high_resolution_clock::now();
-  //   obinary_avx2.setEmbeddings(base.getEmbeddings());
-  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-  //                   std::chrono::high_resolution_clock::now() - start)
-  //                   .count();
-  //   std::cout << "Loading of oBinary finished. Elapsed time: " << time << "ms"
-  //             << std::endl;
-  // }
-  // void initOuint_avx2() {
-  //   std::cout << "Start loading of oInt8" << std::endl;
-  //   auto start = std::chrono::high_resolution_clock::now();
-  //   ouint8_avx2.setEmbeddings(base.getEmbeddings());
-  //   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
-  //                   std::chrono::high_resolution_clock::now() - start)
-  //                   .count();
-  //   std::cout << "Loading of oInt8 finished. Elapsed time: " << time << "ms"
-  //             << std::endl;
-  // }
+  void initObinary_avx2() {
+    std::cout << "Start loading of oBinary" << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    obinary_avx2.setEmbeddings(base.getEmbeddings());
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::high_resolution_clock::now() - start)
+                    .count();
+    std::cout << "Loading of oBinary finished. Elapsed time: " << time << "ms"
+              << std::endl;
+  }
+  void initOuint_avx2() {
+    std::cout << "Start loading of oInt8" << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    ouint8_avx2.setEmbeddings(base.getEmbeddings());
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::high_resolution_clock::now() - start)
+                    .count();
+    std::cout << "Loading of oInt8 finished. Elapsed time: " << time << "ms"
+              << std::endl;
+  }
   // void initFloat16() {
   //   std::cout << "Start loading of Float16" << std::endl;
   //   auto start = std::chrono::high_resolution_clock::now();
@@ -262,9 +262,9 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
   if (init_avx2)
     searchers.initOavx2();
   if (init_binary)
-    // searchers.initObinary_avx2();
+    searchers.initObinary_avx2();
   if (init_int8)
-    // searchers.initOuint_avx2();
+    searchers.initOuint_avx2();
   if (init_float16)
     // searchers.initFloat16();
   if (init_mf)

@@ -1,11 +1,10 @@
 #include "optimized_embedding_search_uint8_avx2.h"
 #include "embedding_utils.h" // for validateUint8AVX2Dimensions
 #include <algorithm>         // for clamp, partial_sort
-#include <emmintrin.h>       // for _mm_add_epi32, _mm_cvtsi128_si32, _mm_s...
+#include <arm_neon.h>        // for _MM_SHUFFLE, _MM_HINT_T0, _mm_prefetch
 #include <iostream>          // for basic_ostream, operator<<, cerr, endl
 #include <stdexcept>         // for runtime_error, out_of_range
 #include <stdint.h>          // for int8_t
-#include <xmmintrin.h>       // for _MM_SHUFFLE, _MM_HINT_T0, _mm_prefetch
 
 bool OptimizedEmbeddingSearchUint8AVX2::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {
@@ -16,10 +15,10 @@ bool OptimizedEmbeddingSearchUint8AVX2::setEmbeddings(
   if (!initializeDimensions(input_vectors))
     return false;
 
-  // Calculate padding for int8 values (32 values per AVX2 vector)
-  padded_dim = ((vector_dim + 31) / 32) * 32;
+  // Calculate padding for int8 values (16 values per NEON vector)
+  padded_dim = ((vector_dim + 15) / 16) * 16;
   vectors_per_embedding =
-      padded_dim / 32; // Number of __m256i vectors needed per embedding
+      padded_dim / 16; // Number of int8x16_t vectors needed per embedding
 
   // Allocate aligned memory
   size_t total_vectors = num_vectors * vectors_per_embedding;
@@ -28,32 +27,32 @@ bool OptimizedEmbeddingSearchUint8AVX2::setEmbeddings(
 
   // Convert and store each vector
   for (size_t i = 0; i < num_vectors; i++) {
-    __m256i *dest = get_embedding_ptr(i);
+    int8x16_t *dest = get_embedding_ptr(i);
     convert_float_to_uint8_avx2(input_vectors[i], dest);
   }
 
   return true;
 }
 
-avx2i_vector
+avx2i_vector8
 OptimizedEmbeddingSearchUint8AVX2::getEmbeddingAVX2(size_t index) const {
   if (index >= num_vectors) {
     throw std::out_of_range("Embedding index out of range");
   }
 
-  avx2i_vector result(vectors_per_embedding);
-  const __m256i *src = get_embedding_ptr(index);
+  avx2i_vector8 result(vectors_per_embedding);
+  const int8x16_t *src = get_embedding_ptr(index);
 
-  // Each __m256i contains 32 int8 values
+  // Each int8x16_t contains 16 int8 values
   for (size_t i = 0; i < vectors_per_embedding; ++i) {
-    result[i] = _mm256_load_si256(&src[i]);
+    result[i] = vld1q_s8(reinterpret_cast<const int8_t *>(&src[i]));
   }
 
   return result;
 }
 
 std::vector<std::pair<int, size_t>>
-OptimizedEmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query,
+OptimizedEmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector8 &query,
                                                      size_t k) {
   if (query.size() != vectors_per_embedding) {
     std::cerr << "expected dimension: " << vectors_per_embedding
@@ -64,7 +63,8 @@ OptimizedEmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector &query,
   std::vector<std::pair<int, size_t>> similarities;
   similarities.reserve(num_vectors);
 
-  const __m256i *query_data = reinterpret_cast<const __m256i *>(query.data());
+  const int8x16_t *query_data =
+      reinterpret_cast<const int8x16_t *>(query.data());
 
   for (size_t i = 0; i < num_vectors; i++) {
     int sim = cosine_similarity_optimized(get_embedding_ptr(i), query_data);
@@ -85,82 +85,46 @@ bool OptimizedEmbeddingSearchUint8AVX2::validateDimensions(
 }
 
 void OptimizedEmbeddingSearchUint8AVX2::convert_float_to_uint8_avx2(
-    const std::vector<float> &input, __m256i *output) const {
+    const std::vector<float> &input, int8x16_t *output) const {
   for (size_t i = 0; i < vectors_per_embedding; i++) {
-    std::vector<int8_t> temp(32, 0);
+    std::vector<int8_t> temp(16, 0);
 
-    for (size_t j = 0; j < 32 && (i * 32 + j) < input.size(); j++) {
-      float val = input[i * 32 + j];
+    for (size_t j = 0; j < 16 && (i * 16 + j) < input.size(); j++) {
+      float val = input[i * 16 + j];
       temp[j] = static_cast<int8_t>(std::clamp(val * 127.0f, -127.0f, 127.0f));
     }
 
-    output[i] =
-        _mm256_loadu_si256(reinterpret_cast<const __m256i *>(temp.data()));
+    output[i] = vld1q_s8(temp.data());
   }
 }
 
 int OptimizedEmbeddingSearchUint8AVX2::cosine_similarity_optimized(
-    const __m256i *vec_a, const __m256i *vec_b) const {
-  __m256i sum_lo = _mm256_setzero_si256();
-  __m256i sum_hi = _mm256_setzero_si256();
-  __m256i ones = _mm256_set1_epi16(1);
+    const int8x16_t *vec_a, const int8x16_t *vec_b) const {
+  int32x4_t acc = vdupq_n_s32(0);
 
-  for (size_t i = 0; i < vectors_per_embedding; i += 2) {
-    __m256i a[2], b[2];
-    a[0] = _mm256_load_si256(vec_a + i);
-    a[1] = _mm256_load_si256(vec_a + i + 1);
-    b[0] = _mm256_load_si256(vec_b + i);
-    b[1] = _mm256_load_si256(vec_b + i + 1);
+  for (size_t i = 0; i < vectors_per_embedding; i++) {
+    // Load vectors
+    int8x16_t a = vld1q_s8(reinterpret_cast<const int8_t *>(&vec_a[i]));
+    int8x16_t b = vld1q_s8(reinterpret_cast<const int8_t *>(&vec_b[i]));
 
-    _mm_prefetch(vec_a + i + 2 * 10, _MM_HINT_T0);
+    // Multiply and accumulate in two steps since NEON can't directly multiply
+    // 8-bit values Process lower half
+    int16x8_t prod_low = vmull_s8(vget_low_s8(a), vget_low_s8(b));
+    // Process upper half
+    int16x8_t prod_high = vmull_s8(vget_high_s8(a), vget_high_s8(b));
 
-    // Process pairs
-    __m256i mul_lo[2], mul_hi[2];
-    mul_lo[0] =
-        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a[0])),
-                           _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[0])));
-    mul_hi[0] = _mm256_mullo_epi16(
-        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[0], 1)),
-        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[0], 1)));
+    // Pairwise add to convert to 32-bit
+    int32x4_t sum_low = vpaddlq_s16(prod_low);
+    int32x4_t sum_high = vpaddlq_s16(prod_high);
 
-    mul_lo[1] =
-        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a[1])),
-                           _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b[1])));
-    mul_hi[1] = _mm256_mullo_epi16(
-        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a[1], 1)),
-        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b[1], 1)));
-
-    // Accumulate results
-    sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo[0], ones));
-    sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi[0], ones));
-    sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo[1], ones));
-    sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi[1], ones));
+    // Accumulate both results
+    acc = vaddq_s32(acc, sum_low);
+    acc = vaddq_s32(acc, sum_high);
   }
 
-  // Handle remaining odd vector
-  if (vectors_per_embedding % 2) {
-    size_t i = vectors_per_embedding - 1;
-    __m256i a = _mm256_load_si256(vec_a + i);
-    __m256i b = _mm256_load_si256(vec_b + i);
+  // Horizontal sum of the final accumulator
+  int32x2_t sum = vadd_s32(vget_high_s32(acc), vget_low_s32(acc));
+  sum = vpadd_s32(sum, sum);
 
-    __m256i mul_lo =
-        _mm256_mullo_epi16(_mm256_cvtepi8_epi16(_mm256_castsi256_si128(a)),
-                           _mm256_cvtepi8_epi16(_mm256_castsi256_si128(b)));
-    __m256i mul_hi = _mm256_mullo_epi16(
-        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(a, 1)),
-        _mm256_cvtepi8_epi16(_mm256_extracti128_si256(b, 1)));
-
-    sum_lo = _mm256_add_epi32(sum_lo, _mm256_madd_epi16(mul_lo, ones));
-    sum_hi = _mm256_add_epi32(sum_hi, _mm256_madd_epi16(mul_hi, ones));
-  }
-
-  __m256i sum = _mm256_add_epi32(sum_lo, sum_hi);
-  __m128i sum_128 = _mm_add_epi32(_mm256_castsi256_si128(sum),
-                                  _mm256_extracti128_si256(sum, 1));
-  sum_128 = _mm_add_epi32(sum_128,
-                          _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(1, 0, 3, 2)));
-  sum_128 = _mm_add_epi32(sum_128,
-                          _mm_shuffle_epi32(sum_128, _MM_SHUFFLE(2, 3, 0, 1)));
-
-  return _mm_cvtsi128_si32(sum_128);
+  return vget_lane_s32(sum, 0);
 }

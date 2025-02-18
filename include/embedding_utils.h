@@ -1,6 +1,6 @@
 // embedding_utils.h
 #pragma once
-// #include "aligned_types.h" // for avx2_vector, avx2i_vector
+#include "aligned_types.h" // for avx2_vector, avx2i_vector
 #include <algorithm>       // for sort, unique, set_intersection, set_union
 #include <bits/std_abs.h>  // for abs
 #include <cmath>           // for log2, exp, sqrt
@@ -26,17 +26,17 @@ bool validateAVX2Dimensions(const std::vector<std::vector<float>> &input,
 
 // size_t calculateBinaryAVX2VectorSize(size_t float_vector_size);
 
-// void convertSingleFloatToBinaryAVX2(const std::vector<float> &input,
-//                                     avx2i_vector &output, size_t vector_dim);
+void convertSingleFloatToBinaryAVX2(const std::vector<float> &input,
+                                    avx2i_vector &output, size_t vector_dim);
 
-// bool validateBinaryAVX2Dimensions(const std::vector<std::vector<float>> &input,
-//                                   std::string &error_message);
+bool validateBinaryAVX2Dimensions(const std::vector<std::vector<float>> &input,
+                                  std::string &error_message);
 
-// void convertSingleFloatToUint8AVX2(const std::vector<float> &input,
-//                                    avx2i_vector &output, size_t vector_dim);
+void convertSingleFloatToUint8AVX2(const std::vector<float> &input,
+                                   avx2i_vector8 &output, size_t vector_dim);
 
-// bool validateUint8AVX2Dimensions(const std::vector<std::vector<float>> &input,
-//                                  std::string &error_message);
+bool validateUint8AVX2Dimensions(const std::vector<std::vector<float>> &input,
+                                 std::string &error_message);
 
 // size_t calculateUint8AVX2VectorSize(size_t float_vector_size);
 

@@ -31,7 +31,7 @@ bool OptimizedEmbeddingSearchBinaryAVX2::setEmbeddings(
   // Convert and store each vector
   for (size_t i = 0; i < num_vectors; i++) {
     uint32x4_t *dest = get_embedding_ptr(i);
-    convert_float_to_binary_neon(input_vectors[i], dest);
+    convert_float_to_binary_avx2(input_vectors[i], dest);
   }
 
   return true;
@@ -66,11 +66,11 @@ OptimizedEmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
   std::vector<std::pair<int32_t, size_t>> similarities;
   similarities.reserve(num_vectors);
 
-  const __m256i *query_data = reinterpret_cast<const __m256i *>(query.data());
-  // counter = AVX2Popcount();
-  //  AVX2PopcountHarleySeal counter;
+  const uint32x4_t *query_data =
+      reinterpret_cast<const uint32x4_t *>(query.data());
 
-  if (vectors_per_embedding == 4) {
+  // Using the appropriate similarity function based on vector size
+  if (vectors_per_embedding == 8) { // 1024-bit vectors
     for (size_t i = 0; i < num_vectors; i++) {
       int32_t sim =
           cosine_similarity_optimized(get_embedding_ptr(i), query_data);
@@ -84,6 +84,7 @@ OptimizedEmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
     }
   }
 
+  // Partial sort to get top-k results
   std::partial_sort(
       similarities.begin(), similarities.begin() + k, similarities.end(),
       [](const auto &a, const auto &b) { return a.first > b.first; });
@@ -124,7 +125,7 @@ int32_t OptimizedEmbeddingSearchBinaryAVX2::cosine_similarity_optimized(
 
   // For 1024-bit vectors (8 x 128-bit NEON vectors)
   uint32x4_t all_ones = vdupq_n_u32(0xFFFFFFFF);
-  int32_t = total_popcount = 0;
+  int32_t total_popcount = 0;
 
   // Process 8 vectors (1024 bits total)
   for (int i = 0; i < 8; i++) {

@@ -153,19 +153,19 @@ public:
         query_vector, k);
   }
 
-  // py::tuple search_binary(py::array_t<float> query_vector, size_t k) {
-  //   return perform_search(
-  //       SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t>{
-  //           searchers->obinary_avx2, "binary"},
-  //       query_vector, k);
-  // }
+  py::tuple search_binary(py::array_t<float> query_vector, size_t k) {
+    return perform_search(
+        SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t>{
+            searchers->obinary_avx2, "binary"},
+        query_vector, k);
+  }
 
-  // py::tuple search_int8(py::array_t<float> query_vector, size_t k) {
-  //   return perform_search(
-  //       SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t>{
-  //           searchers->ouint8_avx2, "int8"},
-  //       query_vector, k);
-  // }
+  py::tuple search_int8(py::array_t<float> query_vector, size_t k) {
+    return perform_search(
+        SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t>{
+            searchers->ouint8_avx2, "int8"},
+        query_vector, k);
+  }
 
   // py::tuple search_float16(py::array_t<float> query_vector, size_t k) {
   //   return perform_search(
@@ -331,50 +331,49 @@ py::tuple perform_search_impl(PyEmbeddingSearch *self,
 }
 
 // Specialization for binary AVX2 searcher
-// template <>
-// py::tuple perform_search_impl<OptimizedEmbeddingSearchBinaryAVX2, int32_t>(
-//     PyEmbeddingSearch *self,
-//     const SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t> &info,
-//     py::array_t<float> query_vector, size_t k) {
-//   self->check_initialization();
-//   std::vector<float> query = self->convert_query(query_vector);
+template <>
+py::tuple perform_search_impl<OptimizedEmbeddingSearchBinaryAVX2, int32_t>(
+    PyEmbeddingSearch *self,
+    const SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t> &info,
+    py::array_t<float> query_vector, size_t k) {
+  self->check_initialization();
+  std::vector<float> query = self->convert_query(query_vector);
 
-//   avx2i_vector queryBinary(query.size() / 8 / 32);
-//   EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinary,
-//                                                  query.size() / 8 / 32);
+  avx2i_vector queryBinary(query.size() / 4 / 32);
+  EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinary,
+                                                 query.size() / 4 / 32);
 
-//   auto start = std::chrono::high_resolution_clock::now();
-//   auto results = info.searcher.similarity_search(queryBinary, k);
-//   auto end = std::chrono::high_resolution_clock::now();
-//   auto time = std::chrono::duration_cast<std::chrono::microseconds>(end -
-//   start)
-//                   .count();
+  auto start = std::chrono::high_resolution_clock::now();
+  auto results = info.searcher.similarity_search(queryBinary, k);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                  .count();
 
-//   return self->format_results(results, time);
-// }
+  return self->format_results(results, time);
+}
 
-// // Specialization for int8 AVX2 searcher
-// template <>
-// py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, int32_t>(
-//     PyEmbeddingSearch *self,
-//     const SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t> &info,
-//     py::array_t<float> query_vector, size_t k) {
-//   self->check_initialization();
-//   std::vector<float> query = self->convert_query(query_vector);
+// Specialization for int8 AVX2 searcher
+template <>
+py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, int32_t>(
+    PyEmbeddingSearch *self,
+    const SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t> &info,
+    py::array_t<float> query_vector, size_t k) {
+  self->check_initialization();
+  std::vector<float> query = self->convert_query(query_vector);
 
-//   avx2i_vector queryInt8(query.size() / 8 / 4);
-//   EmbeddingUtils::convertSingleFloatToUint8AVX2(query, queryInt8,
-//                                                 query.size() / 8 / 4);
+  avx2i_vector8 queryInt8(query.size() / 4 / 4);
+  EmbeddingUtils::convertSingleFloatToUint8AVX2(query, queryInt8,
+                                                query.size() / 4 / 4);
 
-//   auto start = std::chrono::high_resolution_clock::now();
-//   auto results = info.searcher.similarity_search(queryInt8, k);
-//   auto end = std::chrono::high_resolution_clock::now();
-//   auto time = std::chrono::duration_cast<std::chrono::microseconds>(end -
-//   start)
-//                   .count();
+  auto start = std::chrono::high_resolution_clock::now();
+  auto results = info.searcher.similarity_search(queryInt8, k);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::microseconds>(end -
+  start)
+                  .count();
 
-//   return self->format_results(results, time);
-// }
+  return self->format_results(results, time);
+}
 
 // Specialization for int8 AVX2 searcher
 /*template <>
@@ -420,10 +419,10 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
            "Base float search", py::arg("query_vector"), py::arg("k"))
       .def("search_avx2", &PyEmbeddingSearch::search_avx2,
            "AVX2 optimized search", py::arg("query_vector"), py::arg("k"))
-      // .def("search_binary", &PyEmbeddingSearch::search_binary,
-      //      "Binary AVX2 search", py::arg("query_vector"), py::arg("k"))
-      // .def("search_int8", &PyEmbeddingSearch::search_int8, "INT8 search",
-      //      py::arg("query_vector"), py::arg("k"))
+      .def("search_binary", &PyEmbeddingSearch::search_binary,
+           "Binary AVX2 search", py::arg("query_vector"), py::arg("k"))
+      .def("search_int8", &PyEmbeddingSearch::search_int8, "INT8 search",
+           py::arg("query_vector"), py::arg("k"))
       // .def("search_float16", &PyEmbeddingSearch::search_float16,
       //      "float16 search", py::arg("query_vector"), py::arg("k"))
       // .def("search_mf", &PyEmbeddingSearch::search_mf, "mapped float search",
