@@ -1,0 +1,146 @@
+\chapter{Implementation}
+\label{chapter:implementation}
+\section{Software Architecture}
+\begin{figure}[htbp]
+    \begin{tikzpicture}[scale=0.75, every node/.style={scale=0.75}]
+
+        % IO Functions
+        \begin{class}[text width=4cm]{IOFunctions}{1,-8.25}
+        \end{class}
+
+        % Base template class
+        \begin{class}[text width=11.5cm]{EmbeddingSearchBase}{-6,-3.5}
+            \attribute{template <VectorType, SimilarityType>}
+            \attribute{\# embeddings: vector of VectorType}
+            \operation{+ p-virt similarity\_search(query: VectorType, k: size\_t): vector of pairs}
+            \operation{+ p-virt setEmbeddings(input: vector of vector float): bool}
+            
+            \operation{+ getEmbeddings(): vector of VectorType}
+            \operation{+ getSentences(): vector of string}
+            \operation{\# p-virt cosine\_similarity(a,b: vector of VT): SimT}
+        \end{class}
+
+        % Float implementation
+        \begin{class}[text width=7.5cm]{EmbeddingSearchFloat}{-8,0}
+            \inherit{EmbeddingSearchBase}
+            \attribute{specializes VectorType=vector of float}
+            \attribute{specializes SimilarityType=float}
+            \operation{+ load(filename: string): bool}
+            \operation{+ pca\_dimension\_reduction(factor: int): bool}
+        \end{class}
+
+        % AVX2 implementation  
+        \begin{class}[text width=7cm]{EmbeddingSearchAVX2}{0,0}
+            \inherit{EmbeddingSearchBase}
+            \attribute{specializes VectorType=avx2\_vector}
+            \attribute{specializes SimilarityType=float}
+        \end{class}
+
+        % Binary implementation
+        \begin{class}[text width=7cm]{EmbeddingSearchBinary}{4,-2.5}
+            \inherit{EmbeddingSearchBase}
+            \attribute{specializes VectorType=vector of uint64\_t}
+            \attribute{specializes SimilarityType=int}
+        \end{class}
+
+        % Uint8 AVX2 implementation
+        \begin{class}[text width=7cm]{EmbeddingSearchUint8AVX2}{4,-5}
+            \inherit{EmbeddingSearchBase}
+            \attribute{specializes VectorType=avx2i\_vector}
+            \attribute{specializes SimilarityType=uint}
+        \end{class}
+
+        % Optimized base class
+        \begin{class}[text width=9.5cm]{OptimizedEmbeddingSearchBase}{-7,-8.5}
+            \attribute{template <VT, SimT, StorageT>}
+            \inherit{EmbeddingSearchBase}
+            \attribute{\# embedding\_data: unique\_ptr to StorageT array}
+            \operation{+ get\_embedding\_ptr(index: size\_t): StorageT*}
+            \operation{\# p-virt cosine\_similarity(a,b: vector of StorageT): SimT}
+        \end{class}
+
+        % Optimized AVX2
+        \begin{class}[text width=7cm]{OptimizedEmbeddingSearchAVX2}{-8.25,-12.25}
+            \inherit{OptimizedEmbeddingSearchBase}
+            \attribute{specializes VT=avx2\_vector, SimT=float}
+            \attribute{specializes StorageT=float}
+        \end{class}
+
+        % Optimized Binary AVX2
+        \begin{class}[text width=7cm]{OptimizedEmbeddingSearchBinaryAVX2}{3.5,-9.75}
+            \inherit{OptimizedEmbeddingSearchBase}
+            \attribute{specializes VT=avx2i\_vector, SimT=int32\_t}
+            \attribute{specializes StorageT=\_\_m256i}
+        \end{class}
+
+        % Optimized Uint8 AVX2
+        \begin{class}[text width=8cm]{OptimizedEmbeddingSearchUint8AVX2}{0,-12.25}
+            \inherit{OptimizedEmbeddingSearchBase}
+            \attribute{specializes VT=avx2i\_vector, SimT=uint32\_t}
+            \attribute{specializes StorageT=\_\_m256i}
+        \end{class}
+
+        % Add dependency arrow from EmbeddingSearchBase to EmbeddingIO
+        \draw[dashed,->] (EmbeddingSearchBase) -- (IOFunctions);
+    \end{tikzpicture}
+    \caption{Simplified class relation diagram of the simsearch c++ program. p-virt mean the function is a pure virtual function}
+    \label{fig:reldiag_simsearch}
+\end{figure}
+
+\noindent The Program which implements and benchmarks the different vector similarity search optimizations is written in modern C++. A simplified diagram of the class hierarchy can be seen in~\autoref{fig:reldiag_simsearch}.
+\subsection{Design philosophy}
+Overall the system is realized through template based class hierarchies. The base functionality is implemented in the base class like the loading of embeddings from disk. Functions like \texttt{cosine\_similarity} are separated into the specialized classes because that's these functions are the one that will be optimized. Furthermore, the classes are implemented in a type-safe manner. This way type errors when using different vector formats (float, binary, int8) are caught at compile time rather than runtime. Also, many benchmark parameters are configurable when running the program from command line.
+
+\subsection{Class hierarchy}
+The mentioned class hierarchy allows implementing the different vector similarity search implementations without having duplicates of code. This also guarantees that the classes have a consistent interface. There are two abstract main classes which provide the foundation for all implementations: \textit{EmbeddingSearchBase} and \textit{OptimizedEmbeddingSearchBase}. The \textit{EmbeddingIO} class allows loading of embeddings from the disk. Different formats are supported, but most of them are non-standard. The \textit{load} function in the \textit{EmbeddingSearchBase} class uses this class. After it has loaded the embeddings from the disk it passes the float32 vectors to the classes corresponding \textit{setEmbeddings} implementation. This function converts the vectors into the expected format. For the classes that inherit from the \textit{EmbeddingSearchBase} class the embeddings are stored in a vector of \textit{VectorType}. Where \textit{VectorType} can be a vector of floats, vector of integers or an aligned vector datatype. One element of \textit{VectorType} represents one embedding and the vector of these are interpreted as the list or array of embeddings.
+
+There also is the \textit{PyEmbeddingSearch} class. This class is used to create python bindings. These bindings allow to use the different searcher implementations in python. These bindings will be used to gather benchmark metrics in python. One can also experiment and write their own queries and search for similar embeddings with the C++ implementation. This should help Understanding the functionality of the program.
+
+\subsubsection{Memory management strategies}
+\label{memorymanagement}
+The \textit{AlignedTypes} class defines the memory aligned vector types \textit{avx2\_vector} and \textit{avx2i\_vector}. They represent a memory aligned vector of the \textit{\_\_m256} and \textit{\_\_m256i} datatype respectively, see:~\autoref{alg:vectortypesAVX2}. The main purpose of this class is to ensure proper memory alignment (done by \autoref{alg:AlignedAllocator}) for the SIMD operations. It is used by the \textit{EmbeddingSearchAVX2} and \textit{EmbeddingSearchUint8AVX2} classes. This allows these classes to store the AVX2 vectors in a memory aligned manner, which in turn enables these classes to use aligned loads into AVX registers which is faster than the unaligned load AVX instruction.
+
+\begin{algorithm}{\textit{AlignedAllocator} class template}{AlignedAllocator}
+    \begin{lstlisting}[language=C++]
+template <typename T>
+class AlignedAllocator {
+    static constexpr size_t alignment = 32; // AVX2 needs 32B alignment
+    T* allocate(size_t n) {
+        void* ptr = std::aligned_alloc(alignment, n * sizeof(T));
+        if (!ptr) throw std::bad_alloc();
+        return static_cast<T*>(ptr);
+    }
+    void deallocate(T* p, size_t) noexcept {
+        std::free(p);
+    }
+};
+    \end{lstlisting}
+\end{algorithm}
+
+\begin{algorithm}{Specialized vector types for AVX2}{vectortypesAVX2}
+    \begin{lstlisting}[language=C++]
+template <typename T>
+using aligned_vector = std::vector<T, AlignedAllocator<T>>;
+// Vector of 256-bit float vectors
+using avx2_vector = aligned_vector<__m256>;
+// Vector of 256-bit integer vectors
+using avx2i_vector = aligned_vector<__m256i>;
+    \end{lstlisting}
+\end{algorithm}
+
+The optimized classes also use aligned memory to store the vectors. But in these classes a single contiguous block of memory is allocated to store the embeddings. Which allows better usage of the CPU cache. Memory is managed manually:~\autoref{alg:embeddingdata}. It allows direct pointer arithmetic for even faster access. This approach removes the minimal overhead that \textit{std::vector} has. This also enables the possibility to use memory prefetching, because the memory address of vectors accessed in the future is more predictable.
+
+\begin{algorithm}{Excerpt from \textit{OptimizedEmbeddingSearchBase}}{embeddingdata}
+    \begin{lstlisting}[language=C++]
+std::unique_ptr<StorageType[]> embedding_data;
+// Used in derived classes:
+StorageType* get_embedding_ptr(size_t index) {
+    return embedding_data.get() + index * vectors_per_embedding;
+}
+bool allocateAlignedMemory(size_t total_size) {
+  embedding_data.reset(static_cast<StorageType *>(std::aligned_alloc(
+    config_.memory.alignmentSize, total_size * sizeof(StorageType))));
+  return embedding_data != nullptr;
+}
+\end{lstlisting}
+\end{algorithm}

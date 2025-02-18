@@ -1,0 +1,234 @@
+@online{emb2024mxbai,
+  title  = {Open Source Strikes Bread - New Fluffy Embeddings Model},
+  author = {Sean Lee and Aamir Shakir and Darius Koenig and Julius Lipp},
+  year   = {2024},
+  url    = {https://www.mixedbread.ai/blog/mxbai-embed-large-v1}
+}
+
+% use article below
+%article{li2023angle,
+%  title   = {AnglE-optimized Text Embeddings},
+%  author  = {Li, Xianming and Li, Jing},
+%  journal = {arXiv preprint arXiv:2309.12871},
+%  year    = {2023}
+%}
+
+@misc{li2024angleoptimizedtextembeddings,
+  title         = {AnglE-optimized Text Embeddings},
+  author        = {Xianming Li and Jing Li},
+  year          = {2024},
+  eprint        = {2309.12871},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CL},
+  url           = {https://arxiv.org/abs/2309.12871}
+}
+
+@article{Mu_a_2017,
+  title     = {Faster Population Counts Using AVX2 Instructions},
+  volume    = {61},
+  issn      = {1460-2067},
+  url       = {http://dx.doi.org/10.1093/comjnl/bxx046},
+  doi       = {10.1093/comjnl/bxx046},
+  number    = {1},
+  journal   = {The Computer Journal},
+  publisher = {Oxford University Press (OUP)},
+  author    = {Muła, Wojciech and Kurz, Nathan and Lemire, Daniel},
+  year      = {2017},
+  month     = may,
+  pages     = {111–120}
+}
+
+@misc{muennighoff2023mtebmassivetextembedding,
+  title         = {MTEB: Massive Text Embedding Benchmark},
+  author        = {Niklas Muennighoff and Nouamane Tazi and Loïc Magne and Nils Reimers},
+  year          = {2023},
+  eprint        = {2210.07316},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CL},
+  url           = {https://arxiv.org/abs/2210.07316}
+}
+
+% not cited yet
+@article{shakir2024quantization,
+  author  = { Aamir Shakir and
+             Tom Aarsen and
+             Sean Lee
+             },
+  title   = { Binary and Scalar Embedding Quantization for Significantly Faster & Cheaper Retrieval },
+  journal = {Hugging Face Blog},
+  year    = {2024},
+  note    = {https://huggingface.co/blog/embedding-quantization}
+}
+
+@article{simd_flynn,
+  author   = {Flynn, Michael J.},
+  journal  = {IEEE Transactions on Computers},
+  title    = {Some Computer Organizations and Their Effectiveness},
+  year     = {1972},
+  volume   = {C-21},
+  number   = {9},
+  pages    = {948-960},
+  keywords = {Organizations;Computers;Entropy;Computational modeling;Data mining;Probability density function;Bandwidth;Computer organization;instruction stream;overlapped;parallel processors;resource hierarchy},
+  doi      = {10.1109/TC.1972.5009071}
+}
+
+@misc{khadem2023vectorprocessingmobiledevicesbenchmark,
+  title         = {Vector-Processing for Mobile Devices: Benchmark and Analysis},
+  author        = {Alireza Khadem and Daichi Fujiki and Nishil Talati and Scott Mahlke and Reetuparna Das},
+  year          = {2023},
+  eprint        = {2309.02680},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.AR},
+  url           = {https://arxiv.org/abs/2309.02680}
+}
+
+@inproceedings{simdtoaccelerateperformance,
+  author    = {Mitra, Gaurav and Johnston, Beau and Rendell, Alistair P. and McCreath, Eric and Zhou, Jun},
+  booktitle = {2013 IEEE International Symposium on Parallel \& Distributed Processing, Workshops and Phd Forum},
+  title     = {Use of SIMD Vector Operations to Accelerate Application Code Performance on Low-Powered ARM and Intel Platforms},
+  year      = {2013},
+  volume    = {},
+  number    = {},
+  pages     = {1107-1116},
+  keywords  = {Registers;Vectors;Benchmark testing;Image processing;Graphics processing units;Assembly;Educational institutions;SIMD;Vectorization;SSE;NEON;AVX;Low-Power;ARM},
+  doi       = {10.1109/IPDPSW.2013.207}
+}
+
+@unpublished{comparingsimdonx8664andarm64,
+  author = {Yining Karl Li},
+  note   = {Article on authors personal blog},
+  title  = {Comparing SIMD on x86-64 and arm64},
+  year   = {2021},
+  url    = {https://blog.yiningkarlli.com/2021/09/neon-vs-sse.html}
+}
+
+@article{ndcg,
+  author     = {J\"{a}rvelin, Kalervo and Kek\"{a}l\"{a}inen, Jaana},
+  title      = {Cumulated gain-based evaluation of IR techniques},
+  year       = {2002},
+  issue_date = {October 2002},
+  publisher  = {Association for Computing Machinery},
+  address    = {New York, NY, USA},
+  volume     = {20},
+  number     = {4},
+  issn       = {1046-8188},
+  url        = {https://doi.org/10.1145/582415.582418},
+  doi        = {10.1145/582415.582418},
+  abstract   = {Modern large retrieval environments tend to overwhelm their users by their large output. Since all documents are not of equal relevance to their users, highly relevant documents should be identified and ranked first for presentation. In order to develop IR techniques in this direction, it is necessary to develop evaluation approaches and methods that credit IR methods for their ability to retrieve highly relevant documents. This can be done by extending traditional evaluation methods, that is, recall and precision based on binary relevance judgments, to graded relevance judgments. Alternatively, novel measures based on graded relevance judgments may be developed. This article proposes several novel measures that compute the cumulative gain the user obtains by examining the retrieval result up to a given ranked position. The first one accumulates the relevance scores of retrieved documents along the ranked result list. The second one is similar but applies a discount factor to the relevance scores in order to devaluate late-retrieved documents. The third one computes the relative-to-the-ideal performance of IR techniques, based on the cumulative gain they are able to yield. These novel measures are defined and discussed and their use is demonstrated in a case study using TREC data: sample system run results for 20 queries in TREC-7. As a relevance base we used novel graded relevance judgments on a four-point scale. The test results indicate that the proposed measures credit IR methods for their ability to retrieve highly relevant documents and allow testing of statistical significance of effectiveness differences. The graphs based on the measures also provide insight into the performance IR techniques and allow interpretation, for example, from the user point of view.},
+  journal    = {ACM Trans. Inf. Syst.},
+  month      = oct,
+  pages      = {422–446},
+  numpages   = {25},
+  keywords   = {cumulated gain, Graded relevance judgments}
+}
+
+@inproceedings{memoryaccesslatency,
+  author    = {Molka, Daniel and Hackenberg, Daniel and Schöne, Robert and Nagel, Wolfgang E.},
+  booktitle = {2015 44th International Conference on Parallel Processing},
+  title     = {Cache Coherence Protocol and Memory Performance of the Intel Haswell-EP Architecture},
+  year      = {2015},
+  volume    = {},
+  number    = {},
+  pages     = {739-748},
+  keywords  = {Peer-to-peer computing;Protocols;Coherence;Sockets;Benchmark testing;Bidirectional control;Bridges;cache coherence;memory performance;NUMA},
+  doi       = {10.1109/ICPP.2015.83}
+}
+
+@manual{intel64manual,
+  author = {Intel Corporation},
+  title  = {Intel® 64 and IA-32 Architectures Software Developer's Manual},
+  url    = {https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-vol-1-manual.pdf},
+  pages  = {311-312}
+}
+
+@article{prefetching,
+  author     = {Lee, Jaekyu and Kim, Hyesoon and Vuduc, Richard},
+  title      = {When Prefetching Works, When It Doesn’t, and Why},
+  year       = {2012},
+  issue_date = {March 2012},
+  publisher  = {Association for Computing Machinery},
+  address    = {New York, NY, USA},
+  volume     = {9},
+  number     = {1},
+  issn       = {1544-3566},
+  url        = {https://doi.org/10.1145/2133382.2133384},
+  doi        = {10.1145/2133382.2133384},
+  abstract   = {In emerging and future high-end processor systems, tolerating increasing cache miss latency and properly managing memory bandwidth will be critical to achieving high performance. Prefetching, in both hardware and software, is among our most important available techniques for doing so; yet, we claim that prefetching is perhaps also the least well-understood.Thus, the goal of this study is to develop a novel, foundational understanding of both the benefits and limitations of hardware and software prefetching. Our study includes: source code-level analysis, to help in understanding the practical strengths and weaknesses of compiler- and software-based prefetching; a study of the synergistic and antagonistic effects between software and hardware prefetching; and an evaluation of hardware prefetching training policies in the presence of software prefetching requests. We use both simulation and measurement on real systems. We find, for instance, that although there are many opportunities for compilers to prefetch much more aggressively than they currently do, there is also a tangible risk of interference with training existing hardware prefetching mechanisms. Taken together, our observations suggest new research directions for cooperative hardware/software prefetching.},
+  journal    = {ACM Trans. Archit. Code Optim.},
+  month      = mar,
+  articleno  = {2},
+  numpages   = {29},
+  keywords   = {cache, Prefetching}
+}
+
+@unpublished{fma,
+  author = {Christoph Peters},
+  note   = {Article on authors personal blog},
+  title  = {fma: A faster, more accurate instruction},
+  year   = {2021},
+  url    = {https://momentsingraphics.de/FMA.html}
+}
+
+@misc{thakur2023injectingdomainadaptationlearningtohash,
+  title         = {Injecting Domain Adaptation with Learning-to-hash for Effective and Efficient Zero-shot Dense Retrieval},
+  author        = {Nandan Thakur and Nils Reimers and Jimmy Lin},
+  year          = {2023},
+  eprint        = {2205.11498},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.IR},
+  url           = {https://arxiv.org/abs/2205.11498}
+}
+
+@inproceedings{8821893,
+  author    = {Shrivastava, Rahul and Sisodia, Dilip Singh},
+  booktitle = {2019 International Conference on Computer Communication and Informatics (ICCCI)},
+  title     = {Product Recommendations Using Textual Similarity Based Learning Models},
+  year      = {2019},
+  volume    = {},
+  number    = {},
+  pages     = {1-7},
+  keywords  = {Image color analysis;Euclidean distance;Cleaning;Informatics;Data acquisition;Convolutional neural networks;Advertising;Bag of Words;TF-IDF;Euclidean Distance},
+  doi       = {10.1109/ICCCI.2019.8821893}
+}
+
+@misc{ozsoy2016wordembeddingsitemrecommendation,
+  title         = {From Word Embeddings to Item Recommendation},
+  author        = {Makbule Gulcin Ozsoy},
+  year          = {2016},
+  eprint        = {1601.01356},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/1601.01356}
+}
+
+@misc{mikolov2013exploitingsimilaritieslanguagesmachine,
+  title         = {Exploiting Similarities among Languages for Machine Translation},
+  author        = {Tomas Mikolov and Quoc V. Le and Ilya Sutskever},
+  year          = {2013},
+  eprint        = {1309.4168},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CL},
+  url           = {https://arxiv.org/abs/1309.4168}
+}
+
+%
+@misc{Drepper2007WhatEP,
+  title  = {What Every Programmer Should Know About Memory},
+  author = {Ulrich Drepper},
+  year   = {2007},
+  month  = {11},
+  page   = {20-23},
+  url    = {https://people.freebsd.org/~lstewart/articles/cpumemory.pdf}
+}
+
+@article{6213086,
+  author   = {McFee, Brian and Barrington, Luke and Lanckriet, Gert},
+  journal  = {IEEE Transactions on Audio, Speech, and Language Processing},
+  title    = {Learning Content Similarity for Music Recommendation},
+  year     = {2012},
+  volume   = {20},
+  number   = {8},
+  pages    = {2207-2218},
+  keywords = {Collaboration;Measurement;Equations;Training;Vectors;Histograms;Mel frequency cepstral coefficient;Audio retrieval and recommendation;collaborative filters (CFs);music information retrieval;query-by-example;structured prediction},
+  doi      = {10.1109/TASL.2012.2199109}
+}

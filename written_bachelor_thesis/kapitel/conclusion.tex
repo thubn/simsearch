@@ -1,0 +1,41 @@
+\chapter{Conclusion}
+\label{chapter:conclusion}
+This thesis investigated various optimization techniques for vector similarity search with focus on increasing performance, keeping good accuracy and lowering the memory required to enable better search on resource constrained devices. With extensive experimentation followed by good analysis of the recorded results, it has made multiple contributions towards further optimizations for vector similarity search.
+
+\section{Summary of findings}
+The baseline float32 implementation was the metric against which the optimizations were compared. The findings from experimenting and analyzing different optimizations are as follows:
+
+\subsection{Quantization Methods}
+Overall the quantization based methods performed very good. Int8 quantization achieved a 4x reduction in memory usage while main around 90\% accuracy.
+The binary quantization performed even better: With 32x memory reduction while maintaining $\sim$58\% accuracy. This performance dropped to slightly over 40\% with a non-angle optimized model.
+It is about 20 times faster than the highly optimized float32 implementation with AVX2 and around 160 times faster than the naive float32 implementation. The biggest improvement came from switching the native 64bit popcount with a lookup table based popcount using AVX2. Another interesting result is from the mapped float approach, which combines quantization, adapting to dataset and value mapping. It achieved 97\% accuracy while quartering the memory usage. It was the highest accuracy non-float32 searcher, even outperforming float16.
+But looking at \autoref{mfvaluedist} its likely that the Gauss distribution actually just matches the distribution of values contained in the embeddings very closely. That might also be the reason why the Quantization mapping in \autoref{mfquantmapping} might be so linear. But to confirm this suspicion one should compare int8 Quantization where then int8 minimum value maps to the minimum values contained in the embeddings and int8 maximum value maps to the max value contained in the  embeddings. The values in between should just be scaled linearly.
+
+\subsection{SIMD Optimization}
+The AVX2-optimized float32 implementation achieved 8x speedup over the baseline. At the end the memory bandwidth became the bottleneck. The method of comparing the query vector to multiple embeddings at once was highly effective as it greatly reduces the number of loads from memory/cache. This also increased the memory bandwidth.
+The int8 implementation gained less performance from the AVX2 implementation as it has to move the data around quiet a bit before being able to multiply the values. Additionally, it can only multiply 16 int8 values at a time. But there are other instructions, I didn't discover in time, like \textit{PMADDUBSW} which multiples 32 int8 and adds the int16 results of neighboring numbers together.
+
+\subsection{Two-Step Approach}
+Binary pre-filtering followed by high precision rescoring is highly effective. With a rescoring factor of 10 it achieved a NDCG score of 97.7\% with float32 rescoring and 96.3\% with mapped float rescoring. Both just very slightly increased the search time.
+This demonstrated, that this approach is highly effective. It's very close to binary speed and very close to float32 accuracy. With the mapped float as second step it additionally only uses 9/32 of the baseline memory.
+
+\subsection{Dimension Reduction}
+The dimension reduction using the PCA technique had worse accuracy than quantization methods with comparable memory savings. This makes it not useful for accelerating search and saving memory. This is also mentioned in this paper:~\cite{thakur2023injectingdomainadaptationlearningtohash} Other dimension reduction- or vector compression methods should be investigated.
+
+\section{Key Insights}
+\subsection{Memory Access Patterns}
+Memory access pattern showed to be very important as most implementations were bottle necked either by memory bandwidth or latency. Optimizing towards memory bandwidth/latency is very important as the actual calculations are very fast.
+Strided access increased bandwidth even though its common knowledge that strided access is usually slower than purely sequential access. The systems' memory pages, memory ranks or memory interleaving are a suspected reason for this behavior.
+Prefetching, either manually or automatically by the CPU, is also very important and effective as it's able to hide the extremely high system memory latency.
+
+\subsection{Quantization Trade-Offs}
+The different quantization methods showed distinct trade-offs between accuracy and performance. Furthermore, the embedding model can influence the performance of the quantization methods. The mapped float approach demonstrated, that "intelligent" quantization can preserve more semantic meaning than linear quantization with the same memory usage.
+
+\subsection{Hardware Utilization}
+SIMD instructions can provide a substantial performance improvement. With this memory bandwidth becomes a limiting factor fast. Even though the implementations don't use multithreading at all.
+
+\section{Limitations and Future Work}
+All methods implemented keep the embeddings in memory at all times. Which may not be needed especially for the two-step approach. Then it only has to load the embeddings from the documents needed for rescoring form disk. Additionally, the SIMD optimizations are specific to the x86 architecture but should be able to be transferred to other architectures using similar instructions. The findings should also be verified on different architectures.
+
+\section{Final Remarks}
+It was demonstrated, that significant performance improvements in vector similarity search can be achieved by optimizing hardware usage and using quantization. Especially combining smart quantization, SIMD and the two-step approach provide close to full accuracy, while being 100 times faster than baseline and more than 10 times faster than the optimized full accuracy search. All while using less memory. Which can be very beneficial for resource constrained devices.

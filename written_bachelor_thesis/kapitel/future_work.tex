@@ -1,0 +1,46 @@
+\chapter{Future Work}
+\label{chapter:future_work}
+This chapter gives ideas on future research directions for vector similarity search optimization, based on the findings presented in this thesis.
+
+\section{Disk-Based Two-Step Search}
+The presented two-step implementations keep all embeddings of both searchers in memory, which limits its usage on devices with constrained memory. A promising extension would be disk based approach that work like this: The binary embeddings are stored in memory. This reduces the memory usage by 1/32 compared to full precision.
+The embeddings of the second searcher (full accuracy or mapped float for example) for rescoring stay on disk in a format that allows fast retrieval of embeddings. Then the binary search is used to get promising candidates. In the second step the high precision embeddings from these candidates are loaded from disk. For 10 documents with a rescoring factor of 25 and a disk access time of 1ms this would take $10*25*1ms=250ms$. But this can potentially be way faster with an optimized I/O strategy. And most modern flash storage has a latency of less than 1ms. Another challenge is designing an efficient disk storage format that allows fast random access to the specific embeddings. Additionally, frequently accessed embeddings could be cached.
+
+\section{Hardware Specific Optimizations}
+\subsection{Float16 Hardware support}
+In the future more processors should have native support for float16 operations. AVX512 can, for example, load 32 float16 values into one 512 bit register. Float16 had very good accuracy and should be much faster than float32 on supported hardware. Hardware accelerated float16 should be used when available. Many modern GPUs also support float16 and advertise double throughput compared to full precision.
+
+\subsection{ARM NEON support}
+This thesis focused on AVX2 optimizations. But many mobile and embedded devices use ARM processors. Future work could port the SIMD optimizations to NEON instructions, as most AVX2 instructions have a NEON equivalent counterpart. This would also allow to compare the optimizations between ARM and x86.
+
+\section{Additional Optimization Approaches}
+Some promising optimizations warrant more investigation:
+\subsection{Hybrid/Adaptive Quantization Methods}
+\begin{itemize}
+    \item Quantization that quantizes with different precision levels for different parts of the vector.
+    \item Compress parts of the vector that has repeating or similar information. This probably becomes especially effective when have already low precision elements. At 8 bit for example, there are way more elements in a vector than distinct values they can have (256 values and 1024 elements).
+\end{itemize}
+
+Another better approach to reduce the embedding size than PCA dimension reduction is the usage Learning-to-Hash algorithms as they outperform PCA for embeddings.~\cite{thakur2023injectingdomainadaptationlearningtohash}
+
+\subsection{Memory Access Optimization}
+Different layouts of the embedding matrix to optimize bandwidth could be investigated. Also, the reasons for strided access being faster are not clear and should be looked into.
+
+\section{Research directions}
+\subsection{Domain Specific Optimization}
+As this thesis only worked with text embeddings, future research could explore how different domains (text, image, audio, ...) affect optimization effectiveness. Especially with techniques like the mapped float embeddings.
+Additionally, the impact of different embedding models could be analyzed. With the results from this one could investigate domain specific optimizations.
+
+\subsection{Theoretical Analysis}
+The relationship between binary quantization or PCA with angular similarity needs further investigation. As both have a big accuracy difference between traditional embedding models and the angle optimized model.
+
+\section{Real World Applications}
+Future work could also focus on these real world applications:
+\begin{itemize}
+    \item Implementation in production search systems.
+    \item Implementation in existing vector databases.
+    \item Creating more standardized benchmarks for vector search.
+    \item Analyze optimization strategies for different use cases.
+\end{itemize}
+
+\noindent All these directions would build on the foundation created by this thesis and would advance the efficient vector similarity search on resource constrained devices.

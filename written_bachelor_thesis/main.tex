@@ -1,0 +1,41 @@
+% main.tex
+\documentclass[a4paper,11pt,color]{report}
+\input{header}
+\begin{document}
+\selectlanguage{english}
+\include{kapitel/titelseite}
+\blankpage
+\pagenumbering{roman}
+\tableofcontents
+\cleardoublepage
+\pagenumbering{arabic}
+% Kapitel
+\include{kapitel/introduction}
+\include{kapitel/theoretical_backgr}
+\include{kapitel/implementation}
+\include{kapitel/opt_approaches}
+\include{kapitel/exp_evaluation}
+\include{kapitel/future_work}
+\include{kapitel/conclusion}
+% % Anhang
+\appendix
+\include{kapitel/appendix}
+% % Abbildungsverzeichnis
+% \listoffigures
+% \addcontentsline{toc}{chapter}{Abbildungsverzeichnis}
+% \cleardoublepage
+% % Algorithmenverzeichnis
+% \listofalgorithms
+% \addcontentsline{toc}{chapter}{Algorithmenverzeichnis}
+% \cleardoublepage
+% Literaturverzeichnis, is now mostly defined in the header
+\printbibliography
+\addcontentsline{toc}{chapter}{\bibname}
+% Erklaerung
+% \markboth{}{ERKLÄRUNG}
+\addcontentsline{toc}{chapter}{Affidavit}
+\includepdf[pages=-]{kapitel/Eidesstattliche_Versicherung_signed.pdf}
+% \include{kapitel/erklaerung}
+% \cleardoublepage
+\end{document}
+

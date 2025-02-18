@@ -1,0 +1,311 @@
+% -----------------------------
+% Basic document setup (load first)
+% -----------------------------
+\usepackage[a4paper]{geometry}  % Page layout settings
+\usepackage[german,english]{babel}  % Language support
+\usepackage{csquotes}  % Required by babel/biblatex
+
+% -----------------------------
+% Font and encoding packages
+% -----------------------------
+\usepackage{fontspec}  % XeLaTeX font support
+\usepackage{textcomp}  % Additional symbols
+\usepackage{gensymb}  % General symbols
+%\usepackage{FiraSans}
+%\usepackage{tgpagella}
+%\usepackage{tgbonum}
+%\usepackage{libertine}
+
+% -----------------------------
+% Math packages
+% -----------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+%\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{esvect}
+\usepackage{commath}
+\usepackage{tcolorbox}
+
+% -----------------------------
+% Graphics and color
+% -----------------------------
+\usepackage{graphicx}  % Image support
+\usepackage{xcolor}    % Color support (includes color package functionality)
+\usepackage{subfigure}
+\usepackage{tikz}
+\usepackage{pgf-umlcd}
+\usepackage{float}
+\usepackage{pdfpages}
+
+% -----------------------------
+% Plots
+% -----------------------------
+
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=newest}
+
+% -----------------------------
+% Lists and algorithms
+% -----------------------------
+\usepackage{enumerate}
+%\usepackage[plain,chapter]{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{booktabs}
+
+% -----------------------------
+% Theorem environments
+% -----------------------------
+\usepackage[amsmath,thmmarks]{ntheorem}
+
+% -----------------------------
+% Typography improvements
+% -----------------------------
+\usepackage{microtype}  % Better typography
+\usepackage{sectsty}    % Section title formatting
+
+% -----------------------------
+% Formatting
+% -----------------------------
+\usepackage{seqsplit}
+
+% -----------------------------
+% Captions and URLs
+% -----------------------------
+\usepackage[margin=0pt,font=small,labelfont=bf]{caption}
+\usepackage{url}
+
+% -----------------------------
+% Bibliography setup (load late)
+% -----------------------------
+\usepackage[backend=biber,
+    style=numeric,      % numbered citations
+    sorting=none,       % numbers appear in citation order
+    urldate=long,       % includes date when website was accessed
+    hyperref=true]{biblatex}
+\addbibresource{literatur/diplom.bib}
+
+% -----------------------------
+% Load hyperref last
+% -----------------------------
+
+\usepackage[hidelinks]{hyperref}
+
+% -----------------------------
+% Package-specific settings
+% -----------------------------
+
+% set default fonts
+\setmainfont{Linux Libertine O}
+
+% dont write CHAPTER at the beginning of every chapter. Just the number and chapter title.
+\makeatletter
+\def\@makechapterhead#1{%
+    \vspace*{50\p@}%
+    {\parindent \z@ \raggedright
+        \ifnum \c@secnumdepth >\m@ne
+            \huge\bfseries \thechapter\space\space%
+        \fi
+        \interlinepenalty\@M
+        \huge \bfseries #1\par\nobreak
+        \vskip 40\p@
+    }}
+\makeatother
+
+% Change sizes for different heading levels
+%\chapterfont{\huge}          % For chapters
+\sectionfont{\Large}         % For sections
+\subsectionfont{\large}      % For subsections
+\subsubsectionfont{\normalsize}  % For subsubsections
+
+\lstset{
+    frame=none,
+    breaklines=true,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny
+    %numbersep=5pt
+}
+
+\newlength{\widefigwidth}
+\setlength{\widefigwidth}{\paperwidth}
+\addtolength{\widefigwidth}{-4cm}
+
+% -----------------------------
+% Set theorem styles
+% -----------------------------
+% Define the theorem styles
+% \theoremstyle{definition}  % Style for examples (upright font)
+% \newtheorem{example}{Example}[section]
+
+% \theoremstyle{remark}     % Style for remarks (upright font, no special formatting)
+% \newtheorem{remark}{Remark}[section]
+
+% Define the theorem styles
+\tcbuselibrary{theorems}
+\tcbuselibrary{skins}  % For enhanced style
+\tcbuselibrary{breakable}  % For allowing page breaks
+\tcbuselibrary{listings}  % For code formatting
+\newtcbtheorem[number within=chapter]{example}{Example}{
+    enhanced,
+    colback=white,
+    colframe=black!50,
+    fonttitle=\bfseries,
+    colbacktitle=white,
+    coltitle=black,
+    attach boxed title to top left={yshift=-2mm, xshift=2mm},
+    boxed title style={
+            size=small,
+            colframe=white,
+            colback=white
+        },
+    before upper={\parindent15pt}
+}{ex}
+
+\newtcbtheorem[number within=chapter]{remark}{Remark}{
+    enhanced,
+    colback=gray!5,
+    colframe=gray!50,
+    fonttitle=\bfseries,
+    colbacktitle=gray!5,
+    coltitle=black,
+    attach boxed title to top left={yshift=-2mm, xshift=2mm},
+    boxed title style={
+            size=small,
+            colframe=gray!5,
+            colback=gray!5
+        },
+    before upper={\parindent15pt}
+}{rem}
+
+% Define the algorithm style with listing support
+\newtcbtheorem[number within=section]{algorithm}{Algorithm}{
+  enhanced,
+  colback=white,
+  colframe=black!50,
+  fonttitle=\bfseries,
+  colbacktitle=white,
+  coltitle=black,
+  left=2mm,          % Added for internal margin control
+  right=2mm,         % Added for internal margin control
+  top=0mm,           % Added for internal margin control
+  bottom=0mm,        % Added for internal margin control
+  before skip=3pt,   % Added for external margin control
+  after skip=3pt,    % Added for external margin control
+  attach boxed title to top left={yshift=-2mm, xshift=2mm},
+  boxed title style={
+    size=small,
+    colframe=white,
+    colback=white
+  },
+  listing engine=listings,  % Specify listing engine
+  listing only,            % Important!
+  listing options={
+    language=C++,       % Specify the language
+    numbers=left,
+    numberstyle=\tiny,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{green!60!black},
+    showstringspaces=false,
+    breaklines=true,
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+  },
+  breakable=false,
+  before upper={\parindent15pt}
+}{alg}
+
+\makeatletter
+\newcommand\tcb@cnt@algorithmautorefname{Algorithm}
+\makeatother
+% change headings to sans serif
+% \chapterfont{\selectfont}
+% \allsectionsfont{\sffamily}
+
+% % Theorem-Optionen %
+% \theoremseparator{.}
+% \theoremstyle{change}
+% \newtheorem{theorem}{Theorem}[section]
+% \newtheorem{satz}[theorem]{Satz}
+% \newtheorem{lemma}[theorem]{Lemma}
+% \newtheorem{korollar}[theorem]{Korollar}
+% \newtheorem{proposition}[theorem]{Proposition}
+% % Ohne Numerierung
+% \theoremstyle{nonumberplain}
+% \renewtheorem{theorem*}{Theorem}
+% \renewtheorem{satz*}{Satz}
+% \renewtheorem{lemma*}{Lemma}
+% \renewtheorem{korollar*}{Korollar}
+% \renewtheorem{proposition*}{Proposition}
+% % Definitionen mit \upshape
+% \theorembodyfont{\upshape}
+% \theoremstyle{change}
+% \newtheorem{definition}[theorem]{Definition}
+% \theoremstyle{nonumberplain}
+% \renewtheorem{definition*}{Definition}
+% % Kursive Schrift
+% \theoremheaderfont{\itshape}
+% \newtheorem{notation}{Notation}
+% \newtheorem{konvention}{Konvention}
+% \newtheorem{bezeichnung}{Bezeichnung}
+% \theoremsymbol{\ensuremath{\Box}}
+% \newtheorem{beweis}{Beweis}
+% \theoremsymbol{}
+% \theoremstyle{change}
+% \theoremheaderfont{\bfseries}
+% \newtheorem{bemerkung}[theorem]{Bemerkung}
+% \newtheorem{beobachtung}[theorem]{Beobachtung}
+% \newtheorem{beispiel}[theorem]{Beispiel}
+% \newtheorem{problem}{Problem}
+% \theoremstyle{nonumberplain}
+% \renewtheorem{bemerkung*}{Bemerkung}
+% \renewtheorem{beispiel*}{Beispiel}
+% \renewtheorem{problem*}{Problem}
+
+% % Algorithmen anpassen %
+% \renewcommand{\algorithmicrequire}{\textit{Eingabe:}}
+% \renewcommand{\algorithmicensure}{\textit{Ausgabe:}}
+% \floatname{algorithm}{Algorithmus}
+% \renewcommand{\listalgorithmname}{Algorithmenverzeichnis}
+% \renewcommand{\algorithmiccomment}[1]{\color{grau}{// #1}}
+
+% % Zeilenabstand einstellen %
+% \renewcommand{\baselinestretch}{1.25}
+% % Floating-Umgebungen anpassen %
+% \renewcommand{\topfraction}{0.9}
+% \renewcommand{\bottomfraction}{0.8}
+% % Abkuerzungen richtig formatieren %
+% \usepackage{xspace}
+% \newcommand{\vgl}{vgl.\@\xspace}
+% \newcommand{\zB}{z.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]B.\@\xspace}
+% \newcommand{\bzw}{bzw.\@\xspace}
+% \newcommand{\dahe}{d.\nolinebreak[4]\hspace{0.125em}h.\nolinebreak[4]\@\xspace}
+% \newcommand{\etc}{etc.\@\xspace}
+% \newcommand{\evtl}{evtl.\@\xspace}
+% \newcommand{\ggf}{ggf.\@\xspace}
+% \newcommand{\bzgl}{bzgl.\@\xspace}
+% \newcommand{\so}{s.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]o.\@\xspace}
+% \newcommand{\iA}{i.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]A.\@\xspace}
+% \newcommand{\sa}{s.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]a.\@\xspace}
+% \newcommand{\su}{s.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]u.\@\xspace}
+% \newcommand{\ua}{u.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]a.\@\xspace}
+% \newcommand{\og}{o.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]g.\@\xspace}
+% \newcommand{\oBdA}{o.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]B.\nolinebreak[4]\hspace{0.125em}d.\nolinebreak[4]\hspace{0.125em}A.\@\xspace}
+% \newcommand{\OBdA}{O.\nolinebreak[4]\hspace{0.125em}\nolinebreak[4]B.\nolinebreak[4]\hspace{0.125em}d.\nolinebreak[4]\hspace{0.125em}A.\@\xspace}
+
+% Leere Seite ohne Seitennummer, naechste Seite rechts
+\newcommand{\blankpage}{
+    \clearpage{\pagestyle{empty}\cleardoublepage}
+}
+
+% % Keine einzelnen Zeilen beim Anfang eines Abschnitts (Schusterjungen)
+% \clubpenalty = 10000
+% % Keine einzelnen Zeilen am Ende eines Abschnitts (Hurenkinder)
+% \widowpenalty = 10000 \displaywidowpenalty = 10000
+
+% EOF

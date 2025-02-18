@@ -1,0 +1,170 @@
+% kapitel2.tex
+\chapter{Theoretical Background}
+\label{chapter:kap2}
+
+This chapter provides more background information about embeddings and their properties.
+The mathematical theory of vector similarity is also explained.
+This is important to fully understand the later chapters.
+
+\section{Vector Similarity Search}
+\subsection{Vector embeddings and their properties}
+Vector embeddings are the numerical representations of the inherent properties of the encoded data in an n-dimensional vector space.
+The data is encoded using an embedding model. Models are specific for a datatype.
+There are models for text-embeddings, picture-embeddings, etc.
+The resulting vector dimension depends on the model itself. The most advanced text models use up to 8192 dimensions.~\cite{muennighoff2023mtebmassivetextembedding}
+Different models produce also different embedding data on the same input data.
+The common number format used to handle these embeddings is float32. It guarantees high accuracy, probably way more than needed,
+at the cost of high processing power and high memory usage.
+Because we do not want to compare only two vectors but search for the vector most similar to vector $a$ in a set of vectors.
+That means, that the computer has to load an array of vectors into memory. One float uses 4bytes and if one embedding has 1024 dimensions
+it will use \texttt{4bytes * 1024 = 4 KB} of memory.
+% place the example
+\begin{example}{Text-to-Vector Mapping}{}
+    \noindent How semantically similar phrases are mapped to similar vectors in the embedding space:
+    \[
+        \begin{tabular}{rcl}
+            \texttt{"Hello world"} & $\mapsto$ & $[0.1, -0.3, 0.8, \ldots, 0.4]$ \\[0.5em]
+            \texttt{"Hi universe"} & $\mapsto$ & $[0.2, -0.2, 0.7, \ldots, 0.5]$ \\
+        \end{tabular}
+    \]
+    Notice how these greetings, which have similar semantic meaning, are mapped to nearby points in the vector space, as illustrated in~\autoref{fig:vector-embeddings}.
+\end{example}
+
+% place the figure
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        % Define the coordinate system
+        \draw[->] (0,0) -- (4,0) node[right] {$v_1$};
+        \draw[->] (0,0) -- (0,4) node[above] {$v_2$};
+
+        % Plot the points
+        \node[circle, fill=blue!60, inner sep=2pt] (p1) at (1,3) {};
+        \node[circle, fill=blue!60, inner sep=2pt] (p2) at (1.2,2.7) {};
+
+        % Add labels
+        \node[right] at (p1) {\small\texttt{"Hello world"}};
+        \node[right] at (p2) {\small\texttt{"Hi universe"}};
+
+        % Draw a dashed line between points to show proximity
+        \draw[dashed] (p1) -- (p2);
+    \end{tikzpicture}
+    \caption{Visualization of similar phrases mapped to nearby vectors (projected onto 2D for illustration)}
+    \label{fig:vector-embeddings}
+\end{figure}
+
+\begin{remark}{Dimensionality Note}{}
+    \noindent We typically work with high-dimensional vectors (e.g., 768 or 1024 dimensions), the 2D visualization above just illustrates how semantically similar texts are closer together in the vector space.
+\end{remark}
+
+\subsection{Cosine similarity and other similarity metrics}
+Vector similarity is defined as the angle between two vectors.
+Perfect similarity means the angle between the vectors is $0\degree$.
+No similarity at all means the vectors point exactly in the opposite direction with an angle of $180\degree$ (or $\pi$).
+
+\subsubsection{Dot product}
+Given two vectors $a$ and $b$ with $n$ dimensions the dot product is calculated as follows:
+$$\mathbf{a} \cdot \mathbf{b} = \sum_{i=1}^n a_i b_i = a_1b_1 + a_2b_2 + \cdots + a_nb_n$$
+The dot product gives the following information of the relation of two vectors:
+\begin{itemize}
+    \item positive dot product $\rightarrow$ angle is $<90\degree$
+    \item dot product close to zero $\rightarrow$ angle is $=90\degree$
+    \item negative dot product $\rightarrow$ angle is $>90\degree$
+\end{itemize}
+The dot product already helps to roughly estimate the similarity of two vectors.
+
+\subsubsection{Cosine similarity}
+\label{sec:cosinetodot}
+The cosine similarity is derived from the dot product:
+$$\mathbf{a} \cdot \mathbf{b} = \abs{a} \abs{b} \cos(\theta) $$
+Which means the norms of both vectors are multiplied with each other
+and then multiplied with the cosine of the angle between the vectors.
+This equitation can be rearranged in the following way to get the cosine similarity function:
+$$\cos(\theta) = \frac{a \cdot b}{\abs{a} \abs{b}} = \frac{\sum_{i=1}^n a_i b_i}{\sqrt{\sum_{i=1}^n a_i^2} \cdot \sqrt{\sum_{i=1}^n b_i^2}}$$
+The output values evidently range from $-1$ to $1$.
+The Vectors in the cosine function are automatically normalized and one can not only roughly estimate the angle between the vectors,
+like with the dot product, but tell the exact angle.
+It's also possible to compare different angles of different vector pairs and tell which pair is the most similar
+with the cosine similarity.
+\begin{itemize}
+    \item $\cos(\pi + 2n \pi) = -1$$\rightarrow$ vectors point in exactly opposite directions ($180\degree$)
+    \item $\cos(\frac{1}{2} \pi + n \pi) = 0$$\rightarrow$ vectors are perpendicular ($90\degree$)
+    \item $\cos(2n\pi) = 1$$\rightarrow$ vectors point in the same directions ($0\degree$)
+\end{itemize}
+
+
+\section{Hardware considerations}
+\subsection{Resource constraints on mobile devices}
+Hardware specifications of devices where vector similarity search can be useful vary drastically:
+\begin{itemize}
+    \item Typical server: 256GB+ RAM, 64+ cores
+    \item High-end automotive system with object detection: 4-16GB RAM, 2-8 cores, various processing accelerators
+    \item High-end phone: 8GB RAM, 8 cores
+    \item Mid-range phone: 4GB RAM, 6 cores
+    \item Mid-range automotive system: 512MB-2GB RAM, 1-2 cores, small processing accelerator
+    \item IoT device: MT8516 A35 SoM, 512MB RAM, 4 cores
+\end{itemize}
+\subsection{SIMD instructions and AVX2}
+Single instruction, multiple data, abbreviated by SIMD, is a type of processor organization that operates using ''a master instruction applied over a vector of related operands.''~\cite{simd_flynn}
+This type of processor organization excells especially vector/array processing with minimal branching operations, large data parallelism and limited communication needs. Considering vector similarity search involves operations on large vectors using SIMD seems fitting. In comparison using multiprocessor systems (MIMD, multiple instruction, multiple data) is less optimal, because of the increased communication overhead between processors. On top of that many modern processors (mobile arm, desktop -, mobile - and server x86-64 processors) support SIMD and enables them to process the data more efficiently in terms of power usage and computation time.
+~\cite{comparingsimdonx8664andarm64,simdtoaccelerateperformance,khadem2023vectorprocessingmobiledevicesbenchmark}
+
+Advanced Vector Extensions (AVX) are SIMD instructions for the x86-64 architecture. They operate on 256bit registers and enables the processor to do math operations on them. They can for example multiply 8 32bit floats with one instruction. AVX2 adds more instructions to the existing set. AVX2 works on most desktop and laptop processors released after 2015. AVX2 will be used to optimize the vector similarity search program.
+
+\subsection{Memory hierarchy and access patterns}
+In most cases of vector similarity search one search query gets compared to every embedding to get the best matching embeddings for this query. This implies that embedding vectors are loaded sequentually from memory.
+When we consider the memory hierarchy of modern systems is
+\[\texttt{non-volatile memory > main memory > L3 > L2 > L1 cache > CPU registers}\]
+with size and access time of the memory decreasing drastically from left to right as seen in \autoref{tab:memory-latencies}. The search query most likely stays in cache all the time, because its always one of  the two vectors that gets accessed during search.
+The predictable access patterns of the embedding vectors enables either automatic preloading of the soon to be used vectors by the CPU prefetcher or loading them manually by using a prefetch instruction, while computing similarity of the current embedding. But the prefetcher can't cross page boundaries which are the memory segments managed by the system. On most modern systems one page is 4kB large.~\cite{Drepper2007WhatEP} The importance of this will be explained in \autoref{optapproaches}.
+
+But CPU cache can vary depending on the processor architecture and an effective prefetching strategy for one cpu might be slower for another. Cache is always relatively small so cache pollution by prefetching to much data has to be avoided.
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{lccr}
+        \toprule
+        Memory Level & Latency (CPU Cycles) & Latency (ns) & typical size     \\
+        \midrule
+        L1 Cache     & $\sim$4              & $\sim$1      & 64kB (per core)  \\
+        L2 Cache     & $\sim$12             & $\sim$3      & 512kB (per core) \\
+        L3 Cache     & $\sim$60             & $\sim$15     & 8-32MB (shared)  \\
+        RAM          & $\sim$400            & $\sim$100    & 8+GB (shared)    \\
+        \bottomrule
+    \end{tabular}
+    \caption{Memory hierarchy access latencies.~\cite{memoryaccesslatency} Understanding these timing differences explains why memory access patterns significantly impact performance.}
+    \label{tab:memory-latencies}
+\end{table}
+
+\section{Evaluation Metrics}
+\subsection{Jaccard Index}
+The Jaccard index is a statistical metric suitible for gauging the similarity of two sets. It is defined as the size of the intersection divided by the size of the union of the two sets:
+$$J(A,B) = \frac{\abs{A \cap B}}{\abs{A \cup B}}$$
+The definition implies that $0 \leq J(A,B) \leq 1$. The Jaccard index of two sets that match exactly is $1$ and $0$ for two sets that have no matching elements. The Jaccard Index will be one metric used for comparing the accuracy of different optimization strategies by comparing the result set to a baseline result that used no optimization techniques.
+
+\subsection{Normaized Discounted Cumulative Gain (NDCG)}
+The Discounted Cumulative Gain (DCG) is an evaluation metric for information retrieval systems. It assumes that documents found later in the results i.e. results that are less similar than the first results, are less valuable to the users. As a result it uses a logarithmic discount factor to reduce the weight of documents appearing lower in the results.
+The NDCG is formally defined as~\cite{ndcg}:
+$$DCG(p) = \sum_{i=1}^{p} \frac{rel_i}{log_2(i+1)}$$
+$rel_i$ is the relevance of the element with index $i$. $log_2(i+1)$ is the logarithmic discount factor. The relevance can be either assigned manually by a human judging the relavance of the result or by calculating it by comparing it to an optimal result set. The algorithm used here calcultes the relavance score based on the position difference. Perfect match gets a score of 1. There is an exponential decay of the lost relevance for large differences. It uses $log_2(i+2)$ instead of $log_2(i+1)$ because in the algorithm the index $i$ starts at $0$.
+\begin{algorithm}{Excerpt from algorithm used to calculate the NDCG.}{ndcg_algo}
+    \begin{lstlisting}[language=C++]
+// Calculate DCG
+double dcg = 0.0;
+// k is the size of the result sets
+for (size_t i = 0; i < k; ++i) {
+    auto it = truthPositions.find(prediction[i].second);
+    if (it != truthPositions.end()) {
+    // Calculate relevance score based on position difference
+    double posDiff = abs(static_cast<double>(it->second) - i);
+    double relevance = exp(-posDiff / k); // exp decay
+    dcg += relevance / log2(i + 2); // DCG formula
+    }
+}
+            \end{lstlisting}
+\end{algorithm}
+
+\noindent The normalized DCG (NDCG) is calculated by dividing the the DCG score by the ideal DCG possible for that query:
+$$IDCG = \sum_{i=1}^{p} \frac{1}{log_2(i+1)}$$
+$$NDCG = \frac{DCG}{IDCG}$$
+The NDCG produces scores between $0$ and $1$, where $1$ represents the ideal result. This property allows the comparison between different queries. In conclusion the NDCG is a relevant metric for judging the performance of the different optimization techniques that will analyzed in this thesis. It accounts for both document relevance and rank position. The relevance is not just binary 0 and 1 like it is for the jaccard index. It also models realistic user behaviour by discounting documents appearing further back in the results.
