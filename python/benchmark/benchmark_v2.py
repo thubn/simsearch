@@ -50,74 +50,9 @@ class VectorSearchBenchmark:
         print(f"Loaded {self.num_vectors} vectors of dimension {self.vector_dim}")
         if rescoring_factors:
             print(f"Will run two-step search with rescoring factors: {rescoring_factors}")
-
-    def benchmark_random_embeddings(self) -> Dict[str, List[Dict[str, Any]]]:
-        """Mode 1: Search using random indices from existing embeddings"""
-        results = []
-        random_indices = np.random.randint(0, self.num_vectors, size=self.runs)
         
-        for run in range(self.runs):
-            query = self.searcher.get_float_embedding(random_indices[run])
-            run_results = self._run_all_searches(query)
-            results.append({
-                "run": run,
-                "query_index": int(random_indices[run]),
-                "searches": run_results
-            })
-            
-            if (run + 1) % 10 == 0:
-                print(f"Completed {run + 1}/{self.runs} runs")
-                
-        return {"mode": "random_embeddings", "results": results}
-
-    def benchmark_query_file(self, query_file: str) -> Dict[str, List[Dict[str, Any]]]:
-        """Mode 2: Search using queries from JSONL file"""
-        results = []
-        queries = self._load_queries(query_file)
-        
-        for i, query_data in enumerate(queries):
-            query_vector = np.array(query_data["embedding"], dtype=np.float32)
-            run_results = self._run_all_searches(query_vector)
-            results.append({
-                "run": i,
-                "query_text": query_data["query"],
-                "formatted_query": query_data["formatted_query"],
-                "searches": run_results
-            })
-            
-            if (i + 1) % 10 == 0: print(f"Completed query {i + 1}/{len(queries)}")
-            
-        return {"mode": "query_file", "results": results}
-
-    def benchmark_random_vectors(self) -> Dict[str, List[Dict[str, Any]]]:
-        """Mode 3: Search using randomly generated normalized vectors"""
-        results = []
-        
-        for run in range(self.runs):
-            # Generate random vector and normalize it
-            query = np.random.randn(self.vector_dim).astype(np.float32)
-            query = query / np.linalg.norm(query)
-            
-            run_results = self._run_all_searches(query)
-            results.append({
-                "run": run,
-                "searches": run_results
-            })
-            
-            if (run + 1) % 10 == 0:
-                print(f"Completed {run + 1}/{self.runs} runs")
-                
-        return {"mode": "random_vectors", "results": results}
-
-    def _run_all_searches(self, query: np.ndarray) -> List[Dict[str, Any]]:
-        """Run query through all search methods and collect results"""
-        search_results = []
-        
-        # Base float search (reference for comparison)
-        float_results, float_time = self.searcher.search_float(query, self.k)
-        float_indices = set(idx for _, idx, _ in float_results)
-        
-        search_methods = [
+        # Define search methods
+        self.search_methods = [
             ("float", self.searcher.search_float),
             ("avx2", self.searcher.search_avx2),
             ("binary", self.searcher.search_binary),
@@ -132,55 +67,155 @@ class VectorSearchBenchmark:
         ]
         
         # Add two-step searches for each rescoring factor
-        if hasattr(self, 'rescoring_factors'):
+        if rescoring_factors:
             for factor in self.rescoring_factors:
-                search_methods.append((
+                self.search_methods.append((
                     f"twostep_rf{factor}",
                     lambda q, k, rf=factor: self.searcher.search_twostep(q, k, rf)
                 ))
             for factor in self.rescoring_factors:
-                search_methods.append((
+                self.search_methods.append((
                     f"ts_mf_rf{factor}",
                     lambda q, k, rf=factor: self.searcher.search_twostep_mf(q, k, rf)
                 ))
+
+    def _generate_queries(self, mode: str, query_file: str = None) -> List[Dict[str, Any]]:
+        """Generate query vectors based on the selected mode"""
+        queries = []
         
-        for method_name, search_func in search_methods:
-            try:
-                if method_name == "float":
-                    results = float_results
-                    search_time = float_time
-                elif method_name.startswith("twostep_rf"):
-                    results, search_time = search_func(query, self.k)
-                else:
-                    results, search_time = search_func(query, self.k)
-                    
-                result_indices = set(idx for _, idx, _ in results)
-                
-                # Calculate overlap metrics only for non-float searches
-                metrics = {
-                    "time_us": search_time,
-                    "results": [(score, int(idx), text[:100]) for score, idx, text in results[:5]]  # Store first 5 results
-                }
-                
-                if method_name != "float":
-                    metrics.update({
-                        "overlap_with_float": len(float_indices & result_indices),
-                        "jaccard_index": len(float_indices & result_indices) / len(float_indices | result_indices),
-                        "ndcg": calculate_ndcg(float_results, results),
-                        "ndcg_10": calculate_ndcg(float_results[:10], results[:10])
-                    })
-                
-                search_results.append({
-                    "method": method_name,
-                    "metrics": metrics
+        if mode == "random":
+            # Mode 1: Random indices from existing embeddings
+            random_indices = np.random.randint(0, self.num_vectors, size=self.runs)
+            for run in range(self.runs):
+                query_vector = self.searcher.get_float_embedding(random_indices[run])
+                queries.append({
+                    "run": run,
+                    "query_index": int(random_indices[run]),
+                    "vector": query_vector
                 })
                 
-            except Exception as e:
-                print(f"Error in {method_name} search: {str(e)}\nline: {e.__traceback__.tb_lineno}")
-                continue
-        
-        return search_results
+        elif mode == "query":
+            # Mode 2: Queries from JSONL file
+            loaded_queries = self._load_queries(query_file)
+            for i, query_data in enumerate(loaded_queries):
+                query_vector = np.array(query_data["embedding"], dtype=np.float32)
+                queries.append({
+                    "run": i,
+                    "query_text": query_data["query"],
+                    "formatted_query": query_data["formatted_query"],
+                    "vector": query_vector
+                })
+                
+        elif mode == "random-vec":
+            # Mode 3: Randomly generated normalized vectors
+            for run in range(self.runs):
+                # Generate random vector and normalize it
+                query_vector = np.random.randn(self.vector_dim).astype(np.float32)
+                query_vector = query_vector / np.linalg.norm(query_vector)
+                queries.append({
+                    "run": run,
+                    "vector": query_vector
+                })
+                
+        return queries
 
+    def benchmark_sequential(self, mode: str, query_file: str = None) -> Dict[str, Any]:
+        """Run benchmarks sequentially by method rather than interleaved"""
+        # Generate all query vectors first
+        print(f"Generating {self.runs} queries...")
+        queries = self._generate_queries(mode, query_file)
+        print(f"Generated {len(queries)} queries")
+        
+        results = []
+        
+        # First run the float search (reference for comparison) on all queries
+        print("\nRunning reference float search on all queries...")
+        float_results = []
+        for i, query in enumerate(queries):
+            query_vector = query["vector"]
+            results_tup, time_us = self.searcher.search_float(query_vector, self.k)
+            
+            # Store query metadata + float results
+            query_result = {
+                "run": query["run"],
+                "float_results": results_tup,
+                "float_time_us": time_us,
+                "searches": []
+            }
+            
+            # Add query-specific metadata
+            if "query_index" in query:
+                query_result["query_index"] = query["query_index"]
+            if "query_text" in query:
+                query_result["query_text"] = query["query_text"]
+                query_result["formatted_query"] = query["formatted_query"]
+                
+            float_results.append(query_result)
+            
+            if (i + 1) % 10 == 0:
+                print(f"  Completed {i + 1}/{len(queries)} float searches")
+                
+        # Run each method separately on all queries
+        for method_name, search_func in self.search_methods:
+            # Skip float search as we already did it
+            if method_name == "float":
+                continue
+                
+            print(f"\nRunning {method_name} search on all queries...")
+            
+            for i, query_result in enumerate(float_results):
+                query_vector = queries[i]["vector"]
+                float_indices = set(idx for _, idx, _ in query_result["float_results"])
+                
+                try:
+                    # Run the current search method
+                    results_tup, time_us = search_func(query_vector, self.k)
+                    result_indices = set(idx for _, idx, _ in results_tup)
+                    
+                    # Calculate metrics compared to float search
+                    metrics = {
+                        "time_us": time_us,
+                        "results": [(score, int(idx), text[:100]) for score, idx, text in results_tup[:5]],  # Store first 5 results
+                        "overlap_with_float": len(float_indices & result_indices),
+                        "jaccard_index": len(float_indices & result_indices) / len(float_indices | result_indices),
+                        "ndcg": calculate_ndcg(query_result["float_results"], results_tup),
+                        "ndcg_10": calculate_ndcg(query_result["float_results"][:10], results_tup[:10])
+                    }
+                    
+                    query_result["searches"].append({
+                        "method": method_name,
+                        "metrics": metrics
+                    })
+                    
+                except Exception as e:
+                    print(f"  Error in {method_name} search (run {i}): {str(e)}")
+                    continue
+                
+                if (i + 1) % 10 == 0:
+                    print(f"  Completed {i + 1}/{len(queries)} {method_name} searches")
+            
+            # Add some separation between methods for power analysis
+            print(f"Completed all {method_name} searches. Sleeping for 5 seconds...")
+            time.sleep(5)
+        
+        # Re-format results to match the original structure
+        # Move "float_results" and "float_time_us" into the "searches" array
+        for query_result in float_results:
+            float_metrics = {
+                "time_us": query_result.pop("float_time_us"),
+                "results": [(score, int(idx), text[:100]) for score, idx, text in query_result.pop("float_results")[:5]]
+            }
+            
+            query_result["searches"].insert(0, {
+                "method": "float",
+                "metrics": float_metrics
+            })
+            
+        return {
+            "mode": mode,
+            "results": float_results
+        }
+        
     def _load_queries(self, query_file: str) -> List[Dict[str, Any]]:
         """Load queries from JSONL file"""
         queries = []
@@ -301,10 +336,11 @@ def main():
     parser.add_argument("--output", "-o", default="benchmark_results.json",
                       help="Output file path for results")
     parser.add_argument("--rescoring-factor", type=str, help="Comma-separated list of rescoring factors for two-step search")
-    parser.add_argument("--embedding-dim", "-d", type=int, default=1024, help="Of dimensions of embedding file")
+    parser.add_argument("--embedding-dim", "-d", type=int, default=1024, help="Dimensions of embedding file")
+    parser.add_argument("--method-pause", type=float, default=5.0, 
+                      help="Pause between methods in seconds (for power analysis)")
     
     args = parser.parse_args()
-    print(args.embedding_dim)
     
     if args.mode == "query" and not args.query_file:
         parser.error("Query file is required for query mode")
@@ -317,16 +353,18 @@ def main():
         except ValueError:
             parser.error("Rescoring factors must be comma-separated integers")
     
-    if args.mode == "random":
-        benchmark = VectorSearchBenchmark(args.embedding_file, args.k, args.runs, rescoring_factors, embedding_dim=args.embedding_dim)
-        results = benchmark.benchmark_random_embeddings()
-    elif args.mode == "query":
-        benchmark = VectorSearchBenchmark(args.embedding_file, args.k, args.runs, rescoring_factors, embedding_dim=args.embedding_dim)
-        results = benchmark.benchmark_query_file(args.query_file)
-    else:  # random-vec
-        benchmark = VectorSearchBenchmark(args.embedding_file, args.k, args.runs, rescoring_factors, embedding_dim=args.embedding_dim)
-        results = benchmark.benchmark_random_vectors()
+    benchmark = VectorSearchBenchmark(
+        args.embedding_file, 
+        args.k, 
+        args.runs, 
+        rescoring_factors, 
+        embedding_dim=args.embedding_dim
+    )
     
+    # Run sequential benchmark
+    results = benchmark.benchmark_sequential(args.mode, args.query_file)
+    
+    # Save results
     benchmark.save_results(results, args.output)
 
 if __name__ == "__main__":
