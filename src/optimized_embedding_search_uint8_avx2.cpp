@@ -100,29 +100,32 @@ void OptimizedEmbeddingSearchUint8AVX2::convert_float_to_uint8_avx2(
 
 int OptimizedEmbeddingSearchUint8AVX2::cosine_similarity_optimized(
     const int8x16_t *vec_a, const int8x16_t *vec_b) const {
-  int32x4_t acc = vdupq_n_s32(0);
+  // Initialize 16-bit accumulators
+  int16x8_t acc16_low = vdupq_n_s16(0);
+  int16x8_t acc16_high = vdupq_n_s16(0);
 
   for (size_t i = 0; i < vectors_per_embedding; i++) {
     // Load vectors
     int8x16_t a = vld1q_s8(reinterpret_cast<const int8_t *>(&vec_a[i]));
     int8x16_t b = vld1q_s8(reinterpret_cast<const int8_t *>(&vec_b[i]));
 
-    // Multiply and accumulate in two steps since NEON can't directly multiply
-    // 8-bit values Process lower half
-    int16x8_t prod_low = vmull_s8(vget_low_s8(a), vget_low_s8(b));
-    // Process upper half
-    int16x8_t prod_high = vmull_s8(vget_high_s8(a), vget_high_s8(b));
+    // Use vmlal_s8 correctly - it needs an existing 16-bit accumulator
+    // Process lower half of vectors
+    acc16_low = vmlal_s8(acc16_low, vget_low_s8(a), vget_low_s8(b));
 
-    // Pairwise add to convert to 32-bit
-    int32x4_t sum_low = vpaddlq_s16(prod_low);
-    int32x4_t sum_high = vpaddlq_s16(prod_high);
-
-    // Accumulate both results
-    acc = vaddq_s32(acc, sum_low);
-    acc = vaddq_s32(acc, sum_high);
+    // Process upper half of vectors
+    acc16_high = vmlal_s8(acc16_high, vget_high_s8(a), vget_high_s8(b));
   }
 
-  // Horizontal sum of the final accumulator
+  // Now perform the horizontal sum after the loop
+  // First convert 16-bit to 32-bit
+  int32x4_t sum_low = vpaddlq_s16(acc16_low);
+  int32x4_t sum_high = vpaddlq_s16(acc16_high);
+
+  // Combine the two 32-bit vectors
+  int32x4_t acc = vaddq_s32(sum_low, sum_high);
+
+  // Horizontal sum of the final 32-bit accumulator
   int32x2_t sum = vadd_s32(vget_high_s32(acc), vget_low_s32(acc));
   sum = vpadd_s32(sum, sum);
 
