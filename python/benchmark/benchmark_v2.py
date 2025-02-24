@@ -73,11 +73,11 @@ class VectorSearchBenchmark:
                     f"twostep_rf{factor}",
                     lambda q, k, rf=factor: self.searcher.search_twostep(q, k, rf)
                 ))
-            for factor in self.rescoring_factors:
-                self.search_methods.append((
-                    f"ts_mf_rf{factor}",
-                    lambda q, k, rf=factor: self.searcher.search_twostep_mf(q, k, rf)
-                ))
+            # for factor in self.rescoring_factors:
+            #     self.search_methods.append((
+            #         f"ts_mf_rf{factor}",
+            #         lambda q, k, rf=factor: self.searcher.search_twostep_mf(q, k, rf)
+            #     ))
 
     def _generate_queries(self, mode: str, query_file: str = None) -> List[Dict[str, Any]]:
         """Generate query vectors based on the selected mode"""

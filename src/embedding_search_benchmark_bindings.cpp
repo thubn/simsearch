@@ -211,29 +211,29 @@ public:
   //       "pca32"}, query_vector, k);
   // }
 
-  // py::tuple search_twostep(py::array_t<float> query_vector, size_t k,
-  //                          size_t rescoring_factor) {
-  //   check_initialization();
-  //   std::vector<float> query = convert_query(query_vector);
+  py::tuple search_twostep(py::array_t<float> query_vector, size_t k,
+                           size_t rescoring_factor) {
+    check_initialization();
+    std::vector<float> query = convert_query(query_vector);
 
-  //   // Convert query for binary search
-  //   avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
-  //   EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2,
-  //                                                  query.size() / 8 / 32);
+    // Convert query for binary search
+    avx2i_vector queryBinaryAvx2(query.size() / 4 / 32);
+    EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2,
+                                                   query.size() / 4 / 32);
 
-  //   // Perform two-step search with timing
-  //   auto start = std::chrono::high_resolution_clock::now();
-  //   auto binary_results = searchers->obinary_avx2.similarity_search(
-  //       queryBinaryAvx2, k * rescoring_factor);
-  //   auto final_results =
-  //       searchers->oavx2.similarity_search(query, k, binary_results);
-  //   auto end = std::chrono::high_resolution_clock::now();
-  //   auto time =
-  //       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-  //           .count();
+    // Perform two-step search with timing
+    auto start = std::chrono::high_resolution_clock::now();
+    auto binary_results = searchers->obinary_avx2.similarity_search(
+        queryBinaryAvx2, k * rescoring_factor);
+    auto final_results =
+        searchers->oavx2.similarity_search(query, k, binary_results);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto time =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+            .count();
 
-  //   return format_results(final_results, time);
-  // }
+    return format_results(final_results, time);
+  }
 
   // py::tuple search_twostep_mf(py::array_t<float> query_vector, size_t k,
   //                             size_t rescoring_factor) {
@@ -368,8 +368,7 @@ py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, int32_t>(
   auto start = std::chrono::high_resolution_clock::now();
   auto results = info.searcher.similarity_search(queryInt8, k);
   auto end = std::chrono::high_resolution_clock::now();
-  auto time = std::chrono::duration_cast<std::chrono::microseconds>(end -
-  start)
+  auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
                   .count();
 
   return self->format_results(results, time);
@@ -437,9 +436,9 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
       //      py::arg("query_vector"), py::arg("k"))
       // .def("search_pca32", &PyEmbeddingSearch::search_pca32, "pca32 search",
       //      py::arg("query_vector"), py::arg("k"))
-      // .def("search_twostep", &PyEmbeddingSearch::search_twostep,
-      //      "Two-step binary+float search", py::arg("query_vector"),
-      //      py::arg("k"), py::arg("rescoring_factor") = 50)
+      .def("search_twostep", &PyEmbeddingSearch::search_twostep,
+           "Two-step binary+float search", py::arg("query_vector"),
+           py::arg("k"), py::arg("rescoring_factor") = 50)
       // .def("search_twostep_mf", &PyEmbeddingSearch::search_twostep_mf,
       //      "Two-step binary+mf search", py::arg("query_vector"),
       //      py::arg("k"), py::arg("rescoring_factor") = 50)
