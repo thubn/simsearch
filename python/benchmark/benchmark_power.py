@@ -46,7 +46,14 @@ def calculate_ndcg(ground_truth: List[Tuple[float, int, str]],
 
 class PowerMeasurement:
     def __init__(self, output_dir, measure_interval=0.01, measure_duration=None):
-        self.power_meter = N6705C()
+        try:
+            self.power_meter = N6705C()
+            print("Power meter initialized successfully")
+        except Exception as e:
+            print(f"Failed to initialize power meter: {str(e)}")
+            # Create a dummy power meter that doesn't do anything
+            self.power_meter = 0
+        #self.power_meter = N6705C()
         self.output_dir = output_dir
         self.measure_interval = measure_interval
         self.measure_duration = measure_duration  # If None, will measure until stop_measurement is called
@@ -55,18 +62,19 @@ class PowerMeasurement:
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
     
+    # Modify the start_measurement method in PowerMeasurement class
     def start_measurement(self, method_name):
         """Start power measurement for a specific method"""
         print(f"Starting power measurement for method: {method_name}")
         
-        # Turn on channel if not already on
-        self.power_meter.ch0_on()
-        
-        # Start the measurement
-        if self.measure_duration:
+        try:
+            # Turn on channel if not already on
+            self.power_meter.ch0_on()
+            
+            # Start the measurement
             power, current, voltage, interval = self.power_meter.ch0_measure(
                 interval=self.measure_interval, 
-                mtime=self.measure_duration
+                mtime=self.measure_duration or 30  # Default to 30 seconds if None
             )
             
             # Store the measurement data
@@ -81,11 +89,19 @@ class PowerMeasurement:
             # Save the measurement data
             self._save_measurement_data(method_name)
             
+            print(f"Power measurement for {method_name} completed. Average power: {sum(power)/len(power):.4f} W")
+            
             return power, current, voltage, interval
-        else:
-            # In this case, we'll need to implement a separate way to capture data
-            # This would require threading or a non-blocking approach
-            pass
+        except Exception as e:
+            print(f"Error measuring power for {method_name}: {str(e)}")
+            # Create empty measurement to avoid errors
+            self.measurements[method_name] = {
+                "power": [],
+                "current": [],
+                "voltage": [],
+                "interval": self.measure_interval,
+                "timestamp": time.time()
+            }
     
     def stop_measurement(self, method_name):
         """Stop the current measurement if using non-blocking approach"""

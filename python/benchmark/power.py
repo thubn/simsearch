@@ -12,7 +12,7 @@ class N6705C:
 
     def __init__(self):
         rm=pyvisa.ResourceManager()
-        self.instrument=rm.open_resource("TCPIP::129.217.34.156::5025::SOCKET")
+        self.instrument=rm.open_resource("TCPIP::192.168.1.10::5025::SOCKET")
         self.instrument.read_termination='\n'
         self.instrument.write_termination='\n'
         print(self.instrument.query("*IDN?"))
