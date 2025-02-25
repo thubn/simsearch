@@ -13,4 +13,5 @@ memory_benchmark/memory_benchmark
 embeddings/
 python/benchmark/embedding_search_benchmark.so
 python/benchmark/benchmark_results*.json
+python/benchmark/old
 memory_benchmark/mb
