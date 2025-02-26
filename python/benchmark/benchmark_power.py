@@ -11,7 +11,9 @@ from math import log2, exp
 from embedding_search_benchmark import EmbeddingSearch
 
 # Import power measurement class from power.py
-from power import N6705C
+from power_emulator import N6705C
+import threading
+import queue
 
 def calculate_ndcg(ground_truth: List[Tuple[float, int, str]], 
                   prediction: List[Tuple[float, int, str]]) -> float:
@@ -47,162 +49,113 @@ def calculate_ndcg(ground_truth: List[Tuple[float, int, str]],
 class PowerMeasurement:
     def __init__(self, output_dir, measure_interval=0.01, measure_duration=None):
         try:
+            from power_emulator import N6705C
             self.power_meter = N6705C()
             print("Power meter initialized successfully")
         except Exception as e:
             print(f"Failed to initialize power meter: {str(e)}")
             # Create a dummy power meter that doesn't do anything
-            self.power_meter = 0
-        #self.power_meter = N6705C()
+            self.power_meter = None
         self.output_dir = output_dir
         self.measure_interval = measure_interval
-        self.measure_duration = measure_duration  # If None, will measure until stop_measurement is called
+        self.measure_duration = measure_duration
         self.measurements = {}
         
         # Create output directory if it doesn't exist
+        import os
         os.makedirs(output_dir, exist_ok=True)
     
-    # Modify the start_measurement method in PowerMeasurement class
     def start_measurement(self, method_name):
         """Start power measurement for a specific method"""
         print(f"Starting power measurement for method: {method_name}")
         
         try:
-            # Turn on channel if not already on
-            self.power_meter.ch0_on()
-            
-            # Start the measurement
-            power, current, voltage, interval = self.power_meter.ch0_measure(
-                interval=self.measure_interval, 
-                mtime=self.measure_duration or 30  # Default to 30 seconds if None
-            )
-            
-            # Store the measurement data
-            self.measurements[method_name] = {
-                "power": power,
-                "current": current,
-                "voltage": voltage,
-                "interval": interval,
-                "timestamp": time.time()
-            }
-            
-            # Save the measurement data
-            self._save_measurement_data(method_name)
-            
-            print(f"Power measurement for {method_name} completed. Average power: {sum(power)/len(power):.4f} W")
-            
-            return power, current, voltage, interval
+            if self.power_meter:
+                # Turn on channel if not already on
+                self.power_meter.ch0_on()
+                
+                # Start continuous measurement
+                self.power_meter.start_continuous_measurement(
+                    interval=self.measure_interval,
+                    buffer_size=100  # Adjust buffer size as needed
+                )
         except Exception as e:
-            print(f"Error measuring power for {method_name}: {str(e)}")
-            # Create empty measurement to avoid errors
-            self.measurements[method_name] = {
-                "power": [],
-                "current": [],
-                "voltage": [],
-                "interval": self.measure_interval,
-                "timestamp": time.time()
-            }
+            print(f"Error starting power measurement for {method_name}: {str(e)}")
     
     def stop_measurement(self, method_name):
-        """Stop the current measurement if using non-blocking approach"""
-        # Would be implemented if using a non-blocking approach
-        pass
+        """Stop the current measurement and save data"""
+        print(f"Stopping power measurement for {method_name}")
+        
+        try:
+            if self.power_meter:
+                # Get measurement statistics before stopping
+                stats = self.power_meter.get_measurement_stats(method_name)
+                
+                # Stop continuous measurement and get collected data
+                power, current, voltage, interval = self.power_meter.stop_continuous_measurement()
+                
+                # Save the measurement data
+                if power:
+                    import time
+                    timestamp = time.time()
+                    
+                    # Store the measurement data
+                    self.measurements[method_name] = {
+                        "power": power,
+                        "current": current,
+                        "voltage": voltage,
+                        "interval": interval,
+                        "timestamp": timestamp,
+                        "stats": stats
+                    }
+                    
+                    # Save to file
+                    self._save_measurement_data(method_name)
+        except Exception as e:
+            print(f"Error stopping power measurement for {method_name}: {str(e)}")
     
     def _save_measurement_data(self, method_name):
-        """Save the measurement data to disk"""
-        if method_name not in self.measurements:
-            print(f"No measurement data for method: {method_name}")
-            return
-        
-        measurement = self.measurements[method_name]
-        
-        # Create a dataframe
-        data = self.power_meter.to_dataframe(
-            measurement["power"],
-            measurement["current"],
-            measurement["voltage"],
-            measurement["interval"]
-        )
-        
-        # Save to CSV
-        csv_path = os.path.join(self.output_dir, f"{method_name}_power_data.csv")
-        data.to_csv(csv_path, index=False)
-        print(f"Saved power measurement data to {csv_path}")
-        
-        # Generate and save plot
-        self._save_plot(method_name)
-    
-    def _save_plot(self, method_name):
-        """Generate and save a plot of the measurement data"""
-        if method_name not in self.measurements:
-            return
-        
-        measurement = self.measurements[method_name]
-        
-        fig, axs = plt.subplots(3, figsize=(12, 9))
-        fig.suptitle(f"Power Measurement for {method_name}")
-        
-        # Plot power
-        power = measurement["power"]
-        interval = measurement["interval"]
-        times = np.multiply(range(0, len(power)), interval)
-        
-        total_energy = sum(power) * interval
-        avg_power = sum(power) / len(power)
-        
-        axs[0].plot(times, power)
-        axs[0].set_title(f"Power Consumption (Avg: {avg_power:.4f}W, Total: {total_energy:.4f}Wh [J])")
-        axs[0].set_xlabel("Time (s)")
-        axs[0].set_ylabel("Power (W)")
-        
-        # Plot voltage
-        voltage = measurement["voltage"]
-        avg_voltage = sum(voltage) / len(voltage)
-        
-        axs[1].plot(times, voltage)
-        axs[1].set_title(f"Voltage (Avg: {avg_voltage:.4f}V)")
-        axs[1].set_xlabel("Time (s)")
-        axs[1].set_ylabel("Voltage (V)")
-        
-        # Plot current
-        current = measurement["current"]
-        avg_current = sum(current) / len(current)
-        
-        axs[2].plot(times, current)
-        axs[2].set_title(f"Current (Avg: {avg_current:.4f}A)")
-        axs[2].set_xlabel("Time (s)")
-        axs[2].set_ylabel("Current (A)")
-        
-        plt.tight_layout()
-        plot_path = os.path.join(self.output_dir, f"{method_name}_power_plot.png")
-        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        print(f"Saved power measurement plot to {plot_path}")
+        """Save measurement data to files"""
+        if method_name in self.measurements and self.measurements[method_name]["power"]:
+            import pandas as pd
+            import os
+            import time
+            
+            data = self.measurements[method_name]
+            
+            # Create DataFrame
+            times = [i * data["interval"] for i in range(len(data["power"]))]
+            df = pd.DataFrame({
+                "timestamp": times,
+                "power": data["power"],
+                "current": data["current"],
+                "voltage": data["voltage"]
+            })
+            
+            # Save to CSV
+            timestamp_str = time.strftime("%Y%m%d-%H%M%S")
+            filename = os.path.join(self.output_dir, f"{method_name}_{timestamp_str}.csv")
+            df.to_csv(filename, index=False)
+            print(f"Saved measurement data for {method_name} to {filename}")
     
     def generate_summary(self):
         """Generate a summary of all measurements"""
         summary = {}
         
-        for method_name, measurement in self.measurements.items():
-            power = measurement["power"]
-            interval = measurement["interval"]
-            
-            total_energy = sum(power) * interval
-            avg_power = sum(power) / len(power)
-            duration = len(power) * interval
-            
-            summary[method_name] = {
-                "avg_power_watts": avg_power,
-                "total_energy_joules": total_energy,
-                "duration_seconds": duration,
-                "energy_per_query": total_energy / duration if duration > 0 else 0
-            }
-        
-        # Save summary to file
-        summary_path = os.path.join(self.output_dir, "power_measurement_summary.json")
-        with open(summary_path, 'w') as f:
-            json.dump(summary, f, indent=2)
-        print(f"Saved power measurement summary to {summary_path}")
+        for method_name, data in self.measurements.items():
+            if "power" in data and data["power"]:
+                power_data = data["power"]
+                interval = data["interval"]
+                
+                # Calculate statistics
+                summary[method_name] = {
+                    "avg_power": sum(power_data) / len(power_data),
+                    "min_power": min(power_data),
+                    "max_power": max(power_data),
+                    "total_energy_joules": sum(power_data) * interval,
+                    "duration_seconds": len(power_data) * interval,
+                    "samples": len(power_data)
+                }
         
         return summary
         
@@ -320,32 +273,36 @@ class VectorSearchBenchmarkWithPower:
         print("\nRunning reference float search on all queries with power measurement...")
         float_results = []
         
-        # Start power measurement for float search
+        # Start power measurement for float search in a separate thread
         self.power_measurement.start_measurement("float")
         
-        for i, query in enumerate(queries):
-            query_vector = query["vector"]
-            results_tup, time_us = self.searcher.search_float(query_vector, self.k)
-            
-            # Store query metadata + float results
-            query_result = {
-                "run": query["run"],
-                "float_results": results_tup,
-                "float_time_us": time_us,
-                "searches": []
-            }
-            
-            # Add query-specific metadata
-            if "query_index" in query:
-                query_result["query_index"] = query["query_index"]
-            if "query_text" in query:
-                query_result["query_text"] = query["query_text"]
-                query_result["formatted_query"] = query["formatted_query"]
+        try:
+            for i, query in enumerate(queries):
+                query_vector = query["vector"]
+                results_tup, time_us = self.searcher.search_float(query_vector, self.k)
                 
-            float_results.append(query_result)
-            
-            if (i + 1) % 10 == 0:
-                print(f"  Completed {i + 1}/{len(queries)} float searches")
+                # Store query metadata + float results
+                query_result = {
+                    "run": query["run"],
+                    "float_results": results_tup,
+                    "float_time_us": time_us,
+                    "searches": []
+                }
+                
+                # Add query-specific metadata
+                if "query_index" in query:
+                    query_result["query_index"] = query["query_index"]
+                if "query_text" in query:
+                    query_result["query_text"] = query["query_text"]
+                    query_result["formatted_query"] = query["formatted_query"]
+                    
+                float_results.append(query_result)
+                
+                if (i + 1) % 10 == 0:
+                    print(f"  Completed {i + 1}/{len(queries)} float searches")
+        finally:
+            # Stop power measurement for float search
+            self.power_measurement.stop_measurement("float")
         
         # Add some separation between methods for power analysis
         print("Completed all float searches. Pausing for 5 seconds...")
@@ -359,39 +316,43 @@ class VectorSearchBenchmarkWithPower:
                 
             print(f"\nRunning {method_name} search on all queries with power measurement...")
             
-            # Start power measurement for this method
+            # Start power measurement for this method in a separate thread
             self.power_measurement.start_measurement(method_name)
             
-            for i, query_result in enumerate(float_results):
-                query_vector = queries[i]["vector"]
-                float_indices = set(idx for _, idx, _ in query_result["float_results"])
-                
-                try:
-                    # Run the current search method
-                    results_tup, time_us = search_func(query_vector, self.k)
-                    result_indices = set(idx for _, idx, _ in results_tup)
+            try:
+                for i, query_result in enumerate(float_results):
+                    query_vector = queries[i]["vector"]
+                    float_indices = set(idx for _, idx, _ in query_result["float_results"])
                     
-                    # Calculate metrics compared to float search
-                    metrics = {
-                        "time_us": time_us,
-                        "results": [(score, int(idx), text[:100]) for score, idx, text in results_tup[:5]],  # Store first 5 results
-                        "overlap_with_float": len(float_indices & result_indices),
-                        "jaccard_index": len(float_indices & result_indices) / len(float_indices | result_indices),
-                        "ndcg": calculate_ndcg(query_result["float_results"], results_tup),
-                        "ndcg_10": calculate_ndcg(query_result["float_results"][:10], results_tup[:10])
-                    }
+                    try:
+                        # Run the current search method
+                        results_tup, time_us = search_func(query_vector, self.k)
+                        result_indices = set(idx for _, idx, _ in results_tup)
+                        
+                        # Calculate metrics compared to float search
+                        metrics = {
+                            "time_us": time_us,
+                            "results": [(score, int(idx), text[:100]) for score, idx, text in results_tup[:5]],  # Store first 5 results
+                            "overlap_with_float": len(float_indices & result_indices),
+                            "jaccard_index": len(float_indices & result_indices) / len(float_indices | result_indices),
+                            "ndcg": calculate_ndcg(query_result["float_results"], results_tup),
+                            "ndcg_10": calculate_ndcg(query_result["float_results"][:10], results_tup[:10])
+                        }
+                        
+                        query_result["searches"].append({
+                            "method": method_name,
+                            "metrics": metrics
+                        })
+                        
+                    except Exception as e:
+                        print(f"  Error in {method_name} search (run {i}): {str(e)}")
+                        continue
                     
-                    query_result["searches"].append({
-                        "method": method_name,
-                        "metrics": metrics
-                    })
-                    
-                except Exception as e:
-                    print(f"  Error in {method_name} search (run {i}): {str(e)}")
-                    continue
-                
-                if (i + 1) % 10 == 0:
-                    print(f"  Completed {i + 1}/{len(queries)} {method_name} searches")
+                    if (i + 1) % 10 == 0:
+                        print(f"  Completed {i + 1}/{len(queries)} {method_name} searches")
+            finally:
+                # Stop power measurement for this method
+                self.power_measurement.stop_measurement(method_name)
             
             # Add some separation between methods for power analysis
             print(f"Completed all {method_name} searches. Pausing for 5 seconds...")

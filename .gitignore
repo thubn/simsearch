@@ -14,4 +14,6 @@ embeddings/
 python/benchmark/embedding_search_benchmark.so
 python/benchmark/benchmark_results*.json
 python/benchmark/old
+python/benchmark/power_results
 memory_benchmark/mb
+python/benchmark/__pycache__
