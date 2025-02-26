@@ -6,6 +6,7 @@
 #include <cstring>           // for size_t, memcpy, memset
 #include <exception>         // for exception
 #include <iostream>          // for basic_ostream, char_traits, operator<<
+#include <omp.h>             // for OpenMP support
 #include <stdexcept>         // for invalid_argument, runtime_error, out_of...
 #include <stdint.h>          // for int32_t, int_fast8_t
 
@@ -105,7 +106,8 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const avx2_vector &query,
 
 std::vector<std::pair<float, size_t>>
 OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
-                                                size_t k) {
+                                                size_t k,
+                                                bool use_multithreading) {
   std::vector<float> temp_query;
   if (is_pca && query.size() != vector_dim) {
     temp_query = EmbeddingUtils::apply_pca_dimension_reduction_to_query(
@@ -130,31 +132,63 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
 
   std::vector<std::pair<float, size_t>> results(num_vectors);
   const size_t STRIDE_DIST = stride_dist;
+  // Precalculate the loop limit to fix the predicate issue
+  const size_t loop_limit = num_vectors > (NUM_STRIDES * STRIDE_DIST - 1) ? 
+                           num_vectors - (NUM_STRIDES * STRIDE_DIST - 1) : 0;
 
-  // #pragma omp parallel for schedule(static)
-  for (size_t i = 0; (i + (NUM_STRIDES * STRIDE_DIST) - 1) < num_vectors;
-       i += (NUM_STRIDES * STRIDE_DIST)) {
-    for (size_t j = i; j < (i + STRIDE_DIST); j++) {
-      float sim[NUM_STRIDES] = {};
-      float *emb_ptr[NUM_STRIDES];
-      for (int k = 0; k < NUM_STRIDES; k++) {
-        emb_ptr[k] = get_embedding_ptr(j + k * STRIDE_DIST);
+  if (use_multithreading) {
+    // For the main vectorized part using striding
+    #pragma omp parallel for schedule(static)
+    for (size_t i = 0; i < loop_limit; i += (NUM_STRIDES * STRIDE_DIST)) {
+      for (size_t j = i; j < (i + STRIDE_DIST); j++) {
+        float sim[NUM_STRIDES] = {};
+        float *emb_ptr[NUM_STRIDES];
+        for (int k = 0; k < NUM_STRIDES; k++) {
+          emb_ptr[k] = get_embedding_ptr(j + k * STRIDE_DIST);
+        }
+        cosine_similarity_optimized(query_aligned.data(), sim, emb_ptr);
+        for (int k = 0; k < NUM_STRIDES; k++) {
+          results[j + k * STRIDE_DIST] =
+              std::make_pair(sim[k], j + k * STRIDE_DIST);
+        }
       }
-      cosine_similarity_optimized(query_aligned.data(), sim, emb_ptr);
-      for (int k = 0; k < NUM_STRIDES; k++) {
-        results[j + k * STRIDE_DIST] =
-            std::make_pair(sim[k], j + k * STRIDE_DIST);
+    }
+  } else {
+    // Single-threaded version
+    for (size_t i = 0; i < loop_limit; i += (NUM_STRIDES * STRIDE_DIST)) {
+      for (size_t j = i; j < (i + STRIDE_DIST); j++) {
+        float sim[NUM_STRIDES] = {};
+        float *emb_ptr[NUM_STRIDES];
+        for (int k = 0; k < NUM_STRIDES; k++) {
+          emb_ptr[k] = get_embedding_ptr(j + k * STRIDE_DIST);
+        }
+        cosine_similarity_optimized(query_aligned.data(), sim, emb_ptr);
+        for (int k = 0; k < NUM_STRIDES; k++) {
+          results[j + k * STRIDE_DIST] =
+              std::make_pair(sim[k], j + k * STRIDE_DIST);
+        }
       }
     }
   }
+
   // calc remaining similarities when strides dont fit with num_embeddings
   if (num_vectors % (NUM_STRIDES * STRIDE_DIST) != 0) {
     const size_t start =
         num_vectors - (num_vectors % (NUM_STRIDES * STRIDE_DIST));
-    for (int i = start; i < num_vectors; i++) {
-      float sim = cosine_similarity_optimized(get_embedding_ptr(i),
-                                              query_aligned.data());
-      results[i] = std::make_pair(sim, i);
+
+    if (use_multithreading) {
+#pragma omp parallel for
+      for (int i = start; i < num_vectors; i++) {
+        float sim = cosine_similarity_optimized(get_embedding_ptr(i),
+                                                query_aligned.data());
+        results[i] = std::make_pair(sim, i);
+      }
+    } else {
+      for (int i = start; i < num_vectors; i++) {
+        float sim = cosine_similarity_optimized(get_embedding_ptr(i),
+                                                query_aligned.data());
+        results[i] = std::make_pair(sim, i);
+      }
     }
   }
 
@@ -172,7 +206,8 @@ OptimizedEmbeddingSearchAVX2::similarity_search(const std::vector<float> &query,
 std::vector<std::pair<float, size_t>>
 OptimizedEmbeddingSearchAVX2::similarity_search(
     const std::vector<float> &query, size_t k,
-    std::vector<std::pair<int, size_t>> &searchIndexes) {
+    std::vector<std::pair<int, size_t>> &searchIndexes,
+    bool use_multithreading) {
   if (query.size() != vector_dim) {
     throw std::invalid_argument("Invalid query dimension");
   }
@@ -187,13 +222,21 @@ OptimizedEmbeddingSearchAVX2::similarity_search(
   float query_norm = compute_norm_avx2(query_aligned.data());
 
   // Calculate similarities
-  std::vector<std::pair<float, size_t>> results;
-  results.reserve(searchIndexes.size());
+  std::vector<std::pair<float, size_t>> results(searchIndexes.size());
 
-  for (size_t i = 0; i < searchIndexes.size(); i++) {
-    float similarity = cosine_similarity_optimized(
-        get_embedding_ptr(searchIndexes[i].second), query_aligned.data());
-    results.emplace_back(similarity, searchIndexes[i].second);
+  if (use_multithreading) {
+#pragma omp parallel for
+    for (size_t i = 0; i < searchIndexes.size(); i++) {
+      float similarity = cosine_similarity_optimized(
+          get_embedding_ptr(searchIndexes[i].second), query_aligned.data());
+      results[i] = std::make_pair(similarity, searchIndexes[i].second);
+    }
+  } else {
+    for (size_t i = 0; i < searchIndexes.size(); i++) {
+      float similarity = cosine_similarity_optimized(
+          get_embedding_ptr(searchIndexes[i].second), query_aligned.data());
+      results[i] = std::make_pair(similarity, searchIndexes[i].second);
+    }
   }
 
   // Partial sort to get top-k results

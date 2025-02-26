@@ -3,6 +3,7 @@
 #include <algorithm>         // for clamp, partial_sort
 #include <arm_neon.h>        // for _MM_SHUFFLE, _MM_HINT_T0, _mm_prefetch
 #include <iostream>          // for basic_ostream, operator<<, cerr, endl
+#include <omp.h>             // for OpenMP support
 #include <stdexcept>         // for runtime_error, out_of_range
 #include <stdint.h>          // for int8_t
 
@@ -53,22 +54,29 @@ OptimizedEmbeddingSearchUint8AVX2::getEmbeddingAVX2(size_t index) const {
 
 std::vector<std::pair<int, size_t>>
 OptimizedEmbeddingSearchUint8AVX2::similarity_search(const avx2i_vector8 &query,
-                                                     size_t k) {
+                                                     size_t k,
+                                                     bool use_multithreading) {
   if (query.size() != vectors_per_embedding) {
     std::cerr << "expected dimension: " << vectors_per_embedding
               << "\ngot dimension: " << query.size() << std::endl;
     throw std::runtime_error("Query vector size does not match embedding size");
   }
 
-  std::vector<std::pair<int, size_t>> similarities;
-  similarities.reserve(num_vectors);
-
+  std::vector<std::pair<int, size_t>> similarities(num_vectors);
   const int8x16_t *query_data =
       reinterpret_cast<const int8x16_t *>(query.data());
 
-  for (size_t i = 0; i < num_vectors; i++) {
-    int sim = cosine_similarity_optimized(get_embedding_ptr(i), query_data);
-    similarities.emplace_back(sim, i);
+  if (use_multithreading) {
+#pragma omp parallel for
+    for (size_t i = 0; i < num_vectors; i++) {
+      int sim = cosine_similarity_optimized(get_embedding_ptr(i), query_data);
+      similarities[i] = std::make_pair(sim, i);
+    }
+  } else {
+    for (size_t i = 0; i < num_vectors; i++) {
+      int sim = cosine_similarity_optimized(get_embedding_ptr(i), query_data);
+      similarities[i] = std::make_pair(sim, i);
+    }
   }
 
   std::partial_sort(

@@ -2,6 +2,7 @@
 #include "aligned_types.h"         // for avx2_vector
 #include "embedding_search_base.h" // for OptimizedEmbeddingSearchBase
 #include "embedding_utils.h"       // for pca_dimension_reduction
+#include <omp.h>                   // for OpenMP support
 #include <stddef.h>                // for size_t
 #include <string>                  // for string
 #include <utility>                 // for pair
@@ -21,10 +22,12 @@ public:
   std::vector<std::pair<float, size_t>>
   similarity_search(const avx2_vector &query, size_t k) override;
   std::vector<std::pair<float, size_t>>
-  similarity_search(const std::vector<float> &query, size_t k);
+  similarity_search(const std::vector<float> &query, size_t k,
+                    bool use_multithreading);
   std::vector<std::pair<float, size_t>>
   similarity_search(const std::vector<float> &query, size_t k,
-                    std::vector<std::pair<int, size_t>> &searchIndexes);
+                    std::vector<std::pair<int, size_t>> &searchIndexes,
+                    bool use_multithreading);
   std::vector<float> getEmbedding(size_t index) const;
 
   bool setEmbeddings(const std::vector<std::vector<float>> &input_vectors,

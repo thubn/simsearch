@@ -22,12 +22,14 @@ template <typename T, typename ResultType = float> struct SearcherInfo {
 template <typename T, typename ResultType>
 py::tuple perform_search_impl(PyEmbeddingSearch *self,
                               const SearcherInfo<T, ResultType> &info,
-                              py::array_t<float> query_vector, size_t k);
+                              py::array_t<float> query_vector, size_t k,
+                              bool multithreading);
 
 template <typename T>
 py::tuple perform_search_impl(PyEmbeddingSearch *self,
                               const SearcherInfo<T> &info,
-                              py::array_t<float> query_vector, size_t k);
+                              py::array_t<float> query_vector, size_t k,
+                              bool multithreading);
 
 class PyEmbeddingSearch {
 private:
@@ -77,20 +79,21 @@ private:
   // Template method that forwards to implementation
   template <typename T, typename ResultType = float>
   py::tuple perform_search(const SearcherInfo<T, ResultType> &info,
-                           py::array_t<float> query_vector, size_t k) {
-    return perform_search_impl(this, info, query_vector, k);
+                           py::array_t<float> query_vector, size_t k,
+                           bool multithreading) {
+    return perform_search_impl(this, info, query_vector, k, multithreading);
   }
 
   // Friend declarations for implementations
   template <typename T, typename R>
-  friend py::tuple perform_search_impl(PyEmbeddingSearch *,
-                                       const SearcherInfo<T, R> &,
-                                       py::array_t<float>, size_t);
+  friend py::tuple
+  perform_search_impl(PyEmbeddingSearch *, const SearcherInfo<T, R> &,
+                      py::array_t<float>, size_t, bool multithreading);
 
   template <typename T>
-  friend py::tuple perform_search_impl(PyEmbeddingSearch *,
-                                       const SearcherInfo<T> &,
-                                       py::array_t<float>, size_t);
+  friend py::tuple
+  perform_search_impl(PyEmbeddingSearch *, const SearcherInfo<T> &,
+                      py::array_t<float>, size_t, bool multithreading);
 
   template <typename T>
   py::array_t<T> get_embedding_impl(size_t index, size_t num_vectors,
@@ -141,30 +144,34 @@ public:
   // ======================================
 
   // Search methods
-  py::tuple search_float(py::array_t<float> query_vector, size_t k) {
+  py::tuple search_float(py::array_t<float> query_vector, size_t k,
+                         bool multithreading) {
     return perform_search(
         SearcherInfo<EmbeddingSearchFloat>{searchers->base, "float"},
-        query_vector, k);
+        query_vector, k, multithreading);
   }
 
-  py::tuple search_avx2(py::array_t<float> query_vector, size_t k) {
+  py::tuple search_avx2(py::array_t<float> query_vector, size_t k,
+                        bool multithreading) {
     return perform_search(
         SearcherInfo<OptimizedEmbeddingSearchAVX2>{searchers->oavx2, "avx2"},
-        query_vector, k);
+        query_vector, k, multithreading);
   }
 
-  py::tuple search_binary(py::array_t<float> query_vector, size_t k) {
+  py::tuple search_binary(py::array_t<float> query_vector, size_t k,
+                          bool multithreading) {
     return perform_search(
         SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t>{
             searchers->obinary_avx2, "binary"},
-        query_vector, k);
+        query_vector, k, multithreading);
   }
 
-  py::tuple search_int8(py::array_t<float> query_vector, size_t k) {
+  py::tuple search_int8(py::array_t<float> query_vector, size_t k,
+                        bool multithreading) {
     return perform_search(
         SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t>{
             searchers->ouint8_avx2, "int8"},
-        query_vector, k);
+        query_vector, k, multithreading);
   }
 
   // py::tuple search_float16(py::array_t<float> query_vector, size_t k) {
@@ -212,7 +219,7 @@ public:
   // }
 
   py::tuple search_twostep(py::array_t<float> query_vector, size_t k,
-                           size_t rescoring_factor) {
+                           size_t rescoring_factor, bool multithreading) {
     check_initialization();
     std::vector<float> query = convert_query(query_vector);
 
@@ -224,9 +231,9 @@ public:
     // Perform two-step search with timing
     auto start = std::chrono::high_resolution_clock::now();
     auto binary_results = searchers->obinary_avx2.similarity_search(
-        queryBinaryAvx2, k * rescoring_factor);
-    auto final_results =
-        searchers->oavx2.similarity_search(query, k, binary_results);
+        queryBinaryAvx2, k * rescoring_factor, multithreading);
+    auto final_results = searchers->oavx2.similarity_search(
+        query, k, binary_results, multithreading);
     auto end = std::chrono::high_resolution_clock::now();
     auto time =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start)
@@ -317,12 +324,13 @@ public:
 template <typename T>
 py::tuple perform_search_impl(PyEmbeddingSearch *self,
                               const SearcherInfo<T> &info,
-                              py::array_t<float> query_vector, size_t k) {
+                              py::array_t<float> query_vector, size_t k,
+                              bool multithreading) {
   self->check_initialization();
   std::vector<float> query = self->convert_query(query_vector);
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto results = info.searcher.similarity_search(query, k);
+  auto results = info.searcher.similarity_search(query, k, multithreading);
   auto end = std::chrono::high_resolution_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
                   .count();
@@ -335,7 +343,7 @@ template <>
 py::tuple perform_search_impl<OptimizedEmbeddingSearchBinaryAVX2, int32_t>(
     PyEmbeddingSearch *self,
     const SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t> &info,
-    py::array_t<float> query_vector, size_t k) {
+    py::array_t<float> query_vector, size_t k, bool multithreading) {
   self->check_initialization();
   std::vector<float> query = self->convert_query(query_vector);
 
@@ -344,7 +352,8 @@ py::tuple perform_search_impl<OptimizedEmbeddingSearchBinaryAVX2, int32_t>(
                                                  query.size() / 4 / 32);
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto results = info.searcher.similarity_search(queryBinary, k);
+  auto results =
+      info.searcher.similarity_search(queryBinary, k, multithreading);
   auto end = std::chrono::high_resolution_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
                   .count();
@@ -357,7 +366,7 @@ template <>
 py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, int32_t>(
     PyEmbeddingSearch *self,
     const SearcherInfo<OptimizedEmbeddingSearchUint8AVX2, int32_t> &info,
-    py::array_t<float> query_vector, size_t k) {
+    py::array_t<float> query_vector, size_t k, bool multithreading) {
   self->check_initialization();
   std::vector<float> query = self->convert_query(query_vector);
 
@@ -366,7 +375,7 @@ py::tuple perform_search_impl<OptimizedEmbeddingSearchUint8AVX2, int32_t>(
                                                 query.size() / 4 / 4);
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto results = info.searcher.similarity_search(queryInt8, k);
+  auto results = info.searcher.similarity_search(queryInt8, k, multithreading);
   auto end = std::chrono::high_resolution_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start)
                   .count();
@@ -415,13 +424,17 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
            py::arg("init_avx2"), py::arg("init_binary"), py::arg("init_int8"),
            py::arg("init_float16"), py::arg("init_mf"))
       .def("search_float", &PyEmbeddingSearch::search_float,
-           "Base float search", py::arg("query_vector"), py::arg("k"))
+           "Base float search", py::arg("query_vector"), py::arg("k"),
+           py::arg("multithreading") = false)
       .def("search_avx2", &PyEmbeddingSearch::search_avx2,
-           "AVX2 optimized search", py::arg("query_vector"), py::arg("k"))
+           "AVX2 optimized search", py::arg("query_vector"), py::arg("k"),
+           py::arg("multithreading") = false)
       .def("search_binary", &PyEmbeddingSearch::search_binary,
-           "Binary AVX2 search", py::arg("query_vector"), py::arg("k"))
+           "Binary AVX2 search", py::arg("query_vector"), py::arg("k"),
+           py::arg("multithreading") = false)
       .def("search_int8", &PyEmbeddingSearch::search_int8, "INT8 search",
-           py::arg("query_vector"), py::arg("k"))
+           py::arg("query_vector"), py::arg("k"),
+           py::arg("multithreading") = false)
       // .def("search_float16", &PyEmbeddingSearch::search_float16,
       //      "float16 search", py::arg("query_vector"), py::arg("k"))
       // .def("search_mf", &PyEmbeddingSearch::search_mf, "mapped float search",
@@ -438,7 +451,8 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
       //      py::arg("query_vector"), py::arg("k"))
       .def("search_twostep", &PyEmbeddingSearch::search_twostep,
            "Two-step binary+float search", py::arg("query_vector"),
-           py::arg("k"), py::arg("rescoring_factor") = 50)
+           py::arg("k"), py::arg("rescoring_factor") = 50,
+           py::arg("multithreading") = false)
       // .def("search_twostep_mf", &PyEmbeddingSearch::search_twostep_mf,
       //      "Two-step binary+mf search", py::arg("query_vector"),
       //      py::arg("k"), py::arg("rescoring_factor") = 50)

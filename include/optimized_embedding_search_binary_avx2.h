@@ -8,6 +8,7 @@
 #include <string>                  // for string
 #include <utility>                 // for pair
 #include <vector>                  // for vector
+#include <omp.h>                   // for OpenMP support
 
 class OptimizedEmbeddingSearchBinaryAVX2
     : public OptimizedEmbeddingSearchBase<avx2i_vector, int32_t, uint32x4_t> {
@@ -17,8 +18,13 @@ public:
   bool
   setEmbeddings(const std::vector<std::vector<float>> &input_vectors) override;
   std::vector<std::pair<int32_t, size_t>>
-  similarity_search(const avx2i_vector &query, size_t k) override;
+  similarity_search(const avx2i_vector &query, size_t k, bool use_multithreading);
   avx2i_vector getEmbeddingAVX2(size_t index) const;
+
+  std::vector<std::pair<int32_t, size_t>>
+  similarity_search(const avx2i_vector &query, size_t k) override {
+    return similarity_search(query, k, true); // Default to using multithreading
+  }
 
 protected:
   bool validateDimensions(const std::vector<std::vector<float>> &input,

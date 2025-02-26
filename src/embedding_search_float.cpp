@@ -2,6 +2,7 @@
 #include <algorithm> // for partial_sort
 #include <cmath>     // for sqrt
 #include <stdexcept> // for runtime_error
+#include <omp.h>     // for OpenMP support
 
 bool EmbeddingSearchFloat::setEmbeddings(
     const std::vector<std::vector<float>> &input_vectors) {
@@ -12,17 +13,24 @@ bool EmbeddingSearchFloat::setEmbeddings(
 
 std::vector<std::pair<float, size_t>>
 EmbeddingSearchFloat::similarity_search(const std::vector<float> &query,
-                                        size_t k) {
+                                        size_t k, bool use_multithreading) {
   if (query.size() != embeddings[0].size()) {
     throw std::runtime_error("Query vector size does not match embedding size");
   }
 
-  std::vector<std::pair<float, size_t>> similarities;
-  similarities.reserve(embeddings.size());
+  std::vector<std::pair<float, size_t>> similarities(embeddings.size());
 
-  for (size_t i = 0; i < embeddings.size(); ++i) {
-    float sim = cosine_similarity(query, embeddings[i]);
-    similarities.emplace_back(sim, i);
+  if (use_multithreading) {
+    #pragma omp parallel for
+    for (size_t i = 0; i < embeddings.size(); ++i) {
+      float sim = cosine_similarity(query, embeddings[i]);
+      similarities[i] = std::make_pair(sim, i);
+    }
+  } else {
+    for (size_t i = 0; i < embeddings.size(); ++i) {
+      float sim = cosine_similarity(query, embeddings[i]);
+      similarities[i] = std::make_pair(sim, i);
+    }
   }
 
   std::partial_sort(

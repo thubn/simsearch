@@ -53,10 +53,17 @@ class VectorSearchBenchmark:
         
         # Define search methods
         self.search_methods = [
-            ("float", self.searcher.search_float),
-            ("avx2", self.searcher.search_avx2),
-            ("binary", self.searcher.search_binary),
-            ("int8", self.searcher.search_int8),
+            # Single-threaded methods
+            ("float", lambda q, k: self.searcher.search_float(q, k, False)),
+            ("avx2", lambda q, k: self.searcher.search_avx2(q, k, False)),
+            ("binary", lambda q, k: self.searcher.search_binary(q, k, False)),
+            ("int8", lambda q, k: self.searcher.search_int8(q, k, False)),
+            # Multi-threaded methods
+            ("float_mt", lambda q, k: self.searcher.search_float(q, k, True)),
+            ("avx2_mt", lambda q, k: self.searcher.search_avx2(q, k, True)),
+            ("binary_mt", lambda q, k: self.searcher.search_binary(q, k, True)),
+            ("int8_mt", lambda q, k: self.searcher.search_int8(q, k, True)),
+            
             # ("float16", self.searcher.search_float16),
             # ("mf", self.searcher.search_mf),
             # ("pca2", self.searcher.search_pca2),
@@ -69,9 +76,15 @@ class VectorSearchBenchmark:
         # Add two-step searches for each rescoring factor
         if rescoring_factors:
             for factor in self.rescoring_factors:
+                # Single-threaded
                 self.search_methods.append((
                     f"twostep_rf{factor}",
-                    lambda q, k, rf=factor: self.searcher.search_twostep(q, k, rf)
+                    lambda q, k, rf=factor: self.searcher.search_twostep(q, k, rf, False)
+                ))
+                # Multi-threaded
+                self.search_methods.append((
+                    f"twostep_rf{factor}_mt",
+                    lambda q, k, rf=factor: self.searcher.search_twostep(q, k, rf, True)
                 ))
             # for factor in self.rescoring_factors:
             #     self.search_methods.append((
@@ -304,7 +317,8 @@ class VectorSearchBenchmark:
                 'timestamp': timestamp,
                 'timestamp_human': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp)),
                 'mode': results['mode'],
-                'rescoring_factors': self.rescoring_factors if hasattr(self, 'rescoring_factors') else None
+                'rescoring_factors': self.rescoring_factors if hasattr(self, 'rescoring_factors') else None,
+                'multithreading': 'Methods with _mt suffix use multithreading'  # Added info
             },
             'summary': summary_stats,
             'method_stats': method_stats,

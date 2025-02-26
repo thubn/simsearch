@@ -1,9 +1,9 @@
 #pragma once
 #include "embedding_io.h"          // for load_json, load_json2, load_parquet
 #include "embedding_search_base.h" // for EmbeddingSearchBase
-// #include <bits/chrono.h>           // for duration, duration_cast, high_res...
 #include <chrono>                  // for duration, duration_cast, high_res...
 #include <iostream>                // for basic_ostream, operator<<, basic_ios
+#include <omp.h>                   // for OpenMP support
 #include <stddef.h>                // for size_t
 #include <stdexcept>               // for runtime_error
 #include <string>                  // for char_traits, string
@@ -42,7 +42,12 @@ public:
   }
 
   std::vector<std::pair<float, size_t>>
-  similarity_search(const std::vector<float> &query, size_t k) override;
+  similarity_search(const std::vector<float> &query, size_t k, bool use_multithreading);
+
+  std::vector<std::pair<float, size_t>>
+  similarity_search(const std::vector<float> &query, size_t k) override {
+    return similarity_search(query, k, true); // Default to using multithreading
+  }
 
   bool pca_dimension_reduction(int factor);
 
