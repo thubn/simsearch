@@ -142,64 +142,76 @@ class VectorSearchBenchmark:
         print(f"Generated {len(queries)} queries")
         
         results = []
-        power_data = {}
-        
-        # Set up power measurement if requested
-        if measure_power and power_duration:
-            print(f"\nStarting power measurement for {power_duration} seconds...")
-            power_thread_result = {'power_measurement_complete': False}
-            
-            # Create and start the power measurement thread
-            power_measure = N6705C()
-            power_thread = threading.Thread(
-                target=self._run_power_measurement,
-                args=(power_measure, power_duration, power_thread_result)
-            )
-            power_thread.start()
+        method_power_data = {}
         
         # First run the float search (reference for comparison) on all queries
         print("\nRunning reference float search on all queries...")
         float_results = []
-        for i, query in enumerate(queries):
-            query_vector = query["vector"]
-            results_tup, time_us = self.searcher.search_float(query_vector, self.k)
-            
-            # Store query metadata + float results
-            query_result = {
-                "run": query["run"],
-                "float_results": results_tup,
-                "float_time_us": time_us,
-                "searches": []
-            }
-            
-            # Add query-specific metadata
-            if "query_index" in query:
-                query_result["query_index"] = query["query_index"]
-            if "query_text" in query:
-                query_result["query_text"] = query["query_text"]
-                query_result["formatted_query"] = query["formatted_query"]
-                
-            float_results.append(query_result)
-            
-            if (i + 1) % 10 == 0:
-                print(f"  Completed {i + 1}/{len(queries)} float searches")
         
-        # Keep track of benchmark iterations (for power measurement)
-        iteration = 1
+        # Run float search, potentially with power measurement
+        if measure_power and power_duration:
+            # For float search (first method), run with power measurement
+            float_results, float_power = self._benchmark_method_with_power(
+                "float",
+                self.searcher.search_float,
+                queries,
+                None,  # No reference results for the reference method
+                power_duration
+            )
+            method_power_data["float"] = float_power
+        else:
+            # Regular benchmark without power measurement
+            for i, query in enumerate(queries):
+                query_vector = query["vector"]
+                results_tup, time_us = self.searcher.search_float(query_vector, self.k)
                 
-        # Continue running benchmarks until power measurement completes
-        while not measure_power or not power_duration or not power_thread_result.get('power_measurement_complete', True):
-            if iteration > 1:
-                print(f"\nStarting benchmark iteration {iteration} while power measurement completes...")
-            
-            # Run each method separately on all queries
-            for method_name, search_func in self.search_methods:
-                # Skip float search as we already did it, except in repeated iterations
-                if method_name == "float" and iteration == 1:
-                    continue
+                # Store query metadata + float results
+                query_result = {
+                    "run": query["run"],
+                    "float_results": results_tup,
+                    "float_time_us": time_us,
+                    "searches": []
+                }
+                
+                # Add query-specific metadata
+                if "query_index" in query:
+                    query_result["query_index"] = query["query_index"]
+                if "query_text" in query:
+                    query_result["query_text"] = query["query_text"]
+                    query_result["formatted_query"] = query["formatted_query"]
                     
-                print(f"\nRunning {method_name} search on all queries...")
+                float_results.append(query_result)
                 
+                if (i + 1) % 10 == 0:
+                    print(f"  Completed {i + 1}/{len(queries)} float searches")
+        
+        # Run each other method separately, with its own power measurement if requested
+        for method_name, search_func in self.search_methods:
+            # Skip float search as we already ran it
+            if method_name == "float":
+                continue
+                
+            print(f"\nRunning {method_name} search on all queries...")
+            
+            if measure_power and power_duration:
+                # Run with power measurement
+                method_results, method_power = self._benchmark_method_with_power(
+                    method_name,
+                    search_func,
+                    queries,
+                    float_results,  # Using float results as reference
+                    power_duration
+                )
+                
+                # Store power data for this method
+                method_power_data[method_name] = method_power
+                
+                # Update float_results with the method's results from the first iteration
+                for i, query_result in enumerate(float_results):
+                    query_result["searches"].append(method_results[i])
+                    
+            else:
+                # Regular benchmark without power measurement
                 for i, query_result in enumerate(float_results):
                     query_vector = queries[i]["vector"]
                     float_indices = set(idx for _, idx, _ in query_result["float_results"])
@@ -219,12 +231,11 @@ class VectorSearchBenchmark:
                             "ndcg_10": calculate_ndcg(query_result["float_results"][:10], results_tup[:10])
                         }
                         
-                        # For first iteration, add results to main data structure
-                        if iteration == 1:
-                            query_result["searches"].append({
-                                "method": method_name,
-                                "metrics": metrics
-                            })
+                        # Add results to main data structure
+                        query_result["searches"].append({
+                            "method": method_name,
+                            "metrics": metrics
+                        })
                         
                     except Exception as e:
                         print(f"  Error in {method_name} search (run {i}): {str(e)}")
@@ -232,42 +243,21 @@ class VectorSearchBenchmark:
                     
                     if (i + 1) % 10 == 0:
                         print(f"  Completed {i + 1}/{len(queries)} {method_name} searches")
-                
-                # Add some separation between methods for power analysis
-                print(f"Completed all {method_name} searches. Sleeping for 5 seconds...")
-                time.sleep(5)
-                
-                # Check if power measurement is complete after each method
-                if measure_power and power_duration and power_thread_result.get('power_measurement_complete', False):
-                    print("Power measurement complete. Stopping benchmark iterations.")
-                    break
-            
-            # Increment iteration counter
-            iteration += 1
-            
-            # Check if power measurement is complete after a full iteration
-            if measure_power and power_duration and power_thread_result.get('power_measurement_complete', False):
-                print("Power measurement complete. Stopping benchmark iterations.")
-                break
-        
-        # Wait for power thread to complete if it's still running
-        if measure_power and power_duration:
-            power_thread.join()
-            power_data = power_thread_result.get('power_data', {})
-            print("Power measurement data collected successfully.")
         
         # Re-format results to match the original structure
-        # Move "float_results" and "float_time_us" into the "searches" array
-        for query_result in float_results:
-            float_metrics = {
-                "time_us": query_result.pop("float_time_us"),
-                "results": [(score, int(idx), text[:100]) for score, idx, text in query_result.pop("float_results")[:5]]
-            }
-            
-            query_result["searches"].insert(0, {
-                "method": "float",
-                "metrics": float_metrics
-            })
+        # For float method, move "float_results" and "float_time_us" into the "searches" array
+        # if not already done by the power measurement process
+        if not measure_power or not power_duration:
+            for query_result in float_results:
+                float_metrics = {
+                    "time_us": query_result.pop("float_time_us"),
+                    "results": [(score, int(idx), text[:100]) for score, idx, text in query_result.pop("float_results")[:5]]
+                }
+                
+                query_result["searches"].insert(0, {
+                    "method": "float",
+                    "metrics": float_metrics
+                })
         
         result_data = {
             "mode": mode,
@@ -275,11 +265,157 @@ class VectorSearchBenchmark:
         }
         
         # Add power data if available
-        if power_data:
-            result_data["power_measurements"] = power_data
+        if method_power_data:
+            result_data["power_measurements"] = method_power_data
             
         return result_data
-    
+
+    def _benchmark_method_with_power(self, method_name, search_func, queries, reference_results, power_duration):
+        """
+        Benchmark a single search method with power measurement.
+        
+        Args:
+            method_name: Name of the search method
+            search_func: Function to call for search
+            queries: List of query vectors
+            reference_results: Results from float search for comparison (None for float search itself)
+            power_duration: Duration for power measurement in seconds
+            
+        Returns:
+            tuple: (method_results, power_data)
+        """
+        print(f"Starting power measurement for {method_name} ({power_duration} seconds)...")
+        
+        # Setup for power measurement
+        power_thread_result = {'power_measurement_complete': False}
+        power_measure = N6705C()
+        
+        # Start power measurement thread
+        power_thread = threading.Thread(
+            target=self._run_power_measurement,
+            args=(power_measure, power_duration, power_thread_result)
+        )
+        power_thread.start()
+        
+        # Keep track of first iteration results
+        method_results = []
+        first_iteration_complete = False
+        iteration = 1
+        
+        # Run the benchmark method repeatedly until power measurement is complete
+        while not power_thread_result.get('power_measurement_complete', False):
+            print(f"Running {method_name} benchmark iteration {iteration}...")
+            
+            # For first iteration, collect and store results
+            if not first_iteration_complete:
+                if method_name == "float":
+                    # For float search (reference method)
+                    float_results = []
+                    for i, query in enumerate(queries):
+                        query_vector = query["vector"]
+                        results_tup, time_us = search_func(query_vector, self.k)
+                        
+                        # Store query metadata + float results
+                        query_result = {
+                            "run": query["run"],
+                            "float_results": results_tup,
+                            "float_time_us": time_us,
+                            "searches": []
+                        }
+                        
+                        # Add query-specific metadata
+                        if "query_index" in query:
+                            query_result["query_index"] = query["query_index"]
+                        if "query_text" in query:
+                            query_result["query_text"] = query["query_text"]
+                            query_result["formatted_query"] = query["formatted_query"]
+                            
+                        float_results.append(query_result)
+                        
+                        if (i + 1) % 10 == 0:
+                            print(f"  Completed {i + 1}/{len(queries)} {method_name} searches (recording results)")
+                    
+                    # For float search, convert results format before returning
+                    for query_result in float_results:
+                        float_metrics = {
+                            "time_us": query_result.pop("float_time_us"),
+                            "results": [(score, int(idx), text[:100]) for score, idx, text in query_result.pop("float_results")[:5]]
+                        }
+                        
+                        query_result["searches"].insert(0, {
+                            "method": "float",
+                            "metrics": float_metrics
+                        })
+                    
+                    method_results = float_results
+                    
+                else:
+                    # For other methods, compare with float reference
+                    for i, ref_result in enumerate(reference_results):
+                        query_vector = queries[i]["vector"]
+                        float_indices = set(idx for _, idx, _ in ref_result["float_results"])
+                        
+                        try:
+                            # Run the current search method
+                            results_tup, time_us = search_func(query_vector, self.k)
+                            result_indices = set(idx for _, idx, _ in results_tup)
+                            
+                            # Calculate metrics compared to float search
+                            metrics = {
+                                "time_us": time_us,
+                                "results": [(score, int(idx), text[:100]) for score, idx, text in results_tup[:5]],  # Store first 5 results
+                                "overlap_with_float": len(float_indices & result_indices),
+                                "jaccard_index": len(float_indices & result_indices) / len(float_indices | result_indices),
+                                "ndcg": calculate_ndcg(ref_result["float_results"], results_tup),
+                                "ndcg_10": calculate_ndcg(ref_result["float_results"][:10], results_tup[:10])
+                            }
+                            
+                            # Store method results
+                            method_results.append({
+                                "method": method_name,
+                                "metrics": metrics
+                            })
+                            
+                        except Exception as e:
+                            print(f"  Error in {method_name} search (run {i}): {str(e)}")
+                            method_results.append({
+                                "method": method_name,
+                                "metrics": {"error": str(e)}
+                            })
+                        
+                        if (i + 1) % 10 == 0:
+                            print(f"  Completed {i + 1}/{len(reference_results)} {method_name} searches (recording results)")
+                
+                first_iteration_complete = True
+            else:
+                # For subsequent iterations, just run the benchmark without recording results
+                for i, query in enumerate(queries):
+                    query_vector = query["vector"]
+                    try:
+                        search_func(query_vector, self.k)
+                    except Exception as e:
+                        # Just log errors but continue
+                        print(f"  Error in {method_name} search iteration {iteration} (run {i}): {str(e)}")
+                    
+                    if (i + 1) % 25 == 0:
+                        print(f"  Completed {i + 1}/{len(queries)} {method_name} searches (iteration {iteration})")
+            
+            # Check if power measurement is complete
+            if power_thread_result.get('power_measurement_complete', False):
+                print(f"Power measurement for {method_name} complete.")
+                break
+                
+            # Increment iteration counter
+            iteration += 1
+            print(f"Completed iteration {iteration-1} for {method_name}, checking if power measurement is complete...")
+        
+        # Wait for power thread to complete
+        power_thread.join()
+        power_data = power_thread_result.get('power_data', {})
+        print(f"Power measurement for {method_name} collected successfully.")
+        
+        return method_results, power_data
+
     def _load_queries(self, query_file: str) -> List[Dict[str, Any]]:
         """Load queries from JSONL file"""
         queries = []
