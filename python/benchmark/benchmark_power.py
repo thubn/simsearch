@@ -11,7 +11,7 @@ from math import log2, exp
 from embedding_search_benchmark import EmbeddingSearch
 
 # Import power measurement class from power.py
-from power_emulator import N6705C
+from power import N6705C
 import threading
 import queue
 
@@ -49,7 +49,7 @@ def calculate_ndcg(ground_truth: List[Tuple[float, int, str]],
 class PowerMeasurement:
     def __init__(self, output_dir, measure_interval=0.01, measure_duration=None):
         try:
-            from power_emulator import N6705C
+            from power import N6705C
             self.power_meter = N6705C()
             print("Power meter initialized successfully")
         except Exception as e:
@@ -74,10 +74,15 @@ class PowerMeasurement:
                 # Turn on channel if not already on
                 self.power_meter.ch0_on()
                 
-                # Start continuous measurement
-                self.power_meter.start_continuous_measurement(
-                    interval=self.measure_interval,
-                    buffer_size=100  # Adjust buffer size as needed
+                # Configure and start batch measurement
+                # Use larger interval and set sample count for the expected duration
+                measurement_time = 10  # Measure for 10 seconds as a reasonable default
+                measurement_interval = 0.05  # 50ms per sample (20 samples per second)
+                
+                # Set up batch measurement
+                self.power_meter.setup_batch_measurement(
+                    interval=measurement_interval,
+                    duration=measurement_time
                 )
         except Exception as e:
             print(f"Error starting power measurement for {method_name}: {str(e)}")
@@ -88,11 +93,8 @@ class PowerMeasurement:
         
         try:
             if self.power_meter:
-                # Get measurement statistics before stopping
-                stats = self.power_meter.get_measurement_stats(method_name)
-                
-                # Stop continuous measurement and get collected data
-                power, current, voltage, interval = self.power_meter.stop_continuous_measurement()
+                # Collect batch measurement results
+                power, current, voltage, interval = self.power_meter.collect_batch_measurement()
                 
                 # Save the measurement data
                 if power:
@@ -106,7 +108,12 @@ class PowerMeasurement:
                         "voltage": voltage,
                         "interval": interval,
                         "timestamp": timestamp,
-                        "stats": stats
+                        "stats": {
+                            "power_avg": sum(power) / len(power) if power else 0,
+                            "power_min": min(power) if power else 0,
+                            "power_max": max(power) if power else 0,
+                            "samples": len(power)
+                        }
                     }
                     
                     # Save to file
