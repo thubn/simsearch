@@ -41,7 +41,7 @@ class N6705C:
         """Turn on channel 2 of the power analyzer."""
         self.instrument.write("OUTP ON, (@1)")
 
-    def ch0_measure(self, interval=0.001, mtime=10, curr_range=0.001, volr_range=5):
+    def ch0_measure(self, interval=0.01, mtime=10, curr_range=3.06, volr_range=5.5):
         """
         Configure and perform power measurements on channel 2.
         
