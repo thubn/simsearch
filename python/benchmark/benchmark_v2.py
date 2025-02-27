@@ -318,7 +318,7 @@ class VectorSearchBenchmark:
                         # Store query metadata + float results
                         query_result = {
                             "run": query["run"],
-                            "float_results": results_tup,
+                            "float_results": results_tup,  # Keep this for later comparison
                             "float_time_us": time_us,
                             "searches": []
                         }
@@ -329,25 +329,33 @@ class VectorSearchBenchmark:
                         if "query_text" in query:
                             query_result["query_text"] = query["query_text"]
                             query_result["formatted_query"] = query["formatted_query"]
-                            
+                                
                         float_results.append(query_result)
                         
                         if (i + 1) % 10 == 0:
                             print(f"  Completed {i + 1}/{len(queries)} {method_name} searches (recording results)")
                     
-                    # For float search, convert results format before returning
+                    # IMPORTANT CHANGE: Create a COPY of float_results before modifying it
+                    return_results = []
                     for query_result in float_results:
+                        # Create a new dict for return results to avoid modifying the original
+                        modified_result = query_result.copy()
+                        
                         float_metrics = {
-                            "time_us": query_result.pop("float_time_us"),
-                            "results": [(score, int(idx), text[:100]) for score, idx, text in query_result.pop("float_results")[:5]]
+                            "time_us": modified_result["float_time_us"],
+                            "results": [(score, int(idx), text[:100]) for score, idx, text in modified_result["float_results"][:5]]
                         }
                         
-                        query_result["searches"].insert(0, {
+                        # We don't pop here to preserve the original keys
+                        modified_result["searches"] = [{
                             "method": "float",
                             "metrics": float_metrics
-                        })
+                        }]
+                        
+                        return_results.append(modified_result)
                     
-                    method_results = float_results
+                    # Return a copy for display but keep original structure for comparison
+                    method_results = return_results
                     
                 else:
                     # For other methods, compare with float reference
@@ -397,8 +405,8 @@ class VectorSearchBenchmark:
                         # Just log errors but continue
                         print(f"  Error in {method_name} search iteration {iteration} (run {i}): {str(e)}")
                     
-                    if (i + 1) % 25 == 0:
-                        print(f"  Completed {i + 1}/{len(queries)} {method_name} searches (iteration {iteration})")
+                    # if (i + 1) % 25 == 0:
+                    #     print(f"  Completed {i + 1}/{len(queries)} {method_name} searches (iteration {iteration})")
             
             # Check if power measurement is complete
             if power_thread_result.get('power_measurement_complete', False):
@@ -554,6 +562,10 @@ class VectorSearchBenchmark:
             'method_stats': method_stats,
             'runs': convert_numpy(results['results'])  # Convert any numpy types in the results
         }
+        
+        # Add power measurement data if available
+        if 'power_measurements' in results:
+            analysis_ready['power_measurements'] = convert_numpy(results['power_measurements'])
         
         # Save main results
         with open(final_output, 'w') as f:
