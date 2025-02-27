@@ -14,7 +14,7 @@ class N6705C:
     
     This class provides methods to connect to and control an N6705C power analyzer
     over TCP/IP, allowing power measurement of connected devices. The implementation
-    focuses on channel 2 (@2) for all operations.
+    focuses on channel 1 (@1) for all operations.
     """
 
     instrument = None  # Holds the PyVISA instrument resource
@@ -35,11 +35,11 @@ class N6705C:
 
     def ch0_off(self):
         """Turn off channel 2 of the power analyzer."""
-        self.instrument.write("OUTP OFF, (@2)")
+        self.instrument.write("OUTP OFF, (@1)")
 
     def ch0_on(self):
         """Turn on channel 2 of the power analyzer."""
-        self.instrument.write("OUTP ON, (@2)")
+        self.instrument.write("OUTP ON, (@1)")
 
     def ch0_measure(self, interval=0.001, mtime=10, curr_range=0.001, volr_range=5):
         """
@@ -59,21 +59,21 @@ class N6705C:
         self.instrument.write("FORM ASCII")
         
         # Set measurement time interval
-        self.instrument.write("SENS:SWE:TINT " + str(interval) + ", (@2)")
-        set_interval = self.instrument.query("SENS:SWE:TINT? (@2)")
+        self.instrument.write("SENS:SWE:TINT " + str(interval) + ", (@1)")
+        set_interval = self.instrument.query("SENS:SWE:TINT? (@1)")
         
         # Calculate and set number of measurement points
         npoints = int(mtime/float(set_interval))
-        self.instrument.write("SENS:SWE:POIN " + str(npoints) + ", (@2)")
+        self.instrument.write("SENS:SWE:POIN " + str(npoints) + ", (@1)")
         
         # Configure measurement ranges
-        self.instrument.write("SENS:CURR:RANG " + str(curr_range) + ", (@2)")
-        self.instrument.write("SENS:VOLT:RANG " + str(volr_range) + ", (@2)")
+        self.instrument.write("SENS:CURR:RANG " + str(curr_range) + ", (@1)")
+        self.instrument.write("SENS:VOLT:RANG " + str(volr_range) + ", (@1)")
 
         # Perform measurements and retrieve data
-        a_mres_power = self.instrument.query("MEAS:ARR:POW? (@2)", delay=mtime)
-        a_mres_current = self.instrument.query("FETC:ARR:CURR? (@2)")
-        a_mres_voltage = self.instrument.query("FETC:ARR:VOLT? (@2)")
+        a_mres_power = self.instrument.query("MEAS:ARR:POW? (@1)", delay=mtime)
+        a_mres_current = self.instrument.query("FETC:ARR:CURR? (@1)")
+        a_mres_voltage = self.instrument.query("FETC:ARR:VOLT? (@1)")
         
         # Process power measurement data
         res_arr = a_mres_power.split(",")
@@ -93,9 +93,9 @@ class N6705C:
         for res in res_arr:
             mres_voltage.append(float(res))
 
-        # mres_power=self.instrument.query_binary_values("MEAS:ARR:POW? (@2)", datatype='f', delay=mtime)
-        # mres_current=self.instrument.query_binary_values("FETC:ARR:CURR? (@2)", datatype='f')
-        # mres_voltage=self.instrument.query_binary_values("FETC:ARR:VOLT? (@2)", datatype='f')
+        # mres_power=self.instrument.query_binary_values("MEAS:ARR:POW? (@1)", datatype='f', delay=mtime)
+        # mres_current=self.instrument.query_binary_values("FETC:ARR:CURR? (@1)", datatype='f')
+        # mres_voltage=self.instrument.query_binary_values("FETC:ARR:VOLT? (@1)", datatype='f')
         return(mres_power, mres_current, mres_voltage, float(set_interval))
     
     def to_dataframe(self, data_p, data_c, data_v, interval):
