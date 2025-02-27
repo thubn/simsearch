@@ -3,10 +3,12 @@ import array
 import numpy as np
 import json
 import time
+import threading
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from math import log2, exp
 from embedding_search_benchmark import EmbeddingSearch
+from power import N6705C
 
 def calculate_ndcg(ground_truth: List[Tuple[float, int, str]], 
                   prediction: List[Tuple[float, int, str]]) -> float:
@@ -132,14 +134,28 @@ class VectorSearchBenchmark:
                 
         return queries
 
-    def benchmark_sequential(self, mode: str, query_file: str = None) -> Dict[str, Any]:
-        """Run benchmarks sequentially by method rather than interleaved"""
+    def benchmark_sequential(self, mode: str, query_file: str = None, measure_power: bool = False, power_duration: int = None) -> Dict[str, Any]:
+        """Run benchmarks sequentially by method rather than interleaved, optionally with power measurement"""
         # Generate all query vectors first
         print(f"Generating {self.runs} queries...")
         queries = self._generate_queries(mode, query_file)
         print(f"Generated {len(queries)} queries")
         
         results = []
+        power_data = {}
+        
+        # Set up power measurement if requested
+        if measure_power and power_duration:
+            print(f"\nStarting power measurement for {power_duration} seconds...")
+            power_thread_result = {'power_measurement_complete': False}
+            
+            # Create and start the power measurement thread
+            power_measure = N6705C()
+            power_thread = threading.Thread(
+                target=self._run_power_measurement,
+                args=(power_measure, power_duration, power_thread_result)
+            )
+            power_thread.start()
         
         # First run the float search (reference for comparison) on all queries
         print("\nRunning reference float search on all queries...")
@@ -167,49 +183,78 @@ class VectorSearchBenchmark:
             
             if (i + 1) % 10 == 0:
                 print(f"  Completed {i + 1}/{len(queries)} float searches")
+        
+        # Keep track of benchmark iterations (for power measurement)
+        iteration = 1
                 
-        # Run each method separately on all queries
-        for method_name, search_func in self.search_methods:
-            # Skip float search as we already did it
-            if method_name == "float":
-                continue
-                
-            print(f"\nRunning {method_name} search on all queries...")
+        # Continue running benchmarks until power measurement completes
+        while not measure_power or not power_duration or not power_thread_result.get('power_measurement_complete', True):
+            if iteration > 1:
+                print(f"\nStarting benchmark iteration {iteration} while power measurement completes...")
             
-            for i, query_result in enumerate(float_results):
-                query_vector = queries[i]["vector"]
-                float_indices = set(idx for _, idx, _ in query_result["float_results"])
-                
-                try:
-                    # Run the current search method
-                    results_tup, time_us = search_func(query_vector, self.k)
-                    result_indices = set(idx for _, idx, _ in results_tup)
-                    
-                    # Calculate metrics compared to float search
-                    metrics = {
-                        "time_us": time_us,
-                        "results": [(score, int(idx), text[:100]) for score, idx, text in results_tup[:5]],  # Store first 5 results
-                        "overlap_with_float": len(float_indices & result_indices),
-                        "jaccard_index": len(float_indices & result_indices) / len(float_indices | result_indices),
-                        "ndcg": calculate_ndcg(query_result["float_results"], results_tup),
-                        "ndcg_10": calculate_ndcg(query_result["float_results"][:10], results_tup[:10])
-                    }
-                    
-                    query_result["searches"].append({
-                        "method": method_name,
-                        "metrics": metrics
-                    })
-                    
-                except Exception as e:
-                    print(f"  Error in {method_name} search (run {i}): {str(e)}")
+            # Run each method separately on all queries
+            for method_name, search_func in self.search_methods:
+                # Skip float search as we already did it, except in repeated iterations
+                if method_name == "float" and iteration == 1:
                     continue
+                    
+                print(f"\nRunning {method_name} search on all queries...")
                 
-                if (i + 1) % 10 == 0:
-                    print(f"  Completed {i + 1}/{len(queries)} {method_name} searches")
+                for i, query_result in enumerate(float_results):
+                    query_vector = queries[i]["vector"]
+                    float_indices = set(idx for _, idx, _ in query_result["float_results"])
+                    
+                    try:
+                        # Run the current search method
+                        results_tup, time_us = search_func(query_vector, self.k)
+                        result_indices = set(idx for _, idx, _ in results_tup)
+                        
+                        # Calculate metrics compared to float search
+                        metrics = {
+                            "time_us": time_us,
+                            "results": [(score, int(idx), text[:100]) for score, idx, text in results_tup[:5]],  # Store first 5 results
+                            "overlap_with_float": len(float_indices & result_indices),
+                            "jaccard_index": len(float_indices & result_indices) / len(float_indices | result_indices),
+                            "ndcg": calculate_ndcg(query_result["float_results"], results_tup),
+                            "ndcg_10": calculate_ndcg(query_result["float_results"][:10], results_tup[:10])
+                        }
+                        
+                        # For first iteration, add results to main data structure
+                        if iteration == 1:
+                            query_result["searches"].append({
+                                "method": method_name,
+                                "metrics": metrics
+                            })
+                        
+                    except Exception as e:
+                        print(f"  Error in {method_name} search (run {i}): {str(e)}")
+                        continue
+                    
+                    if (i + 1) % 10 == 0:
+                        print(f"  Completed {i + 1}/{len(queries)} {method_name} searches")
+                
+                # Add some separation between methods for power analysis
+                print(f"Completed all {method_name} searches. Sleeping for 5 seconds...")
+                time.sleep(5)
+                
+                # Check if power measurement is complete after each method
+                if measure_power and power_duration and power_thread_result.get('power_measurement_complete', False):
+                    print("Power measurement complete. Stopping benchmark iterations.")
+                    break
             
-            # Add some separation between methods for power analysis
-            print(f"Completed all {method_name} searches. Sleeping for 5 seconds...")
-            time.sleep(5)
+            # Increment iteration counter
+            iteration += 1
+            
+            # Check if power measurement is complete after a full iteration
+            if measure_power and power_duration and power_thread_result.get('power_measurement_complete', False):
+                print("Power measurement complete. Stopping benchmark iterations.")
+                break
+        
+        # Wait for power thread to complete if it's still running
+        if measure_power and power_duration:
+            power_thread.join()
+            power_data = power_thread_result.get('power_data', {})
+            print("Power measurement data collected successfully.")
         
         # Re-format results to match the original structure
         # Move "float_results" and "float_time_us" into the "searches" array
@@ -223,12 +268,18 @@ class VectorSearchBenchmark:
                 "method": "float",
                 "metrics": float_metrics
             })
-            
-        return {
+        
+        result_data = {
             "mode": mode,
             "results": float_results
         }
         
+        # Add power data if available
+        if power_data:
+            result_data["power_measurements"] = power_data
+            
+        return result_data
+    
     def _load_queries(self, query_file: str) -> List[Dict[str, Any]]:
         """Load queries from JSONL file"""
         queries = []
@@ -236,6 +287,49 @@ class VectorSearchBenchmark:
             for line in f:
                 queries.append(json.loads(line))
         return queries
+    
+    def _run_power_measurement(self, power_measure, duration, result_dict):
+        """Run power measurement in separate thread and store results in shared dict"""
+        try:
+            print(f"Starting power measurement for {duration} seconds...")
+            power, current, voltage, interval = power_measure.ch0_measure(mtime=duration)
+            
+            # Convert numpy arrays to lists if necessary
+            if hasattr(power, 'tolist'):
+                power = power.tolist()
+            if hasattr(current, 'tolist'):
+                current = current.tolist()
+            if hasattr(voltage, 'tolist'):
+                voltage = voltage.tolist()
+                
+            # Calculate aggregate statistics
+            avg_power = sum(power) / len(power) if power else 0
+            avg_current = sum(current) / len(current) if current else 0
+            avg_voltage = sum(voltage) / len(voltage) if voltage else 0
+            total_energy = sum(power) * interval if power else 0
+            
+            result_dict['power_data'] = {
+                'raw': {
+                    'power': power,
+                    'current': current,
+                    'voltage': voltage,
+                    'interval': interval,
+                },
+                'summary': {
+                    'avg_power': avg_power,
+                    'avg_current': avg_current,
+                    'avg_voltage': avg_voltage,
+                    'total_energy': total_energy,
+                    'duration': duration,
+                    'samples': len(power)
+                }
+            }
+            print(f"Power measurement complete. Average power: {avg_power:.6f}W, Total energy: {total_energy:.6f}J")
+        except Exception as e:
+            print(f"Error during power measurement: {str(e)}")
+            result_dict['error'] = str(e)
+        finally:
+            result_dict['power_measurement_complete'] = True
 
     def save_results(self, results: Dict[str, Any], output_file: str):
         """Save benchmark results in a format optimized for Jupyter analysis"""
@@ -354,6 +448,10 @@ def main():
     parser.add_argument("--method-pause", type=float, default=5.0, 
                       help="Pause between methods in seconds (for power analysis)")
     
+    # Add power measurement arguments
+    parser.add_argument("--measure-power", action="store_true", help="Enable power measurement during benchmark")
+    parser.add_argument("--power-duration", type=int, default=120, help="Duration of power measurement in seconds")
+    
     args = parser.parse_args()
     
     if args.mode == "query" and not args.query_file:
@@ -375,8 +473,13 @@ def main():
         embedding_dim=args.embedding_dim
     )
     
-    # Run sequential benchmark
-    results = benchmark.benchmark_sequential(args.mode, args.query_file)
+    # Run sequential benchmark with power measurement if requested
+    results = benchmark.benchmark_sequential(
+        args.mode, 
+        args.query_file, 
+        measure_power=args.measure_power,
+        power_duration=args.power_duration if args.measure_power else None
+    )
     
     # Save results
     benchmark.save_results(results, args.output)

@@ -149,11 +149,10 @@ class N6705C:
         plt.xlabel("time [s]")
         plt.show()
 
-power_measure = N6705C()
 
-
-
-power_measure.ch0_on()
-power, current, voltage, interval = power_measure.ch0_measure(mtime=duration)
-power_measure.ch0_off()
-data = power_measure.to_dataframe(power, current, voltage, interval)
+# How to measure example:
+# power_measure = N6705C()
+# power_measure.ch0_on()
+# power, current, voltage, interval = power_measure.ch0_measure(mtime=duration)
+# power_measure.ch0_off()
+# data = power_measure.to_dataframe(power, current, voltage, interval)
