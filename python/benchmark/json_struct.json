@@ -1,0 +1,2446 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Generated schema for Root",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "num_vectors": {
+          "type": "number"
+        },
+        "vector_dim": {
+          "type": "number"
+        },
+        "k": {
+          "type": "number"
+        },
+        "runs": {
+          "type": "number"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "timestamp_human": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "rescoring_factors": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "multithreading": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "num_vectors",
+        "vector_dim",
+        "k",
+        "runs",
+        "timestamp",
+        "timestamp_human",
+        "mode",
+        "rescoring_factors",
+        "multithreading"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "float": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            }
+          },
+          "required": [
+            "time_us"
+          ]
+        },
+        "avx2": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "binary": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "int8": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "float_mt": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "avx2_mt": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "binary_mt": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "int8_mt": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "twostep_rf10": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "twostep_rf10_mt": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "twostep_rf25": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        },
+        "twostep_rf25_mt": {
+          "type": "object",
+          "properties": {
+            "time_us": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "median": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std",
+                "min",
+                "max",
+                "median"
+              ]
+            },
+            "jaccard_index": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "ndcg": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            },
+            "overlap": {
+              "type": "object",
+              "properties": {
+                "mean": {
+                  "type": "number"
+                },
+                "std": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "mean",
+                "std"
+              ]
+            }
+          },
+          "required": [
+            "time_us",
+            "jaccard_index",
+            "ndcg",
+            "overlap"
+          ]
+        }
+      },
+      "required": [
+        "float",
+        "avx2",
+        "binary",
+        "int8",
+        "float_mt",
+        "avx2_mt",
+        "binary_mt",
+        "int8_mt",
+        "twostep_rf10",
+        "twostep_rf10_mt",
+        "twostep_rf25",
+        "twostep_rf25_mt"
+      ]
+    },
+    "method_stats": {
+      "type": "object",
+      "properties": {
+        "float": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {}
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {}
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {}
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "avx2": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "binary": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "int8": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "float_mt": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "avx2_mt": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "binary_mt": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "int8_mt": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "twostep_rf10": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "twostep_rf10_mt": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "twostep_rf25": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        },
+        "twostep_rf25_mt": {
+          "type": "object",
+          "properties": {
+            "times_us": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "jaccard_indices": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "ndcg_scores": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "overlap_counts": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "times_us",
+            "jaccard_indices",
+            "ndcg_scores",
+            "overlap_counts"
+          ]
+        }
+      },
+      "required": [
+        "float",
+        "avx2",
+        "binary",
+        "int8",
+        "float_mt",
+        "avx2_mt",
+        "binary_mt",
+        "int8_mt",
+        "twostep_rf10",
+        "twostep_rf10_mt",
+        "twostep_rf25",
+        "twostep_rf25_mt"
+      ]
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "type": "number"
+          },
+          "float_results": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "additionalItems": false
+            }
+          },
+          "float_time_us": {
+            "type": "number"
+          },
+          "searches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "method": {
+                  "type": "string"
+                },
+                "metrics": {
+                  "type": "object",
+                  "properties": {
+                    "time_us": {
+                      "type": "number"
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "items": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
+                        "additionalItems": false
+                      }
+                    },
+                    "overlap_with_float": {
+                      "type": "number"
+                    },
+                    "jaccard_index": {
+                      "type": "number"
+                    },
+                    "ndcg": {
+                      "type": "number"
+                    },
+                    "ndcg_10": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "time_us",
+                    "results"
+                  ]
+                }
+              },
+              "required": [
+                "method",
+                "metrics"
+              ]
+            }
+          },
+          "query_text": {
+            "type": "string"
+          },
+          "formatted_query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run",
+          "float_results",
+          "float_time_us",
+          "searches",
+          "query_text",
+          "formatted_query"
+        ]
+      }
+    },
+    "power_measurements": {
+      "type": "object",
+      "properties": {
+        "float": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "avx2": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "binary": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "int8": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "float_mt": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "avx2_mt": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "binary_mt": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "int8_mt": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "twostep_rf10": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "twostep_rf10_mt": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "twostep_rf25": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        },
+        "twostep_rf25_mt": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "object",
+              "properties": {
+                "power": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "current": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "voltage": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "interval": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "power",
+                "current",
+                "voltage",
+                "interval"
+              ]
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "avg_power": {
+                  "type": "number"
+                },
+                "avg_current": {
+                  "type": "number"
+                },
+                "avg_voltage": {
+                  "type": "number"
+                },
+                "total_energy": {
+                  "type": "number"
+                },
+                "duration": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "avg_power",
+                "avg_current",
+                "avg_voltage",
+                "total_energy",
+                "duration",
+                "samples"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "summary"
+          ]
+        }
+      },
+      "required": [
+        "float",
+        "avx2",
+        "binary",
+        "int8",
+        "float_mt",
+        "avx2_mt",
+        "binary_mt",
+        "int8_mt",
+        "twostep_rf10",
+        "twostep_rf10_mt",
+        "twostep_rf25",
+        "twostep_rf25_mt"
+      ]
+    }
+  },
+  "required": [
+    "metadata",
+    "summary",
+    "method_stats",
+    "runs",
+    "power_measurements"
+  ]
+}
