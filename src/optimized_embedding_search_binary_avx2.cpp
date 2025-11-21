@@ -148,7 +148,10 @@ int32_t OptimizedEmbeddingSearchBinaryAVX2::cosine_similarity_optimized_dynamic(
   _mm_prefetch(vec_a + 4 * 10, _MM_HINT_T0);
   _mm_prefetch(vec_a + 4 * 10 + 2, _MM_HINT_T0);
   __m256i all_ones = _mm256_set1_epi32(-1);
-  __m256i xor_result[vectors_per_embedding];
+  __m256i xor_result[32];
+  if (vectors_per_embedding > 32) {
+      throw std::runtime_error("vectors_per_embedding exceeds maximum of 32");
+  }
   for (int i = 0; i < vectors_per_embedding; i++) {
     xor_result[i] = _mm256_xor_si256(vec_a[i], vec_b[i]);
     xor_result[i] = _mm256_xor_si256(xor_result[i], all_ones);

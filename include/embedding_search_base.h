@@ -78,7 +78,10 @@ class OptimizedEmbeddingSearchBase
     : public EmbeddingSearchBase<VectorType, SimilarityType> {
 protected:
   const config::SearchConfig &config_;
-  std::unique_ptr<StorageType[]> embedding_data;
+  struct FreeDeleter {
+    void operator()(StorageType *p) const { std::free(p); }
+  };
+  std::unique_ptr<StorageType[], FreeDeleter> embedding_data;
   size_t vectors_per_embedding;
 
 public:
@@ -111,8 +114,12 @@ protected:
                               const StorageType *vec_b) const = 0;
   // Common allocation method
   bool allocateAlignedMemory(size_t total_size) {
-    embedding_data.reset(static_cast<StorageType *>(std::aligned_alloc(
-        config_.memory.alignmentSize, total_size * sizeof(StorageType))));
-    return embedding_data != nullptr;
+    StorageType *ptr = static_cast<StorageType *>(std::aligned_alloc(
+        config_.memory.alignmentSize, total_size * sizeof(StorageType)));
+    if (ptr) {
+      embedding_data.reset(ptr);
+      return true;
+    }
+    return false;
   }
 };

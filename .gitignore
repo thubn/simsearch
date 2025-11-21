@@ -29,3 +29,5 @@ memory_benchmark/memory_benchmark
 **/*.snm
 written_bachelor_thesis/bilder/plots/*/
 written_bachelor_thesis/thesis.txt
+__pycache__
+.venv

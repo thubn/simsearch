@@ -109,13 +109,30 @@ private:
 
 public:
   PyEmbeddingSearch() {
-    config_path =
+    const auto module_dir =
         std::filesystem::path(py::module::import("embedding_search_benchmark")
                                   .attr("__file__")
                                   .cast<std::string>())
-            .parent_path()
-            .string() +
-        "/config.json";
+            .parent_path();
+
+    // Prefer a config next to the compiled module; fall back to repo roots that
+    // are common when running from the python/benchmark folder.
+    const std::vector<std::filesystem::path> candidates = {
+        module_dir / "config.json",
+        module_dir.parent_path() / "config.json",           // repo root
+        std::filesystem::current_path() / "config.json"};   // CWD
+
+    for (const auto &candidate : candidates) {
+      if (std::filesystem::exists(candidate)) {
+        config_path = candidate.string();
+        break;
+      }
+    }
+
+    if (config_path.empty()) {
+      // Keep the original default to surface a clear error downstream.
+      config_path = (module_dir / "config.json").string();
+    }
   }
 
   bool load(const std::string &filename, const int embedding_dim,

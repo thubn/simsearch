@@ -2,7 +2,7 @@
 #include "embedding_io.h"
 #include <algorithm>
 #include <cmath>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <omp.h>
 #include <stdexcept>
 

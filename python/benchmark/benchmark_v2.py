@@ -45,8 +45,21 @@ class VectorSearchBenchmark:
         self.searcher.load(filename=embedding_file, embedding_dim=embedding_dim, init_pca=True, init_avx2=True, init_binary=True, init_int8=True, init_float16=True, init_mf=True)
         self.k = k
         self.runs = runs
-        self.rescoring_factors = rescoring_factors or []
         self.num_vectors, self.vector_dim = self.searcher.get_dimensions()
+
+        # Drop rescoring factors that request more candidates than we have data
+        self.rescoring_factors = rescoring_factors or []
+        if self.rescoring_factors:
+            max_candidates = self.num_vectors
+            original = list(self.rescoring_factors)
+            self.rescoring_factors = [
+                rf for rf in self.rescoring_factors if (self.k * rf) <= max_candidates
+            ]
+            if len(self.rescoring_factors) < len(original):
+                print(
+                    f"Warning: reduced rescoring factors from {original} to {self.rescoring_factors} because k*rf exceeds available vectors ({self.num_vectors})"
+                )
+
         print(f"Loaded {self.num_vectors} vectors of dimension {self.vector_dim}")
         if rescoring_factors:
             print(f"Will run two-step search with rescoring factors: {rescoring_factors}")

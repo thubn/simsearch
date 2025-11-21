@@ -691,7 +691,7 @@ int main(int argc, char *argv[]) {
   }
 
   try {
-    ConfigManager::getInstance().initialize("../config.json");
+    ConfigManager::getInstance().initialize("config.json");
     const auto &config = ConfigRef::get();
 
     simsearch::Searchers searchers;

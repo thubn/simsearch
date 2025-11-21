@@ -1,7 +1,7 @@
 #include "embedding_utils.h"
 #include "aligned_types.h"
 #include <cstdint>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <immintrin.h>
 #include <iomanip>
 #include <iostream>

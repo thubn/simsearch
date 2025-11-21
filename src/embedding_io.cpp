@@ -344,7 +344,7 @@ bool load_parquet(const std::string &filename,
     reader_properties.set_buffer_size(4 * 1024 * 1024); // 4MB buffer
 
     std::unique_ptr<parquet::arrow::FileReader> reader;
-    PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(infile, pool, &reader));
+    PARQUET_ASSIGN_OR_THROW(reader, parquet::arrow::OpenFile(infile, pool));
 
     // Get metadata
     std::shared_ptr<arrow::Schema> schema;

@@ -131,7 +131,8 @@ class ParquetEmbeddingGenerator:
         dataset_config: Optional[str] = None,
         dataset_split: str = "train",
         random_rows: Optional[int] = None,
-        random_seed: Optional[int] = None
+        random_seed: Optional[int] = None,
+        streaming: bool = False
     ) -> Iterator[pd.DataFrame]:
         if random_seed is not None:
             random.seed(random_seed)
@@ -179,19 +180,58 @@ class ParquetEmbeddingGenerator:
             try:
                 # Load Hugging Face dataset with configuration
                 if dataset_config:
-                    print(f"Loading dataset '{file_path}' with configuration '{dataset_config}'")
+                    print(f"Loading dataset '{file_path}' with configuration '{dataset_config}' (streaming={streaming})")
                     dataset = load_dataset(
                         file_path,
                         dataset_config,
-                        split=dataset_split
+                        split=dataset_split,
+                        streaming=streaming
                     )
                 else:
-                    print(f"Loading dataset '{file_path}'")
+                    print(f"Loading dataset '{file_path}' (streaming={streaming})")
                     dataset = load_dataset(
                         file_path,
-                        split=dataset_split
+                        split=dataset_split,
+                        streaming=streaming
                     )
 
+                if streaming:
+                    # Streaming mode logic
+                    buffer = []
+                    processed_rows = 0
+                    
+                    # If random_rows is set in streaming mode, we just take the first N rows
+                    # because random access is not supported
+                    limit = random_rows if random_rows else max_rows
+                    
+                    for data_row in dataset:
+                        if limit and processed_rows >= limit:
+                            break
+                            
+                        # Check if required columns exist
+                        row_data = {}
+                        missing_columns = False
+                        for col in columns:
+                            if col not in data_row:
+                                print(f"Warning: Column '{col}' not found in dataset. Available columns: {list(data_row.keys())}")
+                                missing_columns = True
+                                break
+                            row_data[col] = data_row[col]
+                        
+                        if missing_columns:
+                            continue
+                        
+                        buffer.append(row_data)
+                        processed_rows += 1
+                        
+                        if len(buffer) >= chunk_size:
+                            yield pd.DataFrame(buffer)
+                            buffer = []
+                    
+                    if buffer:
+                        yield pd.DataFrame(buffer)
+                    return
+                        
                 total_rows = len(dataset)
                 
                 if random_rows:
@@ -280,7 +320,8 @@ class ParquetEmbeddingGenerator:
         dataset_config: Optional[str] = None,
         dataset_split: str = "train",
         random_rows: int = None,
-        random_seed: int = None
+        random_seed: int = None,
+        streaming: bool = False
     ) -> None:
         """
         Process the dataset in chunks and save formatted text with embeddings to parquet files.
@@ -306,6 +347,7 @@ class ParquetEmbeddingGenerator:
                     dataset_split=dataset_split,
                     random_rows=random_rows,
                     random_seed=random_seed,
+                    streaming=streaming
                 ),
                 desc="Processing chunks"
             ):
@@ -363,7 +405,8 @@ class ParquetEmbeddingGenerator:
         dataset_config: Optional[str] = None,
         dataset_split: str = "train",
         random_rows: int = None,
-        random_seed: int = None
+        random_seed: int = None,
+        streaming: bool = False
     ) -> None:
         """
         Process a large parquet file or Hugging Face dataset memory-efficiently.
@@ -378,6 +421,7 @@ class ParquetEmbeddingGenerator:
             start_row: Starting row index
             dataset_config: Configuration/subset name for Hugging Face dataset
             dataset_split: Dataset split to use (train, test, validation)
+            streaming: Whether to stream the dataset
         """
         print(f"Starting processing with chunk size: {chunk_size}")
         print(f"Output will be saved to: {output_path}")
@@ -393,7 +437,8 @@ class ParquetEmbeddingGenerator:
             dataset_config=dataset_config,
             dataset_split=dataset_split,
             random_rows=random_rows,
-            random_seed=random_seed
+            random_seed=random_seed,
+            streaming=streaming
         )
         
         print("Processing completed!")

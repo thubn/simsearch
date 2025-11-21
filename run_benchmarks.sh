@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # run benchark with queries from embeddings themselves
-./simsearch -f ../../create_embeddings/out/1_2M_random_out.parquet -k 1000 -s 10
-./simsearch -f ../../create_embeddings/out/1_2M_random_out.parquet -k 1000 -s 25
+./build/simsearch -f python/out/1_2M_random_out_mpnet.parquet -k 1000 -s 10
+./build/simsearch -f python/out/1_2M_random_out_mpnet.parquet -k 1000 -s 25
 
-./simsearch -f ../../create_embeddings/out/1_2M_random_out.parquet -q ../../create_embeddings/query_embeddings/combined.json -s 2
-./simsearch -f ../../create_embeddings/out/1_2M_random_out.parquet -q ../../create_embeddings/query_embeddings/combined.json -s 5
-./simsearch -f ../../create_embeddings/out/1_2M_random_out.parquet -q ../../create_embeddings/query_embeddings/combined.json -s 10
-./simsearch -f ../../create_embeddings/out/1_2M_random_out.parquet -q ../../create_embeddings/query_embeddings/combined.json -s 25
-./simsearch -f ../../create_embeddings/out/1_2M_random_out.parquet -q ../../create_embeddings/query_embeddings/combined.json -s 50
-./simsearch -f ../../create_embeddings/out/1_2M_random_out.parquet -q ../../create_embeddings/query_embeddings/combined.json -s 100
-./simsearch -f ../../create_embeddings/out/1_2M_random_out.parquet -q ../../create_embeddings/query_embeddings/combined.json -s 1000
+./build/simsearch -f python/out/1_2M_random_out_mpnet.parquet -q python/query_embeddings/combined.jsonl -s 2
+./build/simsearch -f python/out/1_2M_random_out_mpnet.parquet -q python/query_embeddings/combined.jsonl -s 5
+./build/simsearch -f python/out/1_2M_random_out_mpnet.parquet -q python/query_embeddings/combined.jsonl -s 10
+./build/simsearch -f python/out/1_2M_random_out_mpnet.parquet -q python/query_embeddings/combined.jsonl -s 25
+./build/simsearch -f python/out/1_2M_random_out_mpnet.parquet -q python/query_embeddings/combined.jsonl -s 50
+./build/simsearch -f python/out/1_2M_random_out_mpnet.parquet -q python/query_embeddings/combined.jsonl -s 100
+./build/simsearch -f python/out/1_2M_random_out_mpnet.parquet -q python/query_embeddings/combined.jsonl -s 1000
