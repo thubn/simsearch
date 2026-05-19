@@ -31,3 +31,16 @@ written_bachelor_thesis/bilder/plots/*/
 written_bachelor_thesis/thesis.txt
 __pycache__
 .venv
+
+# Local benchmark outputs / artifacts
+python/out/
+python/benchmark/benchmark_results_*.json
+python/benchmark/benchmark_results_*_summary.json
+query_search_results_*.json
+random_emb_search_results_*.json
+
+# Generated notebook plots
+python/jupyter/plots/*.png
+
+# Local nested repo / experiments
+simsearch-arm/
