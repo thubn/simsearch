@@ -1,2 +1,0 @@
-?? initial_commit.txt
-?? initial_git_status.txt

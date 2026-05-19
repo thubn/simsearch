@@ -2,9 +2,20 @@
 
 ## Local discovery
 
-No document embedding parquet, safetensors, or ndjson files were found under the
-repository checkout during inspection. The repository does contain query
-embeddings under `python/query_embeddings/`.
+During the first inspection, no document embedding parquet, safetensors, or
+ndjson files were found under the repository checkout. Afterward, local parquet
+files were added under `python/out/`.
+
+Current local document embedding files:
+
+| File | Rows | Dimension |
+| --- | ---: | ---: |
+| `python/out/1_2M_random_out_mixedbread.parquet` | 1,000 | 1024 |
+| `python/out/1_2M_random_out_mpnet.parquet` | 1,000 | 768 |
+
+Despite the `1_2M` filenames, pyarrow metadata reports 1,000 rows for each
+file. The repository also contains query embeddings under
+`python/query_embeddings/`.
 
 Useful local query files:
 

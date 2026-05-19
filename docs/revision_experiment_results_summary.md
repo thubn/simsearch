@@ -29,30 +29,25 @@
 
 ## 4. Dataset path and query path
 
-The requested full Wikipedia/mxbai document embedding parquet was not present in
-the checkout:
+After the first implementation pass, local parquet files were added under
+`python/out/`. The rerun used:
 
-- Missing preferred path: `python/out/1_2M_random_out_mixedbread.parquet`
-- Query path used: `python/query_embeddings/combined.jsonl`
-
-To run sanity checks and verify the new instrumentation, a small local fallback
-parquet was generated from the existing 1024-dimensional query embeddings:
-
-- Fallback dataset: `python/out/local_query_embeddings_1024.parquet`
-- Fallback dataset size: 313 vectors
+- Dataset path: `python/out/1_2M_random_out_mixedbread.parquet`
+- Query path: `python/query_embeddings/combined.jsonl`
+- Dataset rows: 1,000
 - Dimension: 1024
 
-This fallback is not a substitute for the paper-scale Wikipedia document
-embedding dataset.
+The file name still says `1_2M`, but pyarrow metadata reports 1,000 rows. This
+is the largest local mxbai document embedding parquet currently available.
 
 ## 5. Dataset sizes used
 
-- Priority 1 fallback run: `N=313`
-- Priority 1 sanity check: `N=100`, 3 queries, 2 repeats
-- Priority 2 fallback run: `N=100`, `N=200`, `N=313`
+- Priority 1 run: `N=1000`
+- Priority 1 sanity check: `N=1000`, 3 queries, 2 repeats
+- Priority 2 run: `N=100`, `N=500`, `N=1000`
 
 The requested `60000`, `300000`, and `1200000` sizes could not be run because
-the full embedding parquet was unavailable.
+the largest local mxbai parquet has only 1,000 rows.
 
 ## 6. Methods run
 
@@ -92,44 +87,21 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
 cmake --build build -j"$(nproc)"
 ```
 
-Fallback parquet generation:
+Priority 1:
 
 ```bash
 . .venv/bin/activate
-mkdir -p python/out
-python - <<'PY'
-import json
-from pathlib import Path
-import pandas as pd
-rows=[]
-with open('python/query_embeddings/combined.jsonl') as f:
-    for i,line in enumerate(f):
-        j=json.loads(line)
-        row={'formatted_text': j.get('formatted_query') or j.get('query') or f'query {i}'}
-        for d,v in enumerate(j['embedding']):
-            row[f'embedding_{d}']=float(v)
-        rows.append(row)
-out=Path('python/out/local_query_embeddings_1024.parquet')
-pd.DataFrame(rows).to_parquet(out, index=False)
-print(out, len(rows), len(rows[0])-1)
-PY
-```
-
-Priority 1 fallback:
-
-```bash
-. .venv/bin/activate
-DATASET="$PWD/python/out/local_query_embeddings_1024.parquet" \
-REPEATS=1 SANITY_N=100 SANITY_QUERIES=3 SANITY_REPEATS=2 FULL_N=0 \
+DATASET="$PWD/python/out/1_2M_random_out_mixedbread.parquet" \
+REPEATS=1 SANITY_N=1000 SANITY_QUERIES=3 SANITY_REPEATS=2 FULL_N=0 \
 scripts/run_priority1_timing_breakdown.sh
 ```
 
-Priority 2 fallback:
+Priority 2:
 
 ```bash
 . .venv/bin/activate
-DATASET="$PWD/python/out/local_query_embeddings_1024.parquet" \
-SIZES="100 200 313" QUERY_LIMIT=25 REPEATS=1 \
+DATASET="$PWD/python/out/1_2M_random_out_mixedbread.parquet" \
+SIZES="100 500 1000" QUERY_LIMIT=100 REPEATS=1 \
 scripts/run_priority2_scaling.sh
 ```
 
@@ -144,22 +116,26 @@ scripts/plot_revision_results.py
 
 See `results/priority1_timing_summary.csv`.
 
-Key fallback summary:
+Key `N=1000` summary:
 
-- `float32_avx2`: geomean total about `0.0116 ms`
-- `binary`: geomean total about `0.00593 ms`
-- `two_step_RF10`: geomean total about `0.0214 ms`
-- `two_step_mf_RF10`: geomean total about `0.0978 ms`
+- `float32_avx2`: geomean total about `0.0419 ms`
+- `binary`: geomean total about `0.0131 ms`
+- `two_step_RF10`: geomean total about `0.0702 ms`
+- `two_step_mf_RF10`: geomean total about `0.309 ms`
+- `two_step_RF50`: geomean total about `0.0641 ms`
+- `two_step_mf_RF50`: geomean total about `0.302 ms`
 
-Because `N=313`, RF10 and RF50 both saturate at all available candidates, so
-RF50 cannot show the intended larger-survivor behavior on this fallback data.
+Because `N=1000`, both RF10 and RF50 saturate at all available candidates for
+`k=100`, so RF50 cannot show the intended larger-survivor behavior on this
+dataset.
 
 ## 9. Priority 2 summary table
 
 See `results/priority2_scaling_summary.csv` and
 `results/priority2_scaling_verification.md`.
 
-Fallback sizes were too small to support manuscript-scale conclusions.
+The local sizes are useful for script/instrumentation verification, but they
+are still too small to support manuscript-scale conclusions.
 
 ## 10. Sanity-check results
 
@@ -181,51 +157,51 @@ wrapper overhead, so exact equality is not expected.
 
 ## 12. Whether Step 1 or Step 2 dominates
 
-On the fallback `N=313` data:
+On the local `N=1000` data:
 
-- `two_step_RF10` was dominated by rescoring rather than binary scan.
-- This is an artifact of the tiny dataset and candidate saturation.
-- No manuscript-scale conclusion should be drawn from this fallback run.
+- `two_step_RF10` was dominated by rescoring plus candidate selection rather
+  than binary scan alone.
+- This is expected with only 1,000 vectors because the two-step candidate set
+  saturates to the full dataset for `k=100, RF=10`.
+- No manuscript-scale Step 1/Step 2 conclusion should be drawn until the larger
+  dataset is available.
 
 ## 13. Whether RF50 has higher/equal rescoring cost than RF10
 
-On the fallback `N=313` data, RF10 and RF50 both select all available candidates
+On the local `N=1000` data, RF10 and RF50 both select all available candidates
 for `k=100`, so survivor counts and rescore costs are saturated. This check
 requires a larger dataset, ideally at least `k * 50 = 5000` vectors and
 preferably the full paper dataset.
 
 ## 14. Whether RF50 has higher/equal accuracy than RF10
 
-On the fallback data, RF10 and RF50 saturate to the same candidate set, so this
+On the local data, RF10 and RF50 saturate to the same candidate set, so this
 comparison is not meaningful.
 
 ## 15. Whether scaling with N is approximately linear
 
-The fallback `N=100`, `200`, `313` run is too small for a strong scaling
-conclusion. `float32_avx2` increased with N in the fallback summary, but the
-binary and two-step numbers include fixed overheads and tiny absolute runtimes.
+The local `N=100`, `500`, `1000` run is too small for a strong scaling
+conclusion. `float32_avx2` increased with N in the summary, but the binary and
+two-step numbers include fixed overheads and small absolute runtimes.
 
 ## 16. Unexpected results
 
-- The existing full AVX2 search path assumes `k <= N`; an attempted fallback
-  scaling run with `N=60` and `k=100` segfaulted. The successful fallback run
-  used all sizes `>= k`.
+- The existing full AVX2 search path assumes `k <= N`; an earlier fallback
+  scaling run with `N=60` and `k=100` segfaulted. The successful reruns used all
+  sizes `>= k`.
 - The mapped-float initialization prints many partition lines to stdout; this is
   existing behavior and was not refactored.
-- On the tiny fallback dataset, two-step accuracy decreases as `N` grows because
-  `k=100` and candidate saturation interact with using query embeddings as the
-  document set.
+- With only 1,000 vectors, RF10/RF50 candidate counts saturate, so the RF
+  comparison is not representative.
 
 ## 17. Known limitations
 
-- Full Wikipedia/mxbai document embeddings were unavailable locally.
-- Priority 1 and Priority 2 were executed only on a generated 313-vector
-  fallback parquet.
-- The fallback parquet is useful for code and instrumentation verification, not
-  for TECS manuscript claims.
-- Full experiments should be rerun after providing
-  `python/out/1_2M_random_out_mixedbread.parquet` or another real document
-  embedding parquet.
+- The local mxbai parquet has 1,000 rows, not 1.2M.
+- Priority 1 and Priority 2 were executed on the largest local mxbai parquet.
+- These results are useful for code and instrumentation verification, not for
+  TECS manuscript-scale claims.
+- Full experiments should be rerun after providing a larger document embedding
+  parquet, ideally the 1.2M Wikipedia/mxbai file.
 
 ## 18. Files changed
 
@@ -268,4 +244,4 @@ binary and two-step numbers include fixed overheads and tiny absolute runtimes.
 - `figures/revision_priority1_timing_breakdown.pdf`
 - `figures/revision_priority2_scaling.pdf`
 
-The generated fallback parquet under `python/out/` is ignored by git.
+The generated/local parquet files under `python/out/` are ignored by git.
