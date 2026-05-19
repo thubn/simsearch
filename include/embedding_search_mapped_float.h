@@ -1,6 +1,7 @@
 #pragma once
 #include "aligned_types.h"         // for avx2i_vector
 #include "embedding_search_base.h" // for EmbeddingSearchBase
+#include "timing_breakdown.h"
 #include <stddef.h>                // for size_t
 #include <stdexcept>               // for runtime_error
 #include <string>                  // for string
@@ -25,6 +26,10 @@ public:
   std::vector<std::pair<float, size_t>>
   similarity_search(const std::vector<float> &query, size_t k,
                     std::vector<std::pair<int, size_t>> &searchIndexes);
+  std::vector<std::pair<float, size_t>> similarity_search_with_timing(
+      const std::vector<float> &query, size_t k,
+      std::vector<std::pair<int, size_t>> &searchIndexes,
+      TimingBreakdown &timing);
 
   bool validateDimensions(const std::vector<std::vector<float>> &input,
                           std::string &error_message) override {

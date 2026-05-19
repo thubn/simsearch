@@ -2,6 +2,7 @@
 #include "common_structs.h"
 #include "config_manager.h"
 #include "embedding_utils.h"
+#include "timing_breakdown.h"
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -74,6 +75,31 @@ private:
     return py::make_tuple(results_py, time);
   }
 
+  template <typename T>
+  py::tuple format_results_with_timing(
+      const std::vector<std::pair<T, size_t>> &results,
+      const TimingBreakdown &timing) {
+    py::list results_py;
+    const auto &sentences = searchers->base.getSentences();
+
+    for (const auto &result : results) {
+      results_py.append(py::make_tuple(
+          result.first, result.second,
+          EmbeddingUtils::sanitize_utf8(sentences[result.second])));
+    }
+
+    py::dict timing_py;
+    timing_py["T_query_sketch_ms"] = timing.query_sketch_ms;
+    timing_py["T_binary_scan_ms"] = timing.binary_scan_ms;
+    timing_py["T_candidate_selection_ms"] = timing.candidate_selection_ms;
+    timing_py["T_rescore_ms"] = timing.rescore_ms;
+    timing_py["T_final_topk_ms"] = timing.final_topk_ms;
+    timing_py["T_total_ms"] = timing.total_ms;
+    timing_py["num_survivors"] = timing.num_survivors;
+
+    return py::make_tuple(results_py, timing.total_ms * 1000.0, timing_py);
+  }
+
   // Template method that forwards to implementation
   template <typename T, typename ResultType = float>
   py::tuple perform_search(const SearcherInfo<T, ResultType> &info,
@@ -138,13 +164,15 @@ public:
   bool load(const std::string &filename, const int embedding_dim,
             bool init_pca = true, bool init_avx2 = true,
             bool init_binary = true, bool init_int8 = true,
-            bool init_float16 = true, bool init_mf = true) {
+            bool init_float16 = true, bool init_mf = true,
+            size_t max_vectors = 0) {
     try {
       ConfigManager::getInstance().initialize(config_path);
       searchers = std::make_unique<simsearch::Searchers>();
       simsearch::initializeSearchers(*searchers, filename, embedding_dim,
                                      init_pca, init_avx2, init_binary,
-                                     init_int8, init_float16, init_mf);
+                                     init_int8, init_float16, init_mf,
+                                     max_vectors);
       is_initialized = true;
       return true;
     } catch (const std::exception &e) {
@@ -175,6 +203,33 @@ public:
         SearcherInfo<OptimizedEmbeddingSearchBinaryAVX2, int32_t>{
             searchers->obinary_avx2, "binary"},
         query_vector, k);
+  }
+
+  py::tuple search_binary_timed(py::array_t<float> query_vector, size_t k) {
+    check_initialization();
+    auto total_start = std::chrono::high_resolution_clock::now();
+    std::vector<float> query = convert_query(query_vector);
+
+    TimingBreakdown timing;
+    auto sketch_start = std::chrono::high_resolution_clock::now();
+    avx2i_vector queryBinary(query.size() / 8 / 32);
+    EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinary,
+                                                   query.size() / 8 / 32);
+    auto sketch_end = std::chrono::high_resolution_clock::now();
+
+    auto results =
+        searchers->obinary_avx2.similarity_search_with_timing(queryBinary, k,
+                                                              timing);
+    auto total_end = std::chrono::high_resolution_clock::now();
+
+    timing.query_sketch_ms =
+        std::chrono::duration<double, std::milli>(sketch_end - sketch_start)
+            .count();
+    timing.total_ms =
+        std::chrono::duration<double, std::milli>(total_end - total_start)
+            .count();
+
+    return format_results_with_timing(results, timing);
   }
 
   py::tuple search_int8(py::array_t<float> query_vector, size_t k) {
@@ -252,6 +307,39 @@ public:
     return format_results(final_results, time);
   }
 
+  py::tuple search_twostep_timed(py::array_t<float> query_vector, size_t k,
+                                 size_t rescoring_factor) {
+    check_initialization();
+    auto total_start = std::chrono::high_resolution_clock::now();
+    std::vector<float> query = convert_query(query_vector);
+
+    TimingBreakdown timing;
+    auto sketch_start = std::chrono::high_resolution_clock::now();
+    avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
+    EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2,
+                                                   query.size() / 8 / 32);
+    auto sketch_end = std::chrono::high_resolution_clock::now();
+
+    auto binary_results = searchers->obinary_avx2.similarity_search_with_timing(
+        queryBinaryAvx2, k * rescoring_factor, timing);
+    TimingBreakdown rescore_timing;
+    auto final_results = searchers->oavx2.similarity_search_with_timing(
+        query, k, binary_results, rescore_timing);
+    auto total_end = std::chrono::high_resolution_clock::now();
+
+    timing.query_sketch_ms =
+        std::chrono::duration<double, std::milli>(sketch_end - sketch_start)
+            .count();
+    timing.rescore_ms = rescore_timing.rescore_ms;
+    timing.final_topk_ms = rescore_timing.final_topk_ms;
+    timing.num_survivors = binary_results.size();
+    timing.total_ms =
+        std::chrono::duration<double, std::milli>(total_end - total_start)
+            .count();
+
+    return format_results_with_timing(final_results, timing);
+  }
+
   py::tuple search_twostep_mf(py::array_t<float> query_vector, size_t k,
                               size_t rescoring_factor) {
     check_initialization();
@@ -274,6 +362,39 @@ public:
             .count();
 
     return format_results(final_results, time);
+  }
+
+  py::tuple search_twostep_mf_timed(py::array_t<float> query_vector, size_t k,
+                                    size_t rescoring_factor) {
+    check_initialization();
+    auto total_start = std::chrono::high_resolution_clock::now();
+    std::vector<float> query = convert_query(query_vector);
+
+    TimingBreakdown timing;
+    auto sketch_start = std::chrono::high_resolution_clock::now();
+    avx2i_vector queryBinaryAvx2(query.size() / 8 / 32);
+    EmbeddingUtils::convertSingleFloatToBinaryAVX2(query, queryBinaryAvx2,
+                                                   query.size() / 8 / 32);
+    auto sketch_end = std::chrono::high_resolution_clock::now();
+
+    auto binary_results = searchers->obinary_avx2.similarity_search_with_timing(
+        queryBinaryAvx2, k * rescoring_factor, timing);
+    TimingBreakdown rescore_timing;
+    auto final_results = searchers->mappedFloat.similarity_search_with_timing(
+        query, k, binary_results, rescore_timing);
+    auto total_end = std::chrono::high_resolution_clock::now();
+
+    timing.query_sketch_ms =
+        std::chrono::duration<double, std::milli>(sketch_end - sketch_start)
+            .count();
+    timing.rescore_ms = rescore_timing.rescore_ms;
+    timing.final_topk_ms = rescore_timing.final_topk_ms;
+    timing.num_survivors = binary_results.size();
+    timing.total_ms =
+        std::chrono::duration<double, std::milli>(total_end - total_start)
+            .count();
+
+    return format_results_with_timing(final_results, timing);
   }
 
   // ======================================
@@ -430,13 +551,17 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
       .def("load", &PyEmbeddingSearch::load, "Load embeddings from file",
            py::arg("filename"), py::arg("embedding_dim"), py::arg("init_pca"),
            py::arg("init_avx2"), py::arg("init_binary"), py::arg("init_int8"),
-           py::arg("init_float16"), py::arg("init_mf"))
+           py::arg("init_float16"), py::arg("init_mf"),
+           py::arg("max_vectors") = 0)
       .def("search_float", &PyEmbeddingSearch::search_float,
            "Base float search", py::arg("query_vector"), py::arg("k"))
       .def("search_avx2", &PyEmbeddingSearch::search_avx2,
            "AVX2 optimized search", py::arg("query_vector"), py::arg("k"))
       .def("search_binary", &PyEmbeddingSearch::search_binary,
            "Binary AVX2 search", py::arg("query_vector"), py::arg("k"))
+      .def("search_binary_timed", &PyEmbeddingSearch::search_binary_timed,
+           "Binary AVX2 search with timing breakdown",
+           py::arg("query_vector"), py::arg("k"))
       .def("search_int8", &PyEmbeddingSearch::search_int8, "INT8 search",
            py::arg("query_vector"), py::arg("k"))
       .def("search_float16", &PyEmbeddingSearch::search_float16,
@@ -456,8 +581,17 @@ PYBIND11_MODULE(embedding_search_benchmark, m) {
       .def("search_twostep", &PyEmbeddingSearch::search_twostep,
            "Two-step binary+float search", py::arg("query_vector"),
            py::arg("k"), py::arg("rescoring_factor") = 50)
+      .def("search_twostep_timed", &PyEmbeddingSearch::search_twostep_timed,
+           "Two-step binary+float search with timing breakdown",
+           py::arg("query_vector"), py::arg("k"),
+           py::arg("rescoring_factor") = 50)
       .def("search_twostep_mf", &PyEmbeddingSearch::search_twostep_mf,
            "Two-step binary+mf search", py::arg("query_vector"), py::arg("k"),
+           py::arg("rescoring_factor") = 50)
+      .def("search_twostep_mf_timed",
+           &PyEmbeddingSearch::search_twostep_mf_timed,
+           "Two-step binary+mf search with timing breakdown",
+           py::arg("query_vector"), py::arg("k"),
            py::arg("rescoring_factor") = 50)
       .def("get_float_embedding", &PyEmbeddingSearch::get_float_embedding,
            "Get float embedding at index", py::arg("index"))

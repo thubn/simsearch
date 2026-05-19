@@ -173,6 +173,15 @@ std::vector<std::pair<float, size_t>>
 OptimizedEmbeddingSearchAVX2::similarity_search(
     const std::vector<float> &query, size_t k,
     std::vector<std::pair<int, size_t>> &searchIndexes) {
+  TimingBreakdown timing;
+  return similarity_search_with_timing(query, k, searchIndexes, timing);
+}
+
+std::vector<std::pair<float, size_t>>
+OptimizedEmbeddingSearchAVX2::similarity_search_with_timing(
+    const std::vector<float> &query, size_t k,
+    std::vector<std::pair<int, size_t>> &searchIndexes,
+    TimingBreakdown &timing) {
   if (query.size() != vector_dim) {
     throw std::invalid_argument("Invalid query dimension");
   }
@@ -190,19 +199,32 @@ OptimizedEmbeddingSearchAVX2::similarity_search(
   std::vector<std::pair<float, size_t>> results;
   results.reserve(searchIndexes.size());
 
+  auto rescore_start = std::chrono::high_resolution_clock::now();
   for (size_t i = 0; i < searchIndexes.size(); i++) {
     float similarity = cosine_similarity_optimized(
         get_embedding_ptr(searchIndexes[i].second), query_aligned.data());
     results.emplace_back(similarity, searchIndexes[i].second);
   }
+  auto rescore_end = std::chrono::high_resolution_clock::now();
 
   // Partial sort to get top-k results
+  auto final_topk_start = std::chrono::high_resolution_clock::now();
   if (results.size() > k) {
     std::partial_sort(
         results.begin(), results.begin() + k, results.end(),
         [](const auto &a, const auto &b) { return a.first > b.first; });
     results.resize(k);
   }
+  auto final_topk_end = std::chrono::high_resolution_clock::now();
+
+  timing.rescore_ms =
+      std::chrono::duration<double, std::milli>(rescore_end - rescore_start)
+          .count();
+  timing.final_topk_ms =
+      std::chrono::duration<double, std::milli>(final_topk_end -
+                                               final_topk_start)
+          .count();
+  timing.num_survivors = searchIndexes.size();
 
   return results;
 }

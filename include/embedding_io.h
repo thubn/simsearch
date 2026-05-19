@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -15,5 +16,6 @@ bool load_json2(const std::string &filename,
 bool load_parquet(const std::string &filename,
                   std::vector<std::vector<float>> &embeddings,
                   std::vector<std::string> &sentences, const bool set_sentences,
-                  const int embedding_dim = 1024);
+                  const int embedding_dim = 1024,
+                  const size_t max_rows = 0);
 } // namespace EmbeddingIO

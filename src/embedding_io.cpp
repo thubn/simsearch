@@ -331,7 +331,7 @@ bool load_json2(const std::string &filename,
 bool load_parquet(const std::string &filename,
                   std::vector<std::vector<float>> &embeddings,
                   std::vector<std::string> &sentences, const bool set_sentences,
-                  const int embedding_dim) {
+                  const int embedding_dim, const size_t max_rows) {
   std::cout << "embedding_dim: " << embedding_dim << std::endl;
   try {
     // Standard initialization
@@ -351,6 +351,9 @@ bool load_parquet(const std::string &filename,
     PARQUET_THROW_NOT_OK(reader->GetSchema(&schema));
     auto file_metadata = reader->parquet_reader()->metadata();
     int64_t num_rows = file_metadata->num_rows();
+    if (max_rows > 0) {
+      num_rows = std::min<int64_t>(num_rows, static_cast<int64_t>(max_rows));
+    }
     int num_row_groups = file_metadata->num_row_groups();
 
     // Pre-allocate the final vectors
@@ -377,13 +380,15 @@ bool load_parquet(const std::string &filename,
     // Async reading function
     auto read_row_group = [&](int row_group) -> BatchData {
       BatchData batch;
-      batch.rows_in_group = file_metadata->RowGroup(row_group)->num_rows();
 
       // Calculate base index for this row group
       batch.base_idx = 0;
       for (int i = 0; i < row_group; i++) {
         batch.base_idx += file_metadata->RowGroup(i)->num_rows();
       }
+      batch.rows_in_group =
+          std::min<int64_t>(file_metadata->RowGroup(row_group)->num_rows(),
+                            num_rows - batch.base_idx);
 
       PARQUET_THROW_NOT_OK(
           reader->ReadRowGroup(row_group, text_column, &batch.text_batch));
@@ -442,9 +447,16 @@ bool load_parquet(const std::string &filename,
     for (int row_group = 0; row_group < num_row_groups; row_group++) {
       // Get current batch
       BatchData current_batch = next_batch.get();
+      if (current_batch.base_idx >= num_rows) {
+        break;
+      }
 
       // Start next async read if there are more row groups
-      if (row_group + 1 < num_row_groups) {
+      int64_t next_base_idx = current_batch.base_idx +
+                              file_metadata->RowGroup(row_group)->num_rows();
+      const bool has_next_row_group =
+          row_group + 1 < num_row_groups && next_base_idx < num_rows;
+      if (has_next_row_group) {
         next_batch =
             std::async(std::launch::async, read_row_group, row_group + 1);
       }
@@ -455,6 +467,9 @@ bool load_parquet(const std::string &filename,
       if (row_group % 100 == 0) {
         std::cout << "Processed row group " << row_group << " of "
                   << num_row_groups << std::endl;
+      }
+      if (!has_next_row_group) {
+        break;
       }
     }
 

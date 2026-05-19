@@ -99,8 +99,9 @@ public:
   Searchers() = default;
 
   // Initialize base embeddings from file
-  bool initBase(const std::string &filename, const int embedding_dim) {
-    return base.load(filename, true, embedding_dim);
+  bool initBase(const std::string &filename, const int embedding_dim,
+                const size_t max_rows = 0) {
+    return base.load(filename, true, embedding_dim, max_rows);
   }
 
   void initPca2() {
@@ -255,9 +256,10 @@ void initializeSearchers(Searchers &searchers, const std::string &filename,
                          const bool init_binary = true,
                          const bool init_int8 = true,
                          const bool init_float16 = true,
-                         const bool init_mf = true) {
+                         const bool init_mf = true,
+                         const size_t max_rows = 0) {
   // Load base embeddings
-  searchers.initBase(filename, embedding_dim);
+  searchers.initBase(filename, embedding_dim, max_rows);
 #ifdef NO_THREADS
   if (init_avx2)
     searchers.initOavx2();

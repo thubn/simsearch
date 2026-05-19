@@ -1,0 +1,1 @@
+scripts/collect_machine_info.sh: line 10: clang: command not found

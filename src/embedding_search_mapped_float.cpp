@@ -1,6 +1,7 @@
 #include "embedding_search_mapped_float.h"
 #include <algorithm>      // for copy, max, partial_sort, lower_bound, sort
 #include <bits/std_abs.h> // for abs
+#include <chrono>         // for high_resolution_clock
 #include <cmath>          // for cos, exp, M_PI_2
 #include <emmintrin.h>    // for _mm_loadl_epi64, __m128i
 #include <exception>      // for exception
@@ -349,18 +350,28 @@ EmbeddingSearchMappedFloat::similarity_search(const std::vector<float> &query,
     similarities.emplace_back(sim, i);
   }
 
+  const size_t topk = std::min(k, similarities.size());
   std::partial_sort(
-      similarities.begin(), similarities.begin() + k, similarities.end(),
+      similarities.begin(), similarities.begin() + topk, similarities.end(),
       [](const auto &a, const auto &b) { return a.first > b.first; });
 
   return std::vector<std::pair<float, size_t>>(similarities.begin(),
-                                               similarities.begin() + k);
+                                               similarities.begin() + topk);
 }
 
 std::vector<std::pair<float, size_t>>
 EmbeddingSearchMappedFloat::similarity_search(
     const std::vector<float> &query, size_t k,
     std::vector<std::pair<int, size_t>> &searchIndexes) {
+  TimingBreakdown timing;
+  return similarity_search_with_timing(query, k, searchIndexes, timing);
+}
+
+std::vector<std::pair<float, size_t>>
+EmbeddingSearchMappedFloat::similarity_search_with_timing(
+    const std::vector<float> &query, size_t k,
+    std::vector<std::pair<int, size_t>> &searchIndexes,
+    TimingBreakdown &timing) {
   if (query.size() != vector_dim) {
     throw std::runtime_error("Query vector size does not match embedding size");
   }
@@ -372,15 +383,28 @@ EmbeddingSearchMappedFloat::similarity_search(
   std::vector<std::pair<float, size_t>> similarities;
   similarities.reserve(searchIndexes.size());
 
+  auto rescore_start = std::chrono::high_resolution_clock::now();
   for (size_t i = 0; i < searchIndexes.size(); ++i) {
     float sim =
         cosine_similarity(aligned_query, embeddings[searchIndexes[i].second]);
     similarities.emplace_back(sim, searchIndexes[i].second);
   }
+  auto rescore_end = std::chrono::high_resolution_clock::now();
 
+  auto final_topk_start = std::chrono::high_resolution_clock::now();
   std::partial_sort(
       similarities.begin(), similarities.begin() + k, similarities.end(),
       [](const auto &a, const auto &b) { return a.first > b.first; });
+  auto final_topk_end = std::chrono::high_resolution_clock::now();
+
+  timing.rescore_ms =
+      std::chrono::duration<double, std::milli>(rescore_end - rescore_start)
+          .count();
+  timing.final_topk_ms =
+      std::chrono::duration<double, std::milli>(final_topk_end -
+                                               final_topk_start)
+          .count();
+  timing.num_survivors = searchIndexes.size();
 
   return std::vector<std::pair<float, size_t>>(similarities.begin(),
                                                similarities.begin() + k);

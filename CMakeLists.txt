@@ -38,8 +38,8 @@ endif()
 include_directories(${PYARROW_DIR}/include)
 link_directories(${PYARROW_DIR})
 
-find_library(ARROW_LIB NAMES arrow libarrow.so.2200 PATHS ${PYARROW_DIR} NO_DEFAULT_PATH)
-find_library(PARQUET_LIB NAMES parquet libparquet.so.2200 PATHS ${PYARROW_DIR} NO_DEFAULT_PATH)
+find_library(ARROW_LIB NAMES arrow libarrow.so libarrow.so.2400 libarrow.so.2200 PATHS ${PYARROW_DIR} NO_DEFAULT_PATH)
+find_library(PARQUET_LIB NAMES parquet libparquet.so libparquet.so.2400 libparquet.so.2200 PATHS ${PYARROW_DIR} NO_DEFAULT_PATH)
 
 if (NOT ARROW_LIB)
     message(FATAL_ERROR "Arrow library not found in ${PYARROW_DIR}")

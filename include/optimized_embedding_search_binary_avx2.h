@@ -2,6 +2,7 @@
 #include "aligned_types.h"         // for avx2i_vector
 #include "avx2_popcount.h"         // for AVX2Popcount
 #include "embedding_search_base.h" // for OptimizedEmbeddingSearchBase
+#include "timing_breakdown.h"
 #include <immintrin.h>             // for __m256i
 #include <stddef.h>                // for size_t
 #include <stdint.h>                // for int32_t
@@ -18,6 +19,9 @@ public:
   setEmbeddings(const std::vector<std::vector<float>> &input_vectors) override;
   std::vector<std::pair<int32_t, size_t>>
   similarity_search(const avx2i_vector &query, size_t k) override;
+  std::vector<std::pair<int32_t, size_t>>
+  similarity_search_with_timing(const avx2i_vector &query, size_t k,
+                                TimingBreakdown &timing);
   avx2i_vector getEmbeddingAVX2(size_t index) const;
 
 protected:

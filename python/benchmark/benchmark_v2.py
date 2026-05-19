@@ -1,7 +1,11 @@
 import argparse
 import array
+import csv
 import numpy as np
 import json
+import os
+import platform
+import subprocess
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
@@ -40,9 +44,31 @@ def calculate_ndcg(ground_truth: List[Tuple[float, int, str]],
     return dcg / idcg if idcg > 0 else 0.0
 
 class VectorSearchBenchmark:
-    def __init__(self, embedding_file: str, k: int = 25, runs: int = 100, rescoring_factors: List[int] = None, embedding_dim = 1024):
+    def __init__(
+        self,
+        embedding_file: str,
+        k: int = 25,
+        runs: int = 100,
+        rescoring_factors: List[int] = None,
+        embedding_dim = 1024,
+        max_vectors: int = 0,
+        init_pca: bool = True,
+        init_int8: bool = True,
+        init_float16: bool = True,
+        init_mf: bool = True,
+    ):
         self.searcher = EmbeddingSearch()
-        self.searcher.load(filename=embedding_file, embedding_dim=embedding_dim, init_pca=True, init_avx2=True, init_binary=True, init_int8=True, init_float16=True, init_mf=True)
+        self.searcher.load(
+            filename=embedding_file,
+            embedding_dim=embedding_dim,
+            init_pca=init_pca,
+            init_avx2=True,
+            init_binary=True,
+            init_int8=init_int8,
+            init_float16=init_float16,
+            init_mf=init_mf,
+            max_vectors=max_vectors,
+        )
         self.k = k
         self.runs = runs
         self.num_vectors, self.vector_dim = self.searcher.get_dimensions()
@@ -303,6 +329,141 @@ class VectorSearchBenchmark:
             }, f, indent=2)
         print(f"Summary saved to {summary_output}")
 
+def _run(cmd: List[str]) -> str:
+    try:
+        return subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
+    except Exception:
+        return ""
+
+def _cpu_model() -> str:
+    try:
+        with open("/proc/cpuinfo", "r") as f:
+            for line in f:
+                if line.startswith("model name"):
+                    return line.split(":", 1)[1].strip()
+    except OSError:
+        pass
+    return platform.processor() or ""
+
+def _jaccard(reference, prediction) -> float:
+    ref = {idx for _, idx, _ in reference}
+    pred = {idx for _, idx, _ in prediction}
+    union = ref | pred
+    return len(ref & pred) / len(union) if union else 0.0
+
+def _timing_zero(total_ms: float, num_survivors: int) -> Dict[str, float]:
+    return {
+        "T_query_sketch_ms": 0.0,
+        "T_binary_scan_ms": 0.0,
+        "T_candidate_selection_ms": 0.0,
+        "T_rescore_ms": 0.0,
+        "T_final_topk_ms": 0.0,
+        "T_total_ms": total_ms,
+        "num_survivors": num_survivors,
+    }
+
+def _revision_method_specs(methods: str) -> List[Tuple[str, str, int]]:
+    specs = []
+    for raw in [m.strip() for m in methods.split(",") if m.strip()]:
+        if raw == "float32_avx2":
+            specs.append((raw, "avx2", 0))
+        elif raw == "binary":
+            specs.append((raw, "binary", 0))
+        elif raw.startswith("two_step_mf_RF"):
+            specs.append((raw, "twostep_mf", int(raw.rsplit("RF", 1)[1])))
+        elif raw.startswith("two_step_RF"):
+            specs.append((raw, "twostep", int(raw.rsplit("RF", 1)[1])))
+        else:
+            raise ValueError(f"Unknown revision method: {raw}")
+    return specs
+
+def run_revision_csv(args):
+    benchmark = VectorSearchBenchmark(
+        args.embedding_file,
+        args.k,
+        args.runs,
+        [],
+        embedding_dim=args.embedding_dim,
+        max_vectors=args.max_vectors,
+        init_pca=False,
+        init_int8=False,
+        init_float16=False,
+        init_mf=("two_step_mf" in args.methods),
+    )
+    queries = benchmark._load_queries(args.query_file)
+    if args.query_limit:
+        queries = queries[:args.query_limit]
+
+    git_commit = _run(["git", "rev-parse", "HEAD"])
+    compiler = _run(["bash", "-lc", "c++ --version | head -n 1"])
+    compile_flags = _run(["bash", "-lc", "grep -E 'CMAKE_CXX_FLAGS_RELEASE:|CMAKE_CXX_FLAGS:|CMAKE_CXX_FLAGS_RELEASE=' build/CMakeCache.txt 2>/dev/null | tr '\\n' ' '"])
+    machine = platform.node()
+    cpu_model = _cpu_model()
+    specs = _revision_method_specs(args.methods)
+
+    fieldnames = [
+        "git_commit", "machine", "cpu_model", "compiler", "compile_flags",
+        "dataset", "dataset_path", "query_path", "N", "d", "k", "RF",
+        "method", "query_id", "repeat_id", "T_query_sketch_ms",
+        "T_binary_scan_ms", "T_candidate_selection_ms", "T_rescore_ms",
+        "T_final_topk_ms", "T_total_ms", "ndcg100", "jaccard",
+        "num_survivors",
+    ]
+    output_path = Path(args.csv_output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    write_header = not output_path.exists() or not args.append_csv
+
+    with open(output_path, "a" if args.append_csv else "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+
+        for repeat_id in range(args.repeats):
+            for query_id, query_data in enumerate(queries):
+                query_vector = np.array(query_data["embedding"], dtype=np.float32)
+                float_results, _ = benchmark.searcher.search_float(query_vector, args.k)
+
+                for method_name, kind, rf in specs:
+                    if kind == "avx2":
+                        results, time_us = benchmark.searcher.search_avx2(query_vector, args.k)
+                        timing = _timing_zero(float(time_us) / 1000.0, len(results))
+                    elif kind == "binary":
+                        results, _, timing = benchmark.searcher.search_binary_timed(query_vector, args.k)
+                    elif kind == "twostep":
+                        results, _, timing = benchmark.searcher.search_twostep_timed(query_vector, args.k, rf)
+                    elif kind == "twostep_mf":
+                        results, _, timing = benchmark.searcher.search_twostep_mf_timed(query_vector, args.k, rf)
+                    else:
+                        raise AssertionError(kind)
+
+                    writer.writerow({
+                        "git_commit": git_commit,
+                        "machine": machine,
+                        "cpu_model": cpu_model,
+                        "compiler": compiler,
+                        "compile_flags": compile_flags,
+                        "dataset": args.dataset_name,
+                        "dataset_path": args.embedding_file,
+                        "query_path": args.query_file,
+                        "N": benchmark.num_vectors,
+                        "d": benchmark.vector_dim,
+                        "k": args.k,
+                        "RF": rf,
+                        "method": method_name,
+                        "query_id": query_id,
+                        "repeat_id": repeat_id,
+                        "T_query_sketch_ms": timing["T_query_sketch_ms"],
+                        "T_binary_scan_ms": timing["T_binary_scan_ms"],
+                        "T_candidate_selection_ms": timing["T_candidate_selection_ms"],
+                        "T_rescore_ms": timing["T_rescore_ms"],
+                        "T_final_topk_ms": timing["T_final_topk_ms"],
+                        "T_total_ms": timing["T_total_ms"],
+                        "ndcg100": calculate_ndcg(float_results, results),
+                        "jaccard": _jaccard(float_results, results),
+                        "num_survivors": int(timing["num_survivors"]),
+                    })
+                f.flush()
+
 def main():
     parser = argparse.ArgumentParser(description="Vector Similarity Search Benchmark")
     parser.add_argument("--embedding-file", "-f", required=True, help="Path to embedding file")
@@ -315,12 +476,36 @@ def main():
                       help="Output file path for results")
     parser.add_argument("--rescoring-factor", type=str, help="Comma-separated list of rescoring factors for two-step search")
     parser.add_argument("--embedding-dim", "-d", type=int, default=1024, help="Of dimensions of embedding file")
+    parser.add_argument("--revision-csv", action="store_true",
+                      help="Run revision experiment CSV mode")
+    parser.add_argument("--methods", default="float32_avx2,binary,two_step_RF10,two_step_mf_RF10",
+                      help="Comma-separated revision method names")
+    parser.add_argument("--max-vectors", type=int, default=0,
+                      help="Load at most this many vectors from the embedding file")
+    parser.add_argument("--query-limit", type=int, default=0,
+                      help="Use only the first this many queries")
+    parser.add_argument("--repeats", type=int, default=1,
+                      help="Repeat each query this many times in revision CSV mode")
+    parser.add_argument("--csv-output", default="results/revision_raw.csv",
+                      help="Raw CSV output path for revision CSV mode")
+    parser.add_argument("--append-csv", action="store_true",
+                      help="Append to CSV output instead of replacing it")
+    parser.add_argument("--dataset-name", default="wikimedia_wikipedia_mxbai",
+                      help="Dataset label for revision CSV output")
     
     args = parser.parse_args()
     print(args.embedding_dim)
     
     if args.mode == "query" and not args.query_file:
         parser.error("Query file is required for query mode")
+
+    if args.revision_csv:
+        if args.mode != "query":
+            parser.error("--revision-csv currently requires --mode query")
+        if not args.query_file:
+            parser.error("--revision-csv requires --query-file")
+        run_revision_csv(args)
+        return
 
     # Parse rescoring factors if provided
     rescoring_factors = None

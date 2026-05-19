@@ -1,6 +1,7 @@
 #include "optimized_embedding_search_binary_avx2.h"
 #include "embedding_utils.h" // for validateBinaryAVX2Dimensions
 #include <algorithm>         // for partial_sort
+#include <chrono>            // for high_resolution_clock
 #include <iostream>          // for basic_ostream, operator<<, cerr, endl
 #include <stdexcept>         // for runtime_error, out_of_range
 #include <xmmintrin.h>       // for _MM_HINT_T0, _mm_prefetch
@@ -56,11 +57,20 @@ OptimizedEmbeddingSearchBinaryAVX2::getEmbeddingAVX2(size_t index) const {
 std::vector<std::pair<int32_t, size_t>>
 OptimizedEmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
                                                       size_t k) {
+  TimingBreakdown timing;
+  return similarity_search_with_timing(query, k, timing);
+}
+
+std::vector<std::pair<int32_t, size_t>>
+OptimizedEmbeddingSearchBinaryAVX2::similarity_search_with_timing(
+    const avx2i_vector &query, size_t k, TimingBreakdown &timing) {
   if (query.size() != vectors_per_embedding) {
     std::cerr << "expected dimension: " << vectors_per_embedding
               << "\ngot dimension: " << query.size() << std::endl;
     throw std::runtime_error("Query vector size does not match embedding size");
   }
+
+  auto total_start = std::chrono::high_resolution_clock::now();
 
   std::vector<std::pair<int32_t, size_t>> similarities;
   similarities.reserve(num_vectors);
@@ -69,6 +79,7 @@ OptimizedEmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
   // counter = AVX2Popcount();
   //  AVX2PopcountHarleySeal counter;
 
+  auto scan_start = std::chrono::high_resolution_clock::now();
   if (vectors_per_embedding == 4) {
     for (size_t i = 0; i < num_vectors; i++) {
       int32_t sim =
@@ -82,13 +93,28 @@ OptimizedEmbeddingSearchBinaryAVX2::similarity_search(const avx2i_vector &query,
       similarities.emplace_back(sim, i);
     }
   }
+  auto scan_end = std::chrono::high_resolution_clock::now();
 
+  auto selection_start = std::chrono::high_resolution_clock::now();
+  const size_t topk = std::min(k, similarities.size());
   std::partial_sort(
-      similarities.begin(), similarities.begin() + k, similarities.end(),
+      similarities.begin(), similarities.begin() + topk, similarities.end(),
       [](const auto &a, const auto &b) { return a.first > b.first; });
+  auto selection_end = std::chrono::high_resolution_clock::now();
 
-  return std::vector<std::pair<int32_t, size_t>>(similarities.begin(),
-                                                 similarities.begin() + k);
+  auto total_end = std::chrono::high_resolution_clock::now();
+
+  timing.binary_scan_ms =
+      std::chrono::duration<double, std::milli>(scan_end - scan_start).count();
+  timing.candidate_selection_ms =
+      std::chrono::duration<double, std::milli>(selection_end - selection_start)
+          .count();
+  timing.total_ms =
+      std::chrono::duration<double, std::milli>(total_end - total_start).count();
+  timing.num_survivors = topk;
+
+  return std::vector<std::pair<int32_t, size_t>>(
+      similarities.begin(), similarities.begin() + timing.num_survivors);
 }
 
 bool OptimizedEmbeddingSearchBinaryAVX2::validateDimensions(

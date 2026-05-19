@@ -15,7 +15,7 @@ public:
   EmbeddingSearchFloat() = default;
 
   bool load(const std::string &filename, bool set_sentences = true,
-            const int embedding_dim = 1024) {
+            const int embedding_dim = 1024, const size_t max_rows = 0) {
     bool result = false;
     auto start = std::chrono::high_resolution_clock::now();
     if (filename.ends_with(".safetensors")) {
@@ -26,7 +26,8 @@ public:
       result = EmbeddingIO::load_json2(filename, embeddings, sentences);
     } else if (filename.ends_with(".parquet")) {
       result = EmbeddingIO::load_parquet(filename, embeddings, sentences,
-                                         set_sentences, embedding_dim);
+                                         set_sentences, embedding_dim,
+                                         max_rows);
     } else {
       throw std::runtime_error("Unsupported file format");
     }
