@@ -10,7 +10,7 @@ FIELDS = [
     "num_queries", "num_repeats", "geomean_total_ms", "mean_total_ms",
     "median_total_ms", "p95_total_ms", "mean_ndcg100", "std_ndcg100",
     "mean_jaccard", "geomean_binary_scan_ms", "geomean_rescore_ms",
-    "mean_num_survivors",
+    "geomean_unaccounted_ms", "mean_num_survivors",
 ]
 
 def f(row, key):
@@ -87,6 +87,7 @@ def main(raw_path, out_path, report_path):
                 "mean_jaccard": statistics.fmean([f(r, "jaccard") for r in rows]),
                 "geomean_binary_scan_ms": geomean([f(r, "T_binary_scan_ms") for r in rows]),
                 "geomean_rescore_ms": geomean([f(r, "T_rescore_ms") for r in rows]),
+                "geomean_unaccounted_ms": geomean([abs(f(r, "T_unaccounted_ms")) for r in rows]),
                 "mean_num_survivors": statistics.fmean([f(r, "num_survivors") for r in rows]),
             })
     write_verification(out_path, report_path)

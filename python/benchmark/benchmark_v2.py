@@ -73,17 +73,17 @@ class VectorSearchBenchmark:
         self.runs = runs
         self.num_vectors, self.vector_dim = self.searcher.get_dimensions()
 
-        # Drop rescoring factors that request more candidates than we have data
         self.rescoring_factors = rescoring_factors or []
+        if self.num_vectors < self.k:
+            raise ValueError(
+                f"N < k is invalid for benchmark search: N={self.num_vectors}, k={self.k}"
+            )
         if self.rescoring_factors:
-            max_candidates = self.num_vectors
-            original = list(self.rescoring_factors)
-            self.rescoring_factors = [
-                rf for rf in self.rescoring_factors if (self.k * rf) <= max_candidates
-            ]
-            if len(self.rescoring_factors) < len(original):
+            saturated = [rf for rf in self.rescoring_factors if self.k * rf >= self.num_vectors]
+            if saturated:
                 print(
-                    f"Warning: reduced rescoring factors from {original} to {self.rescoring_factors} because k*rf exceeds available vectors ({self.num_vectors})"
+                    "WARNING: candidate set saturates because N <= k*RF for "
+                    f"RF={saturated}. RF comparison is not meaningful."
                 )
 
         print(f"Loaded {self.num_vectors} vectors of dimension {self.vector_dim}")
@@ -362,6 +362,18 @@ def _timing_zero(total_ms: float, num_survivors: int) -> Dict[str, float]:
         "num_survivors": num_survivors,
     }
 
+def _add_timing_accounting(timing: Dict[str, float]) -> Dict[str, float]:
+    component_sum = sum(float(timing[k]) for k in [
+        "T_query_sketch_ms",
+        "T_binary_scan_ms",
+        "T_candidate_selection_ms",
+        "T_rescore_ms",
+        "T_final_topk_ms",
+    ])
+    timing["T_component_sum_ms"] = component_sum
+    timing["T_unaccounted_ms"] = float(timing["T_total_ms"]) - component_sum
+    return timing
+
 def _revision_method_specs(methods: str) -> List[Tuple[str, str, int]]:
     specs = []
     for raw in [m.strip() for m in methods.split(",") if m.strip()]:
@@ -393,6 +405,8 @@ def run_revision_csv(args):
     queries = benchmark._load_queries(args.query_file)
     if args.query_limit:
         queries = queries[:args.query_limit]
+    if benchmark.num_vectors < args.k:
+        raise ValueError(f"N < k is invalid: N={benchmark.num_vectors}, k={args.k}")
 
     git_commit = _run(["git", "rev-parse", "HEAD"])
     compiler = _run(["bash", "-lc", "c++ --version | head -n 1"])
@@ -406,7 +420,8 @@ def run_revision_csv(args):
         "dataset", "dataset_path", "query_path", "N", "d", "k", "RF",
         "method", "query_id", "repeat_id", "T_query_sketch_ms",
         "T_binary_scan_ms", "T_candidate_selection_ms", "T_rescore_ms",
-        "T_final_topk_ms", "T_total_ms", "ndcg100", "jaccard",
+        "T_final_topk_ms", "T_total_ms", "T_component_sum_ms",
+        "T_unaccounted_ms", "ndcg100", "jaccard",
         "num_survivors",
     ]
     output_path = Path(args.csv_output)
@@ -424,6 +439,13 @@ def run_revision_csv(args):
                 float_results, _ = benchmark.searcher.search_float(query_vector, args.k)
 
                 for method_name, kind, rf in specs:
+                    if rf and benchmark.num_vectors <= args.k * rf:
+                        print(
+                            "WARNING: candidate set saturates because "
+                            f"N <= k*RF for method={method_name}: "
+                            f"N={benchmark.num_vectors}, k={args.k}, RF={rf}. "
+                            "RF comparison is not meaningful."
+                        )
                     if kind == "avx2":
                         results, time_us = benchmark.searcher.search_avx2(query_vector, args.k)
                         timing = _timing_zero(float(time_us) / 1000.0, len(results))
@@ -435,6 +457,7 @@ def run_revision_csv(args):
                         results, _, timing = benchmark.searcher.search_twostep_mf_timed(query_vector, args.k, rf)
                     else:
                         raise AssertionError(kind)
+                    timing = _add_timing_accounting(timing)
 
                     writer.writerow({
                         "git_commit": git_commit,
@@ -458,6 +481,8 @@ def run_revision_csv(args):
                         "T_rescore_ms": timing["T_rescore_ms"],
                         "T_final_topk_ms": timing["T_final_topk_ms"],
                         "T_total_ms": timing["T_total_ms"],
+                        "T_component_sum_ms": timing["T_component_sum_ms"],
+                        "T_unaccounted_ms": timing["T_unaccounted_ms"],
                         "ndcg100": calculate_ndcg(float_results, results),
                         "jaccard": _jaccard(float_results, results),
                         "num_survivors": int(timing["num_survivors"]),

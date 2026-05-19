@@ -11,7 +11,8 @@ FIELDS = [
     "median_total_ms", "p95_total_ms", "geomean_query_sketch_ms",
     "geomean_binary_scan_ms", "geomean_candidate_selection_ms",
     "geomean_rescore_ms", "geomean_final_topk_ms", "mean_ndcg100",
-    "std_ndcg100", "mean_jaccard", "mean_num_survivors",
+    "geomean_unaccounted_ms", "std_ndcg100", "mean_jaccard",
+    "mean_num_survivors",
 ]
 
 def f(row, key):
@@ -63,6 +64,7 @@ def main(raw_path, out_path):
                 "geomean_candidate_selection_ms": geomean([f(r, "T_candidate_selection_ms") for r in rows]),
                 "geomean_rescore_ms": geomean([f(r, "T_rescore_ms") for r in rows]),
                 "geomean_final_topk_ms": geomean([f(r, "T_final_topk_ms") for r in rows]),
+                "geomean_unaccounted_ms": geomean([abs(f(r, "T_unaccounted_ms")) for r in rows]),
                 "mean_ndcg100": statistics.fmean(ndcg),
                 "std_ndcg100": statistics.pstdev(ndcg) if len(ndcg) > 1 else 0.0,
                 "mean_jaccard": statistics.fmean(jaccard),

@@ -391,6 +391,9 @@ class ParquetEmbeddingGenerator:
                 
         except Exception as e:
             raise Exception(f"Error processing chunks: {str(e)}")
+        finally:
+            if writer is not None:
+                writer.close()
 
 
     def process_parquet_file(

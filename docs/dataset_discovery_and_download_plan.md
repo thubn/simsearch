@@ -1,158 +1,148 @@
-# Dataset Discovery and Download Plan
+# Dataset Discovery and Download/Generation Plan
 
-## Local discovery
+Date: 2026-05-19
 
-During the first inspection, no document embedding parquet, safetensors, or
-ndjson files were found under the repository checkout. Afterward, local parquet
-files were added under `python/out/`.
+## Current Local Parquet Files
 
-Current local document embedding files:
+Inspected with `scripts/inspect_parquet_dataset.py` / PyArrow metadata.
 
-| File | Rows | Dimension |
-| --- | ---: | ---: |
-| `python/out/1_2M_random_out_mixedbread.parquet` | 1,000 | 1024 |
-| `python/out/1_2M_random_out_mpnet.parquet` | 1,000 | 768 |
+| path | rows | embedding dim | file size | status |
+|---|---:|---:|---:|---|
+| `python/out/1_2M_random_out_mixedbread.parquet` | 1,000 | 1,024 | 7,844,010 bytes | Misleading filename; not 1.2M. |
+| `python/out/1_2M_random_out_mpnet.parquet` | 1,000 | 768 | 6,350,078 bytes | Misleading filename; not 1.2M. |
+| `python/out/local_query_embeddings_1024.parquet` | 313 | 1,024 | 2,803,099 bytes | Query/fallback embedding file, not full document dataset. |
 
-Despite the `1_2M` filenames, pyarrow metadata reports 1,000 rows for each
-file. The repository also contains query embeddings under
-`python/query_embeddings/`.
+No local parquet currently verifies as 60K, 300K, or 1.2M document vectors.
 
-Useful local query files:
+## Current Query Files
 
-| File | Valid queries | Dimension |
-| --- | ---: | ---: |
-| `python/query_embeddings/combined.jsonl` | 313 | 1024 |
-| `python/query_embeddings/combined_mpnet.jsonl` | 313 | 768 |
-| `python/query_embeddings/3_queries_emb.jsonl` | 3 | 1024 |
-| `python/query_embeddings/3_queries_emb_mpnet.jsonl` | 3 | 768 |
-| `python/query_embeddings/spec_wiki_queries_emb.jsonl` | 50 | 1024 |
-| `python/query_embeddings/wiki_queries_emb.jsonl` | 101 | 1024 |
+Relevant query files:
 
-`python/query_embeddings/query_example.jsonl` is illustrative and is not valid
-JSONL because it contains ellipses in the embedding arrays.
+| query file | count |
+|---|---:|
+| `python/query_embeddings/combined.jsonl` | 313 |
+| `python/query_embeddings/combined_mpnet.jsonl` | 313 |
+| `python/query_embeddings/spec_wiki_queries_emb.jsonl` | 50 |
+| `python/query_embeddings/wiki_queries_emb.jsonl` | 101 |
+| `python/query_embeddings/specific_queries_emb.jsonl` | 51 |
+| `python/query_embeddings/stupid_queries_emb.jsonl` | 111 |
 
-## Dataset used by the artifact
+For the revision experiments, use `python/query_embeddings/combined.jsonl` for mxbai 1024-d unless runtime forces `query_limit=100`.
 
-- Dataset name: Wikimedia Wikipedia article dataset.
-- Hugging Face dataset id: `wikimedia/wikipedia`.
-- Dataset config: `20231101.en`.
-- Split: `train`.
-- Text fields used by the embedding generator: `title` and `text`.
-- Formatting template in `python/create_embeddings.py`:
-  `title: <title> text: <text>`, truncated to the model-specific max length.
-- Primary embedding model for the TECS revision:
-  `mixedbread-ai/mxbai-embed-large-v1`.
-- Expected dimension: 1024.
-- Expected number of vectors for the paper-scale run: 1,200,000.
-- Expected local path: `python/out/1_2M_random_out_mixedbread.parquet`.
-- Older script/path variant: `python/out/1_2M_random_out.parquet`.
-- Comparison model:
-  `sentence-transformers/all-mpnet-base-v2`, dimension 768, expected path
-  `python/out/1_2M_random_out_mpnet.parquet`.
+## Cause of the 1,000-row Misleading Files
 
-## Expected embedding format
-
-The C++ loader expects a parquet file with:
-
-- `formatted_text` string column.
-- One float column per dimension named `embedding_0`, `embedding_1`, ...,
-  `embedding_1023` for mxbai, or `embedding_767` for mpnet.
-
-`EmbeddingIO::load_parquet` loads all rows in the file and reads the embedding
-dimension passed by the caller.
-
-## Regeneration scripts
-
-The repository includes:
-
-- `python/create_embeddings.py`
-- `python/start_create_embeddings_mixedbread.py`
-- `python/start_create_embeddings_mpnet.py`
-
-The mixedbread helper currently contains:
+Previous start scripts used:
 
 ```python
-generator = ParquetEmbeddingGenerator(
-    model_name="mixedbread-ai/mxbai-embed-large-v1",
-    batch_size=32
-)
-
-generator.process_parquet_file(
-    file_path="wikimedia/wikipedia",
-    chunk_size=1000,
-    dataset_config="20231101.en",
-    dataset_split="train",
-    output_path="out/1_2M_random_out_mixedbread.parquet",
-    random_rows=1000,
-    random_seed=42,
-    streaming=True
-)
+output_path="out/1_2M_random_out_mixedbread.parquet"
+random_rows=1000
 ```
 
-Important caveat: despite the `1_2M` output filename, the checked-in script uses
-`random_rows=1000`. For a 1.2M embedding file this must be changed or replaced
-with a command/script that sets `random_rows=1200000` or an equivalent max-row
-policy.
+and:
 
-## Commands to obtain or regenerate data
+```python
+output_path="out/1_2M_random_out_mpnet.parquet"
+random_rows=1000
+```
 
-Install Python dependencies, preferably in a virtual environment:
+This is the exact script/config variable that caused the mismatch. The old scripts have been replaced with safe N1000 wrappers that write filenames containing `N1000`, not `1_2M`.
+
+## New Generation Path
+
+New CLI:
 
 ```bash
-python3 -m pip install -r python/requirements.txt
+python python/generate_document_embeddings.py \
+  --model-name mixedbread-ai/mxbai-embed-large-v1 \
+  --dataset-name wikimedia/wikipedia \
+  --dataset-config 20231101.en \
+  --dataset-split train \
+  --target-rows 60000 \
+  --embedding-dim 1024 \
+  --batch-size 32 \
+  --chunk-size 1000 \
+  --selection-mode streaming_prefix \
+  --random-seed 42 \
+  --output-path python/out/wiki_mxbai_1024_N60000_seed42.parquet \
+  --metadata-path python/out/wiki_mxbai_1024_N60000_seed42.metadata.json
 ```
 
-Generate a small smoke-test mxbai parquet:
+Wrapper:
 
 ```bash
-cd python
-python3 start_create_embeddings_mixedbread.py
+TARGET_ROWS=60000 scripts/generate_mxbai_dataset.sh
 ```
 
-Generate a full 1.2M mxbai parquet after editing
-`python/start_create_embeddings_mixedbread.py` so `random_rows=1200000`:
+The generator uses HuggingFace streaming mode and writes incrementally with `pyarrow.parquet.ParquetWriter`. It verifies the output after writing and creates a metadata sidecar.
+
+## Recommended Dataset Sizes
+
+- Minimal meaningful RF test: `N >= 10000`, because `k=100` and `RF=50` requests 5,000 survivors.
+- Manuscript minimum: `N >= 60000`.
+- Preferred scaling set: `N = 60000, 300000, 1200000`.
+
+Decision table:
+
+| available N | allowed interpretation |
+|---:|---|
+| `< 5000` | Smoke-test instrumentation only. Do not compare RF10 vs RF50. |
+| `5000 <= N < 60000` | Small-scale validation only. |
+| `>= 60000` | Manuscript-minimum Priority 1. |
+| `60000, 300000, and one larger N` | Manuscript-minimum Priority 2. |
+| `60000, 300000, 1200000` | Preferred Priority 2. |
+
+## Estimated Storage
+
+Float32 embedding payload only, excluding text/parquet overhead:
+
+| N | 1024-d float32 bytes | approximate |
+|---:|---:|---:|
+| 60,000 | 245,760,000 | 234 MiB |
+| 300,000 | 1,228,800,000 | 1.14 GiB |
+| 1,200,000 | 4,915,200,000 | 4.58 GiB |
+
+Parquet file size may differ due to compression and stored `formatted_text`.
+
+## Estimated Runtime
+
+Runtime depends on GPU/CPU availability and model cache state. The script processes in chunks and does not retain all embeddings in memory. It must still encode every document:
+
+- 60K: likely minutes on a capable GPU; longer on CPU.
+- 300K: likely tens of minutes to hours depending on hardware.
+- 1.2M: likely hours and requires enough disk space for several GiB plus intermediate memory per chunk.
+
+The current `.venv` is missing `datasets`, `sentence-transformers`, and `torch`, so generation cannot run until dependencies are installed.
+
+## Commands for Real Generation
+
+Do not run these until approved.
 
 ```bash
-cd python
-python3 start_create_embeddings_mixedbread.py
+TARGET_ROWS=60000 scripts/generate_mxbai_dataset.sh
+TARGET_ROWS=300000 scripts/generate_mxbai_dataset.sh
+TARGET_ROWS=1200000 scripts/generate_mxbai_dataset.sh
 ```
 
-Alternative: use a temporary local copy of the helper script and set:
+Mpnet equivalents:
 
-- `output_path="out/1_2M_random_out_mixedbread.parquet"`
-- `random_rows=1200000`
-- `random_seed=42`
-- `streaming=True`
+```bash
+TARGET_ROWS=60000 scripts/generate_mpnet_dataset.sh
+TARGET_ROWS=300000 scripts/generate_mpnet_dataset.sh
+TARGET_ROWS=1200000 scripts/generate_mpnet_dataset.sh
+```
 
-The script writes parquet incrementally using pyarrow.
+## Recommended Approval Command
 
-## Expected size and runtime
+After dependencies are installed and disk space is confirmed, the next practical command is:
 
-Rough size estimate for 1.2M 1024-dimensional float embeddings:
+```bash
+TARGET_ROWS=60000 scripts/generate_mxbai_dataset.sh
+```
 
-- Raw vector payload: `1,200,000 * 1024 * 4` bytes = about 4.9 GB.
-- Parquet plus text/metadata overhead and compression can vary substantially.
-- Practical disk budget should allow at least 6 to 10 GB for the mxbai parquet.
+Then inspect:
 
-Runtime depends on GPU/CPU, model cache state, network, and Hugging Face
-streaming throughput. Full regeneration of 1.2M embeddings is expected to be a
-long-running job and should not be started without approval.
+```bash
+scripts/inspect_parquet_dataset.py python/out/wiki_mxbai_1024_N60000_seed42.parquet
+```
 
-## Fallback plan
-
-1. Prefer an existing local `python/out/1_2M_random_out_mixedbread.parquet` if
-   present after user supplies or mounts data.
-2. If full 1.2M is unavailable, use the largest local mxbai parquet file found
-   and document exact `N`.
-3. If no document parquet is available, run only build/script sanity where
-   possible and document the dataset blocker.
-4. For quick functionality checks, generate or use a small parquet with
-   `random_rows=1000` and run:
-   - `N=1000`
-   - `queries=3`
-   - `repeats=2`
-
-## Approval requirement
-
-Do not download or regenerate the full Wikipedia embedding dataset until the
-desired output path, target `N`, disk budget, and expected runtime are approved.
+Only after that should Priority 1 be run on the verified N=60000 parquet.

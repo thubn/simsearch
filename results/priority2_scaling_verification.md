@@ -1,24 +1,24 @@
 # Priority 2 Scaling Verification
 
 ## binary
-- Total latency by N: N=100: 0.00610636 ms, N=500: 0.0107971 ms, N=1000: 0.0133922 ms
-- Rescore latency by N: N=100: 1e-12 ms, N=500: 1e-12 ms, N=1000: 1e-12 ms
-- Accuracy by N: N=100: ndcg=0.9101, jaccard=1.0000, N=500: ndcg=0.6899, jaccard=0.5964, N=1000: ndcg=0.6581, jaccard=0.5438
+- Total latency by N: N=60000: 0.194874 ms, N=300000: 0.94471 ms, N=1200000: 4.28602 ms
+- Rescore latency by N: N=60000: 1e-12 ms, N=300000: 1e-12 ms, N=1200000: 1e-12 ms
+- Accuracy by N: N=60000: ndcg=0.5949, jaccard=0.4602, N=300000: ndcg=0.5799, jaccard=0.4413, N=1200000: ndcg=0.5816, jaccard=0.4415
 
 ## float32_avx2
-- Total latency by N: N=100: 0.00291647 ms, N=500: 0.0232931 ms, N=1000: 0.0389088 ms
-- Rescore latency by N: N=100: 1e-12 ms, N=500: 1e-12 ms, N=1000: 1e-12 ms
-- Accuracy by N: N=100: ndcg=0.7196, jaccard=1.0000, N=500: ndcg=0.9999, jaccard=0.9998, N=1000: ndcg=1.0000, jaccard=1.0000
+- Total latency by N: N=60000: 5.62863 ms, N=300000: 27.7707 ms, N=1200000: 107.864 ms
+- Rescore latency by N: N=60000: 1e-12 ms, N=300000: 1e-12 ms, N=1200000: 1e-12 ms
+- Accuracy by N: N=60000: ndcg=0.9959, jaccard=0.9943, N=300000: ndcg=0.9961, jaccard=0.9956, N=1200000: ndcg=0.9949, jaccard=0.9933
 
 ## two_step_RF10
-- Total latency by N: N=100: 0.00901219 ms, N=500: 0.0382994 ms, N=1000: 0.0703125 ms
-- Rescore latency by N: N=100: 0.00330588 ms, N=500: 0.0195699 ms, N=1000: 0.0393968 ms
-- Accuracy by N: N=100: ndcg=0.9101, jaccard=1.0000, N=500: ndcg=0.9999, jaccard=0.9998, N=1000: ndcg=1.0000, jaccard=1.0000
+- Total latency by N: N=60000: 0.495354 ms, N=300000: 1.28897 ms, N=1200000: 4.52461 ms
+- Rescore latency by N: N=60000: 0.241978 ms, N=300000: 0.273308 ms, N=1200000: 0.293386 ms
+- Accuracy by N: N=60000: ndcg=0.9886, jaccard=0.9781, N=300000: ndcg=0.9844, jaccard=0.9703, N=1200000: ndcg=0.9813, jaccard=0.9635
 
 ## two_step_mf_RF10
-- Total latency by N: N=100: 0.035593 ms, N=500: 0.158019 ms, N=1000: 0.313006 ms
-- Rescore latency by N: N=100: 0.028201 ms, N=500: 0.140913 ms, N=1000: 0.284742 ms
-- Accuracy by N: N=100: ndcg=0.9924, jaccard=1.0000, N=500: ndcg=0.9783, jaccard=0.9729, N=1000: ndcg=0.9866, jaccard=0.9836
+- Total latency by N: N=60000: 0.867103 ms, N=300000: 1.69479 ms, N=1200000: 4.95274 ms
+- Rescore latency by N: N=60000: 0.621288 ms, N=300000: 0.672386 ms, N=1200000: 0.706132 ms
+- Accuracy by N: N=60000: ndcg=0.9757, jaccard=0.9624, N=300000: ndcg=0.9706, jaccard=0.9525, N=1200000: ndcg=0.9688, jaccard=0.9487
 
 ## Checklist
 - Float32 and binary linearity should be assessed from the table above; no conclusion is forced by this script.
