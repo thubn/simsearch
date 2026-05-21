@@ -1,4 +1,0 @@
-path,exists,file_size_bytes,num_rows,num_columns,embedding_dim_inferred,has_formatted_text,first_embedding_column,last_embedding_column
-python/out/1_2M_random_out_mixedbread.parquet,True,7844010,1000,1025,1024,True,embedding_0,embedding_1023
-python/out/1_2M_random_out_mpnet.parquet,True,6350078,1000,769,768,True,embedding_0,embedding_767
-python/out/local_query_embeddings_1024.parquet,True,2803099,313,1025,1024,True,embedding_0,embedding_1023

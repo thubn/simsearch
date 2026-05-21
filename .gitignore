@@ -27,10 +27,16 @@ memory_benchmark/memory_benchmark
 **/*.run.xml
 **/*.nav
 **/*.snm
-written_bachelor_thesis/bilder/plots/*/
-written_bachelor_thesis/thesis.txt
 __pycache__
 .venv
+
+# Private / internal directories
+written_bachelor_thesis/
+docs/
+results/
+.vscode/
+python/jupyter/results/
+python/jupyter/plots/
 
 # Local benchmark outputs / artifacts
 python/out/
