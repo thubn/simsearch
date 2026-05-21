@@ -1,0 +1,22 @@
+	Size: No Module Installed
+	Type: Unknown
+	Size: 32 GB
+	Type: DDR5
+	Speed: 4800 MT/s
+	Configured Memory Speed: 4800 MT/s
+	Configured Voltage: 1.1 V
+	Non-Volatile Size: None
+	Volatile Size: 32 GB
+	Cache Size: None
+	Logical Size: None
+	Size: No Module Installed
+	Type: Unknown
+	Size: 32 GB
+	Type: DDR5
+	Speed: 4800 MT/s
+	Configured Memory Speed: 4800 MT/s
+	Configured Voltage: 1.1 V
+	Non-Volatile Size: None
+	Volatile Size: 32 GB
+	Cache Size: None
+	Logical Size: None
