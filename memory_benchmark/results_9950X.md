@@ -14,7 +14,7 @@ Strided ceiling change vs 5950X (36.71 GB/s):    1.17x (+16.7%)
   4800 MT/s, 1.1 V). The Ryzen 9 9950X (Zen 5) only supports DDR5, so the
   ceiling figures here are for DDR5-4800, not DDR4. §7.3 prose should reflect
   this.
-- Host: meow1, Linux 6.17.0-19-generic, AMD Ryzen 9 9950X 16-Core (32 threads).
+- Host: AMD Ryzen 9 9950X 16-Core (32 threads), Linux 6.17.0-19-generic, DDR5-4800.
 - Raw per-run results (GB/s):
     run  sequential  strided
       1     49.61     42.95
@@ -27,4 +27,4 @@ Strided ceiling change vs 5950X (36.71 GB/s):    1.17x (+16.7%)
   STRIDE_LENGTH=1024 floats = 4 KB) identical to the 5950X measurement.
 - Stability: median is within 1.2% of min and 0.6% of max (sequential), and
   within 0.4% of both min and max (strided) -- well inside the 10% bound.
-- Host context captured in bandwidth_host.txt; DIMM details in bandwidth_dmi.txt.
+- DIMM details in bandwidth_dmi.txt.
