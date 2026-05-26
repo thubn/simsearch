@@ -8,8 +8,8 @@ This is a sibling of benchmark_v3.py, NOT a modification of it. It is not
 intended to be reusable beyond this single experiment.
 
 Outputs:
-  python/jupyter/results/benchmark_dim1024_k100_q_faiss_indexflat.json
-  python/jupyter/results/benchmark_dim1024_k100_q_faiss_indexflat.host.json
+  python/out/benchmark_dim1024_k100_q_faiss_indexflat.json
+  python/out/benchmark_dim1024_k100_q_faiss_indexflat.host.json
 """
 
 import json
@@ -29,9 +29,9 @@ import faiss
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PARQUET = os.path.join(REPO, "python/out/wiki_mxbai_1024_N1200000_seed42.parquet")
 QUERIES = os.path.join(REPO, "python/query_embeddings/combined.jsonl")
-V3_JSON = os.path.join(REPO, "python/jupyter/results/benchmark_dim1024_k100_q.json")
-OUT_JSON = os.path.join(REPO, "python/jupyter/results/benchmark_dim1024_k100_q_faiss_indexflat.json")
-OUT_HOST = os.path.join(REPO, "python/jupyter/results/benchmark_dim1024_k100_q_faiss_indexflat.host.json")
+V3_JSON = os.path.join(REPO, "python/jupyter/results/benchmark_dim1024_k100_q.json")  # optional cross-check; skipped if absent
+OUT_JSON = os.path.join(REPO, "python/out/benchmark_dim1024_k100_q_faiss_indexflat.json")
+OUT_HOST = os.path.join(REPO, "python/out/benchmark_dim1024_k100_q_faiss_indexflat.host.json")
 
 DIM = 1024
 K = 100
