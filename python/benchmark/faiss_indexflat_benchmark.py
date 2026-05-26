@@ -4,7 +4,7 @@ Measures FAISS IndexFlatIP (exact flat scan from a mature library) on the
 same workload as the v3 9950X benchmark: 1.2M mxbai Wikipedia vectors,
 313 queries, k=100, 10 inner repeats per query, one query timed at a time.
 
-This is a sibling of benchmark_v3.py, NOT a modification of it. It is not
+This is a sibling of benchmark_geomean.py, NOT a modification of it. It is not
 intended to be reusable beyond this single experiment.
 
 Outputs:
@@ -38,9 +38,9 @@ K = 100
 INNER_REPEATS = 10
 
 
-# --- helpers (NDCG / geomean copied from benchmark_v3.py conventions) -------
+# --- helpers (NDCG / geomean copied from benchmark_geomean.py conventions) -------
 def calculate_ndcg(ground_truth, prediction):
-    """Same formula as benchmark_v3.calculate_ndcg; entries are (score, idx, text)."""
+    """Same formula as benchmark_geomean.calculate_ndcg; entries are (score, idx, text)."""
     if not ground_truth or not prediction:
         return 0.0
     k = min(len(ground_truth), len(prediction))

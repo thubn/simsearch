@@ -1,4 +1,4 @@
-"""benchmark_v3.py — like benchmark_v2.py but every per-query method call is
+"""benchmark_geomean.py — like benchmark.py but every per-query method call is
 repeated --inner-repeats times (default 10), each timing kept individually.
 
 The on-disk JSON shape is a strict superset of v2's:
@@ -14,7 +14,7 @@ The on-disk JSON shape is a strict superset of v2's:
 NDCG / jaccard / overlap depend only on the search result set, not on timing,
 so they are computed once per (query, method) — not once per repeat.
 
-Only --revision-csv mode is left untouched; this v3 only changes the
+Only --component-csv mode is left untouched; this v3 only changes the
 legacy-style query-mode JSON output that the plots_v4.ipynb consumes.
 """
 

@@ -103,12 +103,12 @@ export LD_LIBRARY_PATH="$(python3 -c 'import pyarrow, os; print(os.path.dirname(
 ```bash
 mkdir -p results
 
-python3 python/benchmark/benchmark_v2.py \
+python3 python/benchmark/benchmark.py \
   -f python/out/wiki_mxbai_1024_N1200000_seed42.parquet \
   -m query \
   -q python/query_embeddings/combined.jsonl \
   -k 100 --embedding-dim 1024 \
-  --revision-csv \
+  --component-csv \
   --methods float32_avx2,binary,two_step_RF10,two_step_RF50,two_step_mf_RF10,two_step_mf_RF50 \
   --max-vectors 60000 \
   --repeats 10 \
@@ -118,7 +118,7 @@ python3 python/benchmark/benchmark_v2.py \
 Key flags:
 - `--max-vectors 60000` — limits the index to the first 60 k vectors, matching the N used in Table 1
 - `--repeats 10` — number of timing repeats per query (paper uses 10)
-- `--revision-csv` — enables per-component timing output (Step 1 / Step 2 breakdown)
+- `--component-csv` — enables per-component timing output (Step 1 / Step 2 breakdown)
 
 Output: `results/priority1_timing_breakdown.csv` with columns `method`, `T_binary_scan_ms`, `T_rescore_ms`, `T_total_ms`, `ndcg`, etc.
 

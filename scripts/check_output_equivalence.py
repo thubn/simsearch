@@ -45,7 +45,7 @@ def main() -> int:
 
     sys.path.insert(0, str(Path("build").resolve()))
     from embedding_search_benchmark import EmbeddingSearch
-    from python.benchmark.benchmark_v2 import calculate_ndcg
+    from python.benchmark.benchmark import calculate_ndcg
 
     searcher = EmbeddingSearch()
     searcher.load(

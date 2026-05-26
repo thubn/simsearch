@@ -389,7 +389,7 @@ def _revision_method_specs(methods: str) -> List[Tuple[str, str, int]]:
             raise ValueError(f"Unknown revision method: {raw}")
     return specs
 
-def run_revision_csv(args):
+def run_component_csv(args):
     benchmark = VectorSearchBenchmark(
         args.embedding_file,
         args.k,
@@ -501,7 +501,7 @@ def main():
                       help="Output file path for results")
     parser.add_argument("--rescoring-factor", type=str, help="Comma-separated list of rescoring factors for two-step search")
     parser.add_argument("--embedding-dim", "-d", type=int, default=1024, help="Of dimensions of embedding file")
-    parser.add_argument("--revision-csv", action="store_true",
+    parser.add_argument("--component-csv", action="store_true",
                       help="Run revision experiment CSV mode")
     parser.add_argument("--methods", default="float32_avx2,binary,two_step_RF10,two_step_mf_RF10",
                       help="Comma-separated revision method names")
@@ -524,12 +524,12 @@ def main():
     if args.mode == "query" and not args.query_file:
         parser.error("Query file is required for query mode")
 
-    if args.revision_csv:
+    if args.component_csv:
         if args.mode != "query":
-            parser.error("--revision-csv currently requires --mode query")
+            parser.error("--component-csv currently requires --mode query")
         if not args.query_file:
-            parser.error("--revision-csv requires --query-file")
-        run_revision_csv(args)
+            parser.error("--component-csv requires --query-file")
+        run_component_csv(args)
         return
 
     # Parse rescoring factors if provided
