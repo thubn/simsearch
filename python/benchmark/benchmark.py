@@ -374,7 +374,7 @@ def _add_timing_accounting(timing: Dict[str, float]) -> Dict[str, float]:
     timing["T_unaccounted_ms"] = float(timing["T_total_ms"]) - component_sum
     return timing
 
-def _revision_method_specs(methods: str) -> List[Tuple[str, str, int]]:
+def _method_specs(methods: str) -> List[Tuple[str, str, int]]:
     specs = []
     for raw in [m.strip() for m in methods.split(",") if m.strip()]:
         if raw == "float32_avx2":
@@ -386,7 +386,7 @@ def _revision_method_specs(methods: str) -> List[Tuple[str, str, int]]:
         elif raw.startswith("two_step_RF"):
             specs.append((raw, "twostep", int(raw.rsplit("RF", 1)[1])))
         else:
-            raise ValueError(f"Unknown revision method: {raw}")
+            raise ValueError(f"Unknown method: {raw}")
     return specs
 
 def run_component_csv(args):
@@ -413,7 +413,7 @@ def run_component_csv(args):
     compile_flags = _run(["bash", "-lc", "grep -E 'CMAKE_CXX_FLAGS_RELEASE:|CMAKE_CXX_FLAGS:|CMAKE_CXX_FLAGS_RELEASE=' build/CMakeCache.txt 2>/dev/null | tr '\\n' ' '"])
     machine = platform.node()
     cpu_model = _cpu_model()
-    specs = _revision_method_specs(args.methods)
+    specs = _method_specs(args.methods)
 
     fieldnames = [
         "git_commit", "machine", "cpu_model", "compiler", "compile_flags",
@@ -502,21 +502,21 @@ def main():
     parser.add_argument("--rescoring-factor", type=str, help="Comma-separated list of rescoring factors for two-step search")
     parser.add_argument("--embedding-dim", "-d", type=int, default=1024, help="Of dimensions of embedding file")
     parser.add_argument("--component-csv", action="store_true",
-                      help="Run revision experiment CSV mode")
+                      help="Output per-component timing breakdown (Step 1 / Step 2) as CSV")
     parser.add_argument("--methods", default="float32_avx2,binary,two_step_RF10,two_step_mf_RF10",
-                      help="Comma-separated revision method names")
+                      help="Comma-separated method names to benchmark")
     parser.add_argument("--max-vectors", type=int, default=0,
-                      help="Load at most this many vectors from the embedding file")
+                      help="Load at most this many vectors from the embedding file (0 = all)")
     parser.add_argument("--query-limit", type=int, default=0,
-                      help="Use only the first this many queries")
+                      help="Use only the first this many queries (0 = all)")
     parser.add_argument("--repeats", type=int, default=1,
-                      help="Repeat each query this many times in revision CSV mode")
-    parser.add_argument("--csv-output", default="results/revision_raw.csv",
-                      help="Raw CSV output path for revision CSV mode")
+                      help="Repeat each query this many times for stable timing")
+    parser.add_argument("--csv-output", default="results/benchmark_raw.csv",
+                      help="Output path for the component-csv CSV file")
     parser.add_argument("--append-csv", action="store_true",
                       help="Append to CSV output instead of replacing it")
     parser.add_argument("--dataset-name", default="wikimedia_wikipedia_mxbai",
-                      help="Dataset label for revision CSV output")
+                      help="Dataset label written into the CSV output")
     
     args = parser.parse_args()
     print(args.embedding_dim)

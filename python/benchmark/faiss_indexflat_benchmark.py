@@ -1,11 +1,8 @@
-"""faiss_indexflat_benchmark.py — one-off baseline for the TECS revision.
+"""faiss_indexflat_benchmark.py — FAISS IndexFlatIP baseline benchmark.
 
-Measures FAISS IndexFlatIP (exact flat scan from a mature library) on the
-same workload as the v3 9950X benchmark: 1.2M mxbai Wikipedia vectors,
-313 queries, k=100, 10 inner repeats per query, one query timed at a time.
-
-This is a sibling of benchmark_geomean.py, NOT a modification of it. It is not
-intended to be reusable beyond this single experiment.
+Measures exact inner-product brute-force search using FAISS IndexFlatIP on
+1.2M mxbai Wikipedia vectors, 313 queries, k=100, 10 inner repeats per query,
+one query timed at a time.
 
 Outputs:
   python/out/benchmark_dim1024_k100_q_faiss_indexflat.json

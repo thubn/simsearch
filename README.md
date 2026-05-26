@@ -90,7 +90,7 @@ python3 python/generate_document_embeddings.py \
 
 Table 1 reports per-component query latency and speedup for six methods on the Wikipedia dataset at N=60 000.
 
-**Prerequisites:** complete steps 1–3, then set up the Python path so the benchmark module is importable:
+Set up the Python path so the benchmark module is importable:
 
 ```bash
 source .venv/bin/activate
@@ -98,7 +98,7 @@ export PYTHONPATH="$PWD/build:${PYTHONPATH:-}"
 export LD_LIBRARY_PATH="$(python3 -c 'import pyarrow, os; print(os.path.dirname(pyarrow.__file__))'):${LD_LIBRARY_PATH:-}"
 ```
 
-**Run the benchmark:**
+Run the benchmark:
 
 ```bash
 mkdir -p results
